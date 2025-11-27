@@ -148,20 +148,6 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 
 - **エラー時**:
   - **500 Internal Server Error**: サーバーエラー
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "INTERNAL_ERROR",
-        "message": "サーバーエラーが発生しました"
-      }
-    }
-    ```
-
-**サンプルリクエスト:**
-```bash
-curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/tasks"
-```
 
 ---
 
@@ -212,21 +198,7 @@ curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/tasks"
 
 - **エラー時**:
   - **404 Not Found**: タスクが見つからない
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "NOT_FOUND",
-        "message": "タスクが見つかりません"
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000"
-```
 
 ---
 
@@ -291,29 +263,7 @@ curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d
 
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "VALIDATION_ERROR",
-        "message": "入力内容に誤りがあります",
-        "details": {
-          "title": "タイトルは1-500文字で入力してください"
-        }
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X POST "https://api.vanishtodo.lulliecat.com/api/v1/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認する",
-    "weight": "light"
-  }'
-```
 
 ---
 
@@ -390,84 +340,8 @@ curl -X POST "https://api.vanishtodo.lulliecat.com/api/v1/tasks" \
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
   - **404 Not Found**: タスクが見つからない
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "NOT_FOUND",
-        "message": "タスクが見つかりません"
-      }
-    }
-    ```
   - **409 Conflict**: 楽観的ロック競合
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "CONFLICT",
-        "message": "タスクが他で更新されています。ページをリロードしてください。"
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**ユースケース例:**
-
-**1. タスクの内容を更新:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認して返信する",
-    "weight": "medium",
-    "dueDate": null,
-    "completedAt": null,
-    "isDeleted": false,
-    "version": 1
-  }'
-```
-
-**2. タスクを完了にする:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認する",
-    "weight": "light",
-    "dueDate": null,
-    "completedAt": "2025-11-15T10:30:00Z",
-    "isDeleted": false,
-    "version": 1
-  }'
-```
-
-**3. 完了タスクを未完了に戻す:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認する",
-    "weight": "light",
-    "dueDate": null,
-    "completedAt": null,
-    "isDeleted": false,
-    "version": 2
-  }'
-```
-
-**4. タスクを論理削除する:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認する",
-    "weight": "light",
-    "dueDate": null,
-    "completedAt": null,
-    "isDeleted": true,
-    "version": 1
-  }'
-```
 
 ---
 
@@ -511,33 +385,8 @@ curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d
 
 - **エラー時**:
   - **404 Not Found**: タスクが見つからない
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "NOT_FOUND",
-        "message": "タスクが見つかりません"
-      }
-    }
-    ```
   - **409 Conflict**: 楽観的ロック競合
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "CONFLICT",
-        "message": "タスクが他で更新されています。ページをリロードしてください。"
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X DELETE "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{"version": 1}'
-```
 
 **注意事項:**
 - このエンドポイントは物理削除を実行するため、通常は使用しない
@@ -605,58 +454,8 @@ curl -X DELETE "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-
 
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "VALIDATION_ERROR",
-        "message": "入力内容に誤りがあります",
-        "details": {
-          "title": "テキストは1-2000文字で入力してください"
-        }
-      }
-    }
-    ```
   - **503 Service Unavailable**: LLM APIが利用不可
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "LLM_UNAVAILABLE",
-        "message": "AI処理が一時的に利用できません"
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X POST "https://api.vanishtodo.lulliecat.com/api/v1/tasks/analyze" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "明日のプレゼン準備\n資料を作成する\nリハーサルをする\n質疑応答の準備"
-  }'
-```
-
-**フロントエンドでの使用例:**
-```typescript
-// 1. LLM解析
-const analyzeResponse = await fetch('/api/v1/tasks/analyze', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ title: longText })
-});
-const { data } = await analyzeResponse.json();
-
-// 2. 解析結果を確認・編集してタスク作成
-for (const taskInput of data.tasks) {
-  await fetch('/api/v1/tasks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(taskInput)
-  });
-}
-```
 
 ---
 
@@ -707,11 +506,6 @@ for (const taskInput of data.tasks) {
 
 - **エラー時**:
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/settings"
-```
 
 ---
 
@@ -791,89 +585,34 @@ curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/settings"
   - **400 Bad Request**: バリデーションエラー
   - **500 Internal Server Error**: サーバーエラー
 
-**サンプルリクエスト:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/settings" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "dailyGoals": {
-      "heavy": 2,
-      "medium": 3,
-      "light": 5
-    }
-  }'
-```
-
 ---
 
 
+### 5.3.4 エラーレスポンス定義
+
+    ```json
+    {
+      "status": "fail",
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "入力内容に誤りがあります",
+        "details": {
+          "title": "タイトルは1-500文字で入力してください"
+        }
+      }
+    }
+    ```
 
 
-### 5.3.4 フロントエンド実装パターン
+|ID| status | cause | code | message | 対応API |
+|--|--------|-------|------|---------|---------|
+| ERR-001 | 400 Bad Request | 入力バリデーションエラー | VALIDATION_ERROR | 入力内容に誤りがあります | API-003, 004, 006, 008 |
+| ERR-002 | 404 Not Found | タスクが見つからない | NOT_FOUND | タスクが見つかりません | API-002, 004, 005 |
+| ERR-003 | 409 Conflict | 楽観的ロック競合 | CONFLICT | タスクが他で更新されています。ページをリロードしてください。 | API-004, 005 |
+| ERR-004 | 500 Internal Server Erro | サーバー内部エラー | INTERNAL_ERROR | サーバーエラーが発生しました | すべてのAPI |
+| ERR-005 | 503 Service Unavailable | LLM API利用不可 | LLM_UNAVAILABLE | AI処理が一時的に利用できません | API-006 |
 
-#### タスクの完了
-```typescript
-// 1. 最新のタスク情報を取得
-const response = await fetch(`/api/v1/tasks/${taskId}`);
-const { data } = await response.json();
-const task: Task = convertDates(data.task);
-
-// 2. completedAtを設定して更新
-const updateInput: TaskUpdateInput = {
-  ...task,
-  completedAt: new Date(),  // 完了日時を設定
-  version: task.version,    // 楽観的ロック
-};
-
-// 3. 更新リクエスト
-await fetch(`/api/v1/tasks/${taskId}`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(convertToApiFormat(updateInput))
-});
-```
-
-#### タスクの復帰（完了を取り消し）
-```typescript
-const updateInput: TaskUpdateInput = {
-  ...task,
-  completedAt: null,  // nullにして未完了に戻す
-  version: task.version,
-};
-
-await fetch(`/api/v1/tasks/${taskId}`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(convertToApiFormat(updateInput))
-});
-```
-
-#### タスクの論理削除（5秒後にUI上から削除）
-```typescript
-// 1. まず論理削除
-const updateInput: TaskUpdateInput = {
-  ...task,
-  isDeleted: true,
-  version: task.version,
-};
-
-await fetch(`/api/v1/tasks/${taskId}`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(convertToApiFormat(updateInput))
-});
-
-// 2. 5秒後に物理削除（Undoがなければ）
-setTimeout(async () => {
-  if (!undoClicked) {
-    await fetch(`/api/v1/tasks/${taskId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ version: task.version + 1 })
-    });
-  }
-}, 5000);
-```
+### 5.3.5 フロントエンド実装パターン
 
 #### Date型とISO 8601 string型の変換
 ```typescript
