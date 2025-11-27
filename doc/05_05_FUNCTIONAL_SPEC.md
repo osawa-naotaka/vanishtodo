@@ -71,6 +71,7 @@ stateDiagram-v2
     未完了 --> 論理削除: 削除操作
     完了 --> 論理削除: 削除操作
     論理削除 --> 未完了: Undo操作(5秒以内)
+    論理削除 --> 完了: Undo操作(5秒以内)
     論理削除 --> 物理削除: クリーンアップ(7日後)
     
     
@@ -100,336 +101,151 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> 未達成: 日付変更またはアプリ起動
     未達成 --> 達成: 目標タスク数到達
-    達成 --> 未達成
-    達成 --> 超過モード: もっとやるボタン押下
-    超過モード --> 達成
-    超過モード --> 超過達成: 追加タスク完了
-    超過モード --> 未達成
-    超過達成 --> 超過モード
-    超過達成 --> 達成
-    超過達成 --> 未達成
+    達成 --> 未達成: 完了取り消し
 
     達成 --> 未達成: 日付変更
-    超過達成 --> 未達成: 日付変更
 ```
-
-※ 遷移条件のないエッジは、「復帰」を選んだ場合に遷移する。復帰数により遷移先が変わる。
 
 ---
 
 ## 5.5.3 シーケンス図
 
-### S-001: 基本タスク入力（LLMなし）
+### S-001: 基本タスク処理（LLMなし）
 
 ```mermaid
 sequenceDiagram
     participant User as ユーザー
-    participant UI as React UI
-    participant Queue as API Queue
-    participant API as Hono API
-    participant DB as D1 Database
+    participant UI as React UI<br>プレゼンテーション層
+    participant Business as ビジネス層
+    participant Local as Local Storages<br>永続化層
+    participant Queue as API Queue<br>永続化層
+    participant API as Hono API<br>DB層
+    participant DB as D1 Database<br>DB層
     
-    User->>UI: タスクを入力
-    User->>UI: Enterキー押下
+    User->>UI: タスク操作<br>作成・更新・完了
     
     UI->>UI: バリデーション
     alt バリデーションエラー
         UI-->>User: エラー表示
     else バリデーション成功
-        UI->>UI: Optimistic Update<br/>(即座にUI更新)
+        UI->>Business: タスク作成・更新・完了
+        Business->>Business: UUID生成<br>作成時
+        Business->>Local: タスク作成・更新
+        Local-->>Business: 全タスクリスト
+        Business->>Queue: enqueue(REST API)
+        Queue-->>Business: 完了
+        Business-->>UI: 全タスクリスト
         UI-->>User: タスク表示
-        UI->>Queue: enqueue(createTask)
-        Queue-->>UI: 完了
         
         Queue->>API: POST /api/v1/tasks
         API->>API: バリデーション
-        API->>API: UUID生成
         API->>DB: INSERT INTO tasks
         DB-->>API: 成功
         API-->>Queue: 201 Created + Task
-        Queue->>UI: onSuccess(Task)
-        UI->>UI: 状態を確定
     end
 ```
 
 
-### S-003: タスク解析
+### S-002: タスク解析
 
 ```mermaid
 sequenceDiagram
     participant User as ユーザー
-    participant UI as React UI
-    participant Queue as API Queue
+    participant UI as React UI<br>プレゼンテーション層
+    participant Business as ビジネス層
     participant API as Hono API
     participant AI as Cloudflare AI
-    participant DB as D1 Database
     
     User->>UI: テキスト入力
     User->>UI: 「解析」ボタン押下
     
     UI->>UI: ローディング表示
-    UI->>Queue: enqueue(splitTasks)
-    Queue->>API: POST /api/v1/tasks/analyze
-    API->>API: テキスト長バリデーション<br/>(1-2000文字)
+    UI->>API: POST /api/v1/tasks/analyze
+    API->>API: テキスト長バリデーション<br/>(1-500文字)
     API->>AI: LLMリクエスト<br/>(タスク分割+重さ判定)
     
     alt LLM処理成功
         AI-->>API: タスク配列<br/>[{title, weight}, ...]
-        API-->>Queue: 200 OK + Tasks[]
-        Queue->>UI: onSuccess
-        UI->>UI: 分割結果をプレビュー
+        API-->>UI: 200 OK + Tasks[]
         UI-->>User: タスクリスト表示<br/>(チェックボックス付き)
         
         User->>UI: 不要なタスクを削除
         User->>UI: 「作成」ボタン押下
         
-        loop 選択されたタスクごと
-            UI->>Queue: enqueue(createTask)
-            Queue->>API: POST /api/v1/tasks
-            API->>DB: INSERT INTO tasks
-            DB-->>API: 成功
-            API-->>Queue: 201 Created
+        loop 選択されたタスク毎
+            UI->>Business: タスク作成
         end
         
-        Queue->>UI: 全タスク作成完了
-        UI-->>User: 完了メッセージ
+        Business-->>UI: 全タスクリスト
+        UI-->>User: 完了メッセージ<br>全タスクリスト表示
     else LLM処理失敗
         AI-->>API: エラー
-        API-->>Queue: 503 Service Unavailable
-        Queue->>UI: onError
+        API-->>UI: 503 Service Unavailable
         UI-->>User: エラーメッセージ表示<br/>"AI処理が利用できません"
     end
 ```
 
-### S-004: タスク表示とフィルタリング
+### S-003: ユーザー設定更新
 
 ```mermaid
 sequenceDiagram
     participant User as ユーザー
-    participant UI as React UI
-    participant Filter as フィルタロジック
-    participant State as React State
-    
-    User->>UI: ページ読み込み
-    UI->>State: タスク一覧を取得<br/>(初期読み込み時にAPI呼び出し)
-    
-    UI->>Filter: フィルタ適用<br/>(デフォルト: すべて)
-    Filter->>Filter: 表示制限適用<br/>(各重さN件まで)
-    Filter->>Filter: Vanish条件チェック<br/>(14日以上前は非表示)
-    Filter-->>UI: フィルタ済みタスクリスト
-    UI-->>User: タスク表示
-    
-    User->>UI: フィルタボタン押下<br/>(例: 「軽」)
-    UI->>State: フィルタ状態を更新
-    State->>Filter: 再フィルタリング
-    Filter->>Filter: 重さで絞り込み
-    Filter->>Filter: 表示制限適用
-    Filter-->>UI: フィルタ済みタスクリスト
-    UI-->>User: 更新された表示
-```
+    participant UI as React UI<br>プレゼンテーション層
+    participant Business as ビジネス層
+    participant Local as Local Storages<br>永続化層
+    participant Queue as API Queue<br>永続化層
+    participant API as Hono API<br>DB層
+    participant DB as D1 Database<br>DB層
 
-### S-005: タスク完了
+    alt 初回起動直後
+         UI->>Business: 設定読み込み
+         Business->>Queue: 設定読み込み
+         Queue-->>Business: すぐにreturn
+         Business-->>UI: 
+         Queue->>API: GET /api/v1/settings
+         API->>DB: SELECT * FROM users
+         DB-->>API: 設定
+         API-->>Queue: 200 OK
+         Queue-->>Local: 設定
 
-```mermaid
-sequenceDiagram
-    participant User as ユーザー
-    participant UI as React UI
-    participant Queue as API Queue
-    participant API as Hono API
-    participant DB as D1 Database
-    participant DO as Durable Object
-    
-    User->>UI: チェックボックス<br>をクリック
-    
-    UI->>UI: Optimistic Update<br/>(即座に完了状態にUI変更)
-    UI-->>User: 操作可能
-    UI->>UI: 完了アニメーション表示開始
-    
-    UI->>Queue: enqueue(completeTask)
-    Queue->>API: PUT /api/v1/tasks/:id
-    API->>API: バリデーション
-    API->>DB: UPDATE tasks<br>version++
-    
-    alt 更新成功
-        DB-->>API: 1 row affected
-        API->>DO: 日次達成記録を更新
-        DO-->>API: 更新完了
-        API-->>Queue: 200 OK + Task
-        Queue->>UI: onSuccess
-        UI->>UI: 1秒後にフェードアウト
-        UI->>UI: タスクリストから除外
-        UI-->>User: 完了状態を確定
-    else 楽観的ロック競合
-        DB-->>API: 0 rows affected
-        API-->>Queue: 409 Conflict
-        Queue->>UI: onError(Conflict)
-        UI->>UI: Rollback(未完了状態に戻す)
-        UI-->>User: 競合ダイアログ表示<br/>"リロードまたは上書き"
-    else その他エラー
-        DB-->>API: エラー
-        API-->>Queue: 500 Internal Error
-        Queue->>UI: onError
-        UI->>UI: Rollback
-        UI-->>User: エラーメッセージ表示
     end
-```
-
-
-### S-006: タスク削除（論理削除）
-
-```mermaid
-sequenceDiagram
-    participant User as ユーザー
-    participant UI as React UI
-    participant Queue as API Queue
-    participant API as Hono API
-    participant DB as D1 Database
-    
-    User->>UI: 削除ボタン押下
-    
-    UI->>UI: Optimistic Update<br/>(削除エフェクト開始)
-    UI-->>User: 操作可能
-    UI->>UI: Undoボタン表示<br/>(5秒間)
-
-    alt Undo押下(5秒以内)
-        User->>UI: Undoボタン押下
-        UI-->>User: enqueueキャンセル
-    else 5秒経過
-        UI->>Queue: enqueue(softDeleteTask)
-        Queue->>API: PUT /api/v1/tasks/:id<br/>{isDeleted: true, version}
-        API->>DB: UPDATE tasks<br/>SET isDeleted=true, version=version+1<br/>WHERE id=:id AND version=:version
-
-
-        alt 論理削除成功
-            DB-->>API: 1 row affected
-            API-->>Queue: 200 OK
-            Queue->>UI: onSuccess
-            UI-->>User: 削除確定
-        else 楽観的ロック競合
-            DB-->>API: 0 rows affected
-            API-->>Queue: 409 Conflict
-            Queue->>UI: onError(Conflict)
-            UI->>UI: Rollback(タスクを表示)
-            UI-->>User: 競合ダイアログ表示
-        end
-    end
-
-```
-
-```sql
-UPDATE tasks SET completedAt=now, version=version+1 WHERE id=:id AND version=:version
-```
-
-### S-007: 全タスク表示とソート
-
-```mermaid
-sequenceDiagram
-    participant User as ユーザー
-    participant UI as React UI
-    participant Router as React Router
-    participant State as React State
-    
-    User->>UI: メニューから「全タスク表示」選択
-    UI->>Router: navigate('/all-tasks')
-    Router->>UI: 全タスク画面を表示
-    
-    UI->>State: 全タスクを取得<br/>(削除済み除く)
-    State-->>UI: タスクリスト(表示制限なし)
-    UI-->>User: 全タスク表示
-    
-    User->>UI: ソート条件選択<br/>(例: 作成日時降順)
-    UI->>UI: ローカルでソート処理
-    UI-->>User: ソート済みタスク表示
-    
-    User->>UI: 検索ワード入力
-    UI->>UI: タイトルで絞り込み
-    UI-->>User: 検索結果表示
-```
-
-### S-008: ユーザー設定更新
-
-```mermaid
-sequenceDiagram
-    participant User as ユーザー
-    participant UI as React UI
-    participant Queue as API Queue
-    participant API as Hono API
-    participant DB as D1 Database
     
     User->>UI: 設定画面を開く
-    UI->>Queue: enqueue(getSettings)
-    Queue->>API: GET /api/v1/settings
-    API->>DB: SELECT * FROM users
-    DB-->>API: UserSettings
-    API-->>Queue: 200 OK
-    Queue->>UI: onSuccess
-    UI-->>User: 現在の設定を表示
-    
-    User->>UI: 設定値を変更
+    UI->>Business: 設定読み込み
+    Business->>Local: 設定読み込み 
+    Local-->>Business: 設定
+    Business-->>UI: 設定
+    UI-->>User: 設定表示
+
+    User->>UI: 設定変更
+
+
+
     
     UI->>UI: バリデーション(常時)
     alt バリデーションエラー
         UI-->>User: エラー表示
     else バリデーション成功
         User->>UI: 変更後<br>未操作1秒経過
-        UI->>Queue: enqueue(updateSettings)
+        UI->>Business: 設定保存
+        Business->>Local: 設定保存
+        Business->>Queue: enqueue(updateSettings)
+        Queue-->>Business: 直後にreturn
+        Business-->>UI: 
+        UI-->>User:
         Queue->>API: PUT /api/v1/settings<br/>{dailyGoals, displayLimits}
         API->>API: バリデーション
         API->>DB: UPDATE users
         DB-->>API: 成功
         API-->>Queue: 200 OK + UserSettings
-        Queue->>UI: onSuccess
-        UI-->>User: 保存完了確定<br>メッセージなし
-    end
+   end
 ```
 
-### S-009: 日次達成モード
+### S-004: API Queue処理
 
 ```mermaid
 sequenceDiagram
-    participant User as ユーザー
-    participant UI as React UI
-    participant DO as Durable Object
-    participant Filter as フィルタロジック
-    
-    User->>UI: ページ読み込み
-    UI->>DO: 日次達成状態を取得
-    
-    alt 日付が変わっている
-        DO->>DO: 達成状態をリセット
-    end
-    
-    DO-->>UI: DailyAchievementState
-    UI-->>User: タスク表示
-    
-    loop タスク完了時
-        User->>UI: タスクを完了
-        UI->>DO: 完了カウント増加
-        DO->>DO: 達成判定<br/>(目標数と比較)
-        
-        alt 目標達成
-            DO-->>UI: 達成フラグON
-            UI->>UI: 「今日はお疲れ様」表示
-            UI->>Filter: 新規タスクを非表示
-            UI-->>User: 達成メッセージ表示
-            
-            opt もっとやるモード
-                User->>UI: 「もっとやる」ボタン押下
-                UI->>Filter: 新規タスクを表示
-                UI-->>User: 追加タスク表示
-            end
-        else 未達成
-            DO-->>UI: 達成フラグOFF
-            UI-->>User: 通常表示継続
-        end
-    end
-```
-
-### S-010: API Queue処理
-
-```mermaid
-sequenceDiagram
-    participant UI as React UI
+    participant UI as ビジネス層
     participant Queue as API Queue
     participant Worker as Queue Worker
     participant API as Hono API
@@ -464,12 +280,6 @@ sequenceDiagram
 
 ### F-001: 基本タスク入力
 
-#### 機能ID
-F-001
-
-#### 機能名
-基本タスク入力
-
 #### 対応する要件ID
 FR-1.1
 
@@ -485,57 +295,50 @@ US-1.1
 - `title: string` - タスクのタイトル（1-500文字）
 - `weight?: TaskWeight | null` - タスクの重さ（省略可、省略時はnull）
 - `dueDate?: Date | null` - 締切日（省略可、省略時はnull）
+- `id: string` - タスクID (UUIDv4)を生成
+- `version: number` - 楽観的ロックバージョン = 0
+- `createdAt`と`updatedAt` = 現在日時
+- `isDeleted` = false
+- `completedAt` = null
 
-**処理:**
-1. ユーザーが入力欄にタスクタイトルを入力
-2. Enterキー押下またはタスク追加ボタンをクリック
-3. フロントエンドでバリデーション実施
-   - タイトルが1-500文字であることを確認
-   - weightとdueDateが同時に設定されていないことを確認
-4. バリデーション成功後、Optimistic UIでタスクリストに即座に追加
-5. API Queueにタスク作成リクエストをenqueue
-6. バックエンドAPIに`POST /api/v1/tasks`リクエスト送信
-7. バックエンドで以下を実施:
-   - 再度バリデーション
-   - UUID生成（タスクID）
-   - version=1, createdAt, updatedAtを自動設定
-   - D1データベースに挿入
-8. 成功レスポンスをフロントエンドに返却
-9. UI状態を確定（サーバーから返却されたIDで置き換え）
-10. 入力欄をクリア
+**トリガー:**
+- 入力欄でenter押下
+- 登録ボタン押下
 
-**出力:**
-- `Task` - 作成されたタスクオブジェクト（サーバー生成のid, version, createdAt, updatedAtを含む）
-- UI上にタスクが表示される
+**バリデーション:**
+- タイトルが1-500文字であることを確認
+- weightとdueDateが同時に設定されていないことを確認
 
-**副作用:**
-- D1データベースのtasksテーブルに新規レコード挿入
-- Durable Objectのログにタスク作成操作を記録
+**APIエンドポイント**
+- `POST /api/v1/tasks`
 
-#### 前提条件
-- ユーザーがCloudflare Accessで認証済み
-- 入力欄がフォーカス可能な状態
-- データベース接続が正常
+**作用:**
+- LocalStorage
+  - `Task`型データを`Task[]`の末尾に追加
+- DB
+  - `Task`型データを`tasks`テーブルにinsert
+- Log
+  - `TaskOperationLog`をDurableObjectに追加
 
-#### 事後条件
-- タスクがD1データベースに永続化される
-- タスクリストに新しいタスクが表示される
-- 入力欄がクリアされ、次の入力が可能
-
-#### 不変条件
-- タスクIDは一意である（UUID v4）
-- versionは1から開始
-- createdAtとupdatedAtは同じ値
-- isDeletedはfalse
-- completedAtはnull
+**最終UI状態:**
+- メイン画面
+- 入力欄にフォーカス
+- 入力欄クリア
+- 更新された`Task[]`を表示
 
 #### ビジネスルール
-- タイトルは必須（空文字列不可）
 - weightとdueDateは同時に設定できない
-- 新規作成時のcompletedAtは必ずnull（未完了状態）
-- 新規作成時のisDeletedは必ずfalse
 
-#### エラーハンドリング
+#### エラー種別
+
+- タイトル未入力
+- タイトル文字数超過
+- weight/dueDate同時設定
+- ネットワークエラー
+- APIバリデーションエラー
+- サーバーエラー
+- タイムアウト
+- DBエラー
 
 | エラー種別 | 検出方法 | エラー時の処理 | ユーザーへの表示 |
 |----------|---------|---------------|---------------|
