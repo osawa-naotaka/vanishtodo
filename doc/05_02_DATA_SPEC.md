@@ -6,9 +6,8 @@
 
 | エンティティ名 | 説明 | 主要な属性 |
 |--------------|------|------------|
-| ユーザー | システムの利用者（現在は1名想定） | ユーザーID、表示設定、日次目標設定 |
+| ユーザー | システムの利用者（現在は1名想定） | ユーザーID、日次目標設定 |
 | タスク | ユーザーが管理する作業項目 | タスクID、内容、重さ、締切、状態 |
-| 日次達成記録 | 日々の達成目標と実績（Durable Object） | 記録日、目標数、達成数 |
 | ログ情報 | 操作履歴とLLM処理記録（Durable Object） | 操作種別、処理内容、タイムスタンプ |
 
 ### ER図
@@ -16,12 +15,10 @@
 ```mermaid
 erDiagram
     USER ||--o{ TASK : "管理する"
-    USER ||--|| DAILY_ACHIEVEMENT : "持つ"
     USER ||--o{ LOG_INFO : "持つ"
     
     USER {
         string user_id PK "ユーザーID"
-        json display_settings "表示設定"
         json daily_goal_settings "日次目標設定"
     }
     
@@ -33,15 +30,7 @@ erDiagram
         date deadline "締切"
         string status "状態"
     }
-    
-    DAILY_ACHIEVEMENT {
-        string user_id FK "ユーザーID"
-        date record_date "記録日"
-        int goal_count "目標数"
-        int achievement_count "達成数"
-        string note "Durable Object"
-    }
-    
+        
     LOG_INFO {
         string user_id FK "ユーザーID"
         string operation_type "操作種別"
@@ -52,8 +41,7 @@ erDiagram
 
 ### カーディナリティ
 - ユーザー : タスク = 1 : N （1人のユーザーが複数のタスクを持つ）
-- ユーザー : 日次達成記録 = 1 : 1 （1人のユーザーが1つの日次達成記録インスタンスを持つ）
-- ユーザー : ログ情報 = 1 : 1 （1人のユーザーが複数のログ情報インスタンスを持つ）
+- ユーザー : ログ情報 = 1 : N （1人のユーザーが複数のログ情報インスタンスを持つ）
 
 ### ビジネスルール
 
@@ -95,20 +83,14 @@ erDiagram
 | daily_goal_heavy | 日次目標_重 | INT | NO | 1 | 1日の重タスク目標数 |
 | daily_goal_medium | 日次目標_中 | INT | NO | 2 | 1日の中タスク目標数 |
 | daily_goal_light | 日次目標_軽 | INT | NO | 3 | 1日の軽タスク目標数 |
-| display_limit_heavy | 表示上限_重 | INT | NO | 3 | 重タスクの表示上限 |
-| display_limit_medium | 表示上限_中 | INT | NO | 5 | 中タスクの表示上限 |
-| display_limit_light | 表示上限_軽 | INT | NO | 5 | 軽タスクの表示上限 |
 | created_at | 作成日時 | TIMESTAMP | NO | CURRENT_TIMESTAMP | レコード作成日時(UTC) |
 | updated_at | 更新日時 | TIMESTAMP | NO | CURRENT_TIMESTAMP | 最終更新日時(UTC) |
 
 **制約:**
 - PRIMARY KEY: id
-- CHECK: daily_goal_heavy >= 0 AND daily_goal_heavy <= 10
-- CHECK: daily_goal_medium >= 0 AND daily_goal_medium <= 10
-- CHECK: daily_goal_light >= 0 AND daily_goal_light <= 10
-- CHECK: display_limit_heavy >= 1 AND display_limit_heavy <= 20
-- CHECK: display_limit_medium >= 1 AND display_limit_medium <= 20
-- CHECK: display_limit_light >= 1 AND display_limit_light <= 20
+- CHECK: daily_goal_heavy >= 0 AND daily_goal_heavy <= 20
+- CHECK: daily_goal_medium >= 0 AND daily_goal_medium <= 20
+- CHECK: daily_goal_light >= 0 AND daily_goal_light <= 20
 
 **インデックス:**
 - なし（シングルユーザー、データ量が少ないため不要）
@@ -172,16 +154,14 @@ interface DisplayConfig {
 ## 5.2.5 データ制約とバリデーション
 
 ### 値の範囲
-- **日次目標数**: 0〜10（各重さカテゴリ）
-- **表示上限数**: 1〜20（各重さカテゴリ）
-- **処理時間**: 0〜60000ミリ秒（1分以内）
+- **日次目標数**: 0〜20（各重さカテゴリ）
 - **ログ保持期間**: 最大一日（日が変わって最初のアクセスで自動削除）
 - **バージョン番号**: 1以上の整数
 
 ### 文字列の制約
 - **タスクタイトル**: 1〜500文字
 - **UUID**: RFC 4122準拠の形式（36文字）
-- **分割対象テキスト**: 1〜2000文字
+- **分割対象テキスト**: 1〜500文字
 
 ### 日付の制約
 - **締切日**: 本日以降の日付のみ設定可能

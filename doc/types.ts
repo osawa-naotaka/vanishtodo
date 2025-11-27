@@ -117,14 +117,9 @@ interface ApiUserSettings {
 interface UserSettings {
     id: string;                     // ユーザーID
     dailyGoals: {
-        heavy: number;              // 重タスク目標数（0-10）
-        medium: number;             // 中タスク目標数（0-10）
-        light: number;              // 軽タスク目標数（0-10）
-    };
-    displayLimits: {
-        heavy: number;              // 重タスク表示上限（1-20）
-        medium: number;             // 中タスク表示上限（1-20）
-        light: number;              // 軽タスク表示上限（1-20）
+        heavy: number;              // 重タスク目標数（0-20）
+        medium: number;             // 中タスク目標数（0-20）
+        light: number;              // 軽タスク目標数（0-20）
     };
     createdAt: Date;                // 作成日時
     updatedAt: Date;                // 更新日時
@@ -133,14 +128,9 @@ interface UserSettings {
 // ユーザー設定更新入力（クライアント → サーバー）
 interface UserSettingsUpdate {
     dailyGoals?: {
-        heavy?: number;             // 重タスク目標数（0-10）
-        medium?: number;            // 中タスク目標数（0-10）
-        light?: number;             // 軽タスク目標数（0-10）
-    };
-    displayLimits?: {
-        heavy?: number;             // 重タスク表示上限（1-20）
-        medium?: number;            // 中タスク表示上限（1-20）
-        light?: number;             // 軽タスク表示上限（1-20）
+        heavy?: number;             // 重タスク目標数（0-20）
+        medium?: number;            // 中タスク目標数（0-20）
+        light?: number;             // 軽タスク目標数（0-20）
     };
 }
 
