@@ -96,7 +96,7 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 | **エンドポイントID** | API-001 |
 | **エンドポイント** | `/api/v1/tasks` |
 | **HTTPメソッド** | GET |
-| **概要** | ユーザーの全タスクを取得する<br>デフォルトでは削除済みタスク（`isDeleted = true`）は含まない |
+| **概要** | ユーザーの全タスクを取得する |
 | **対応する要件ID** | FR-2.1, FR-2.4, FR-3.4 |
 | **認証** | Cloudflare Access認証済みユーザー |
 
@@ -207,7 +207,7 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 | **エンドポイントID** | API-003 |
 | **エンドポイント** | `/api/v1/tasks` |
 | **HTTPメソッド** | POST |
-| **概要** | 新しいタスクを作成する<br>`id`, `version`, `createdAt`, `updatedAt`はサーバー側で自動生成 |
+| **概要** | 新しいタスクを作成する |
 | **対応する要件ID** | FR-1.1 |
 | **認証** | Cloudflare Access認証済みユーザー |
 
@@ -284,7 +284,10 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
   |------------|-----|------|
   | taskId | string | 更新対象のタスクID（UUID） |
 
-- **クエリパラメータ**: なし
+- **クエリパラメータ**:
+  - force= true | false
+    - true: 楽観的ロック競合を無視して上書きする
+    - false: 無指定時のデフォルト。楽観的ロック競合はエラーになり、データは上書きされない。
 - **リクエストヘッダー**:
   - `Content-Type: application/json`
 
