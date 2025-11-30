@@ -11,7 +11,7 @@ type TaskWeight = "light" | "medium" | "heavy";
 
 // タスクタイトル（LLM解析のリクエスト用）
 type TaskTitle = {
-    title: string;  // タスクタイトル（1-2000文字、解析対象テキスト）
+    title: string;  // タスクタイトル（1-500文字、解析対象テキスト）
 }
 
 // -----------------------------------------------------------------------------
@@ -204,25 +204,7 @@ interface LogStorage {
     logs: LogEntry[];               // ログエントリ配列
 }
 
-// 日次達成状態
-interface DailyAchievementState {
-    date: string;                   // YYYY-MM-DD形式の日付
-    userId: string;                 // ユーザーID
-    goals: {
-        heavy: number;              // 重タスク目標数
-        medium: number;             // 中タスク目標数
-        light: number;              // 軽タスク目標数
-    };
-    completed: {
-        heavy: number;              // 重タスク完了数
-        medium: number;             // 中タスク完了数
-        light: number;              // 軽タスク完了数
-    };
-    lastUpdated: Date;              // 最終更新日時
-}
-
 // Durable Object全体の状態
 interface DurableObjectState {
     logStorage: LogStorage;                     // ログストレージ
-    dailyAchievement: DailyAchievementState;   // 日次達成状態
 }

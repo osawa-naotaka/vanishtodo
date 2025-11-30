@@ -1,24 +1,22 @@
-# インターフェース仕様書 - VanishToDo
+# 5.3 DB層 API仕様書
 
-## 5.3 API仕様
+## 5.3.1 API概要
 
-### 5.3.1 API概要
-
-#### ベースURL
+### ベースURL
 - **開発環境**: `http://localhost:8787`
 - **本番環境**: `https://api.vanishtodo.lulliecat.com` (Cloudflare Workers)
 
-#### バージョニング方針
+### バージョニング方針
 - URL パスベースのバージョニング: `/api/v1/`
 - 初期バージョンは `v1`、破壊的変更がある場合は `v2` に移行
 
-#### 認証方式
+### 認証方式
 - **Cloudflare Access**: Email OTP認証
 - Workers内では、ユーザーは一人しかいないので、ユーザーは一意に識別できる
   - 将来はマジックリンク+JWTによるセッション管理を行うが、今回は範囲外
 - APIリクエストには追加の認証ヘッダーは不要
 
-#### API設計思想
+### API設計思想
 
 このAPIは**純粋なCRUD操作**として設計されています：
 - **Create**: POST /api/v1/tasks
@@ -28,7 +26,7 @@
 
 タスクの完了・復帰・論理削除などのビジネスロジックは、すべてフロントエンド側で`TaskUpdateInput`を使用して実装します。
 
-#### 共通レスポンス形式
+### 共通レスポンス形式
 - レスポンスボディの共通型は`ApiResponse`型
 - statusフィールドにより成功か失敗かを判断できる
 
@@ -54,12 +52,12 @@
 
 detailsは`Record<string, string>`で、keyに指定された名前のフィールドに対して、valueに設定されたエラー原因を示す。
 
-#### 日付・日時のフォーマット
+### 日付・日時のフォーマット
 - すべての日付・日時フィールドはISO 8601形式の文字列として表現
 - タイムゾーンはUTC（末尾に`Z`を付与）
 - **例**: `"2025-11-15T10:00:00Z"`
 
-#### エラーコード一覧
+### エラーコード一覧
 
 | エラーコード | HTTPステータス | 説明 |
 |------------|--------------|------|
@@ -76,7 +74,7 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 
 ---
 
-### 5.3.2 エンドポイント一覧
+## 5.3.2 エンドポイント一覧
 
 | ID | メソッド | パス | 概要 |
 |----|---------|------|------|
@@ -89,16 +87,16 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 | API-007 | GET | /api/v1/settings | ユーザー設定取得 |
 | API-008 | PUT | /api/v1/settings | ユーザー設定更新 |
 
-### 5.3.3 エンドポイント定義
+## 5.3.3 エンドポイント定義
 
-#### API-001: タスク一覧取得
+### API-001: タスク一覧取得
 
 | 項目 | 内容 |
 |------|------|
 | **エンドポイントID** | API-001 |
 | **エンドポイント** | `/api/v1/tasks` |
 | **HTTPメソッド** | GET |
-| **概要** | ユーザーの全タスクを取得する<br>デフォルトでは削除済みタスク（`isDeleted = true`）は含まない |
+| **概要** | ユーザーの全タスクを取得する |
 | **対応する要件ID** | FR-2.1, FR-2.4, FR-3.4 |
 | **認証** | Cloudflare Access認証済みユーザー |
 
@@ -148,24 +146,10 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 
 - **エラー時**:
   - **500 Internal Server Error**: サーバーエラー
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "INTERNAL_ERROR",
-        "message": "サーバーエラーが発生しました"
-      }
-    }
-    ```
-
-**サンプルリクエスト:**
-```bash
-curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/tasks"
-```
 
 ---
 
-#### API-002: タスク単体取得
+### API-002: タスク単体取得
 
 | 項目 | 内容 |
 |------|------|
@@ -212,32 +196,18 @@ curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/tasks"
 
 - **エラー時**:
   - **404 Not Found**: タスクが見つからない
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "NOT_FOUND",
-        "message": "タスクが見つかりません"
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000"
-```
 
 ---
 
-#### API-003: タスク作成
+### API-003: タスク作成
 
 | 項目 | 内容 |
 |------|------|
 | **エンドポイントID** | API-003 |
 | **エンドポイント** | `/api/v1/tasks` |
 | **HTTPメソッド** | POST |
-| **概要** | 新しいタスクを作成する<br>`id`, `version`, `createdAt`, `updatedAt`はサーバー側で自動生成 |
+| **概要** | 新しいタスクを作成する |
 | **対応する要件ID** | FR-1.1 |
 | **認証** | Cloudflare Access認証済みユーザー |
 
@@ -291,33 +261,11 @@ curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d
 
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "VALIDATION_ERROR",
-        "message": "入力内容に誤りがあります",
-        "details": {
-          "title": "タイトルは1-500文字で入力してください"
-        }
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X POST "https://api.vanishtodo.lulliecat.com/api/v1/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認する",
-    "weight": "light"
-  }'
-```
 
 ---
 
-#### API-004: タスク更新
+### API-004: タスク更新
 
 | 項目 | 内容 |
 |------|------|
@@ -336,7 +284,10 @@ curl -X POST "https://api.vanishtodo.lulliecat.com/api/v1/tasks" \
   |------------|-----|------|
   | taskId | string | 更新対象のタスクID（UUID） |
 
-- **クエリパラメータ**: なし
+- **クエリパラメータ**:
+  - force= true | false
+    - true: 楽観的ロック競合を無視して上書きする
+    - false: 無指定時のデフォルト。楽観的ロック競合はエラーになり、データは上書きされない。
 - **リクエストヘッダー**:
   - `Content-Type: application/json`
 
@@ -390,88 +341,12 @@ curl -X POST "https://api.vanishtodo.lulliecat.com/api/v1/tasks" \
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
   - **404 Not Found**: タスクが見つからない
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "NOT_FOUND",
-        "message": "タスクが見つかりません"
-      }
-    }
-    ```
   - **409 Conflict**: 楽観的ロック競合
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "CONFLICT",
-        "message": "タスクが他で更新されています。ページをリロードしてください。"
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**ユースケース例:**
-
-**1. タスクの内容を更新:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認して返信する",
-    "weight": "medium",
-    "dueDate": null,
-    "completedAt": null,
-    "isDeleted": false,
-    "version": 1
-  }'
-```
-
-**2. タスクを完了にする:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認する",
-    "weight": "light",
-    "dueDate": null,
-    "completedAt": "2025-11-15T10:30:00Z",
-    "isDeleted": false,
-    "version": 1
-  }'
-```
-
-**3. 完了タスクを未完了に戻す:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認する",
-    "weight": "light",
-    "dueDate": null,
-    "completedAt": null,
-    "isDeleted": false,
-    "version": 2
-  }'
-```
-
-**4. タスクを論理削除する:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "メールを確認する",
-    "weight": "light",
-    "dueDate": null,
-    "completedAt": null,
-    "isDeleted": true,
-    "version": 1
-  }'
-```
 
 ---
 
-#### API-005: タスク削除
+### API-005: タスク削除
 
 | 項目 | 内容 |
 |------|------|
@@ -511,33 +386,8 @@ curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d
 
 - **エラー時**:
   - **404 Not Found**: タスクが見つからない
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "NOT_FOUND",
-        "message": "タスクが見つかりません"
-      }
-    }
-    ```
   - **409 Conflict**: 楽観的ロック競合
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "CONFLICT",
-        "message": "タスクが他で更新されています。ページをリロードしてください。"
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X DELETE "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{"version": 1}'
-```
 
 **注意事項:**
 - このエンドポイントは物理削除を実行するため、通常は使用しない
@@ -546,7 +396,7 @@ curl -X DELETE "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-
 
 ---
 
-#### API-006: タスク解析（LLM処理）
+### API-006: タスク解析（LLM処理）
 
 | 項目 | 内容 |
 |------|------|
@@ -605,62 +455,12 @@ curl -X DELETE "https://api.vanishtodo.lulliecat.com/api/v1/tasks/550e8400-e29b-
 
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "VALIDATION_ERROR",
-        "message": "入力内容に誤りがあります",
-        "details": {
-          "title": "テキストは1-2000文字で入力してください"
-        }
-      }
-    }
-    ```
   - **503 Service Unavailable**: LLM APIが利用不可
-    ```json
-    {
-      "status": "fail",
-      "error": {
-        "code": "LLM_UNAVAILABLE",
-        "message": "AI処理が一時的に利用できません"
-      }
-    }
-    ```
   - **500 Internal Server Error**: サーバーエラー
-
-**サンプルリクエスト:**
-```bash
-curl -X POST "https://api.vanishtodo.lulliecat.com/api/v1/tasks/analyze" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "明日のプレゼン準備\n資料を作成する\nリハーサルをする\n質疑応答の準備"
-  }'
-```
-
-**フロントエンドでの使用例:**
-```typescript
-// 1. LLM解析
-const analyzeResponse = await fetch('/api/v1/tasks/analyze', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ title: longText })
-});
-const { data } = await analyzeResponse.json();
-
-// 2. 解析結果を確認・編集してタスク作成
-for (const taskInput of data.tasks) {
-  await fetch('/api/v1/tasks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(taskInput)
-  });
-}
-```
 
 ---
 
-#### API-007: ユーザー設定取得
+### API-007: ユーザー設定取得
 
 | 項目 | 内容 |
 |------|------|
@@ -708,14 +508,9 @@ for (const taskInput of data.tasks) {
 - **エラー時**:
   - **500 Internal Server Error**: サーバーエラー
 
-**サンプルリクエスト:**
-```bash
-curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/settings"
-```
-
 ---
 
-#### API-008: ユーザー設定更新
+### API-008: ユーザー設定更新
 
 | 項目 | 内容 |
 |------|------|
@@ -791,91 +586,36 @@ curl -X GET "https://api.vanishtodo.lulliecat.com/api/v1/settings"
   - **400 Bad Request**: バリデーションエラー
   - **500 Internal Server Error**: サーバーエラー
 
-**サンプルリクエスト:**
-```bash
-curl -X PUT "https://api.vanishtodo.lulliecat.com/api/v1/settings" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "dailyGoals": {
-      "heavy": 2,
-      "medium": 3,
-      "light": 5
-    }
-  }'
-```
-
 ---
 
 
+## 5.3.4 エラーレスポンス定義
+
+    ```json
+    {
+      "status": "fail",
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "入力内容に誤りがあります",
+        "details": {
+          "title": "タイトルは1-500文字で入力してください"
+        }
+      }
+    }
+    ```
 
 
-### 5.3.4 フロントエンド実装パターン
+|ID| status | cause | code | message | 対応API |
+|--|--------|-------|------|---------|---------|
+| ERR-001 | 400 Bad Request | 入力バリデーションエラー | VALIDATION_ERROR | 入力内容に誤りがあります | API-003, 004, 006, 008 |
+| ERR-002 | 404 Not Found | タスクが見つからない | NOT_FOUND | タスクが見つかりません | API-002, 004, 005 |
+| ERR-003 | 409 Conflict | 楽観的ロック競合 | CONFLICT | タスクが他で更新されています。ページをリロードしてください。 | API-004, 005 |
+| ERR-004 | 500 Internal Server Erro | サーバー内部エラー | INTERNAL_ERROR | サーバーエラーが発生しました | すべてのAPI |
+| ERR-005 | 503 Service Unavailable | LLM API利用不可 | LLM_UNAVAILABLE | AI処理が一時的に利用できません | API-006 |
 
-#### タスクの完了
-```typescript
-// 1. 最新のタスク情報を取得
-const response = await fetch(`/api/v1/tasks/${taskId}`);
-const { data } = await response.json();
-const task: Task = convertDates(data.task);
+## 5.3.5 フロントエンド実装パターン
 
-// 2. completedAtを設定して更新
-const updateInput: TaskUpdateInput = {
-  ...task,
-  completedAt: new Date(),  // 完了日時を設定
-  version: task.version,    // 楽観的ロック
-};
-
-// 3. 更新リクエスト
-await fetch(`/api/v1/tasks/${taskId}`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(convertToApiFormat(updateInput))
-});
-```
-
-#### タスクの復帰（完了を取り消し）
-```typescript
-const updateInput: TaskUpdateInput = {
-  ...task,
-  completedAt: null,  // nullにして未完了に戻す
-  version: task.version,
-};
-
-await fetch(`/api/v1/tasks/${taskId}`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(convertToApiFormat(updateInput))
-});
-```
-
-#### タスクの論理削除（5秒後にUI上から削除）
-```typescript
-// 1. まず論理削除
-const updateInput: TaskUpdateInput = {
-  ...task,
-  isDeleted: true,
-  version: task.version,
-};
-
-await fetch(`/api/v1/tasks/${taskId}`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(convertToApiFormat(updateInput))
-});
-
-// 2. 5秒後に物理削除（Undoがなければ）
-setTimeout(async () => {
-  if (!undoClicked) {
-    await fetch(`/api/v1/tasks/${taskId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ version: task.version + 1 })
-    });
-  }
-}, 5000);
-```
-
-#### Date型とISO 8601 string型の変換
+### Date型とISO 8601 string型の変換
 ```typescript
 // API送信用の変換（Date → ISO 8601 string）
 function convertToApiFormat(task: TaskUpdateInput): any {
