@@ -1,6 +1,6 @@
-# 5.3 DB層 API仕様書
+# DB層 API仕様書
 
-## 5.3.1 API概要
+## 1 API概要
 
 ### ベースURL
 - **開発環境**: `http://localhost:8787`
@@ -74,7 +74,7 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 
 ---
 
-## 5.3.2 エンドポイント一覧
+## 2 エンドポイント一覧
 
 | ID | メソッド | パス | 概要 |
 |----|---------|------|------|
@@ -87,7 +87,7 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 | API-007 | GET | /api/v1/settings | ユーザー設定取得 |
 | API-008 | PUT | /api/v1/settings | ユーザー設定更新 |
 
-## 5.3.3 エンドポイント定義
+## 3 エンドポイント定義
 
 ### API-001: タスク一覧取得
 
@@ -589,7 +589,7 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 ---
 
 
-## 5.3.4 エラーレスポンス定義
+## 4 エラーレスポンス定義
 
     ```json
     {
@@ -613,7 +613,7 @@ detailsは`Record<string, string>`で、keyに指定された名前のフィー�
 | ERR-004 | 500 Internal Server Erro | サーバー内部エラー | INTERNAL_ERROR | サーバーエラーが発生しました | すべてのAPI |
 | ERR-005 | 503 Service Unavailable | LLM API利用不可 | LLM_UNAVAILABLE | AI処理が一時的に利用できません | API-006 |
 
-## 5.3.5 フロントエンド実装パターン
+## 5 フロントエンド実装パターン
 
 ### Date型とISO 8601 string型の変換
 ```typescript
