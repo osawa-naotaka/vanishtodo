@@ -1,0 +1,53 @@
+@charset "utf-8";
+@layer base, font, low, main, high;
+
+@layer base {
+    *,
+    *:before,
+    *:after {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        box-sizing: border-box;
+        font: inherit;
+        color: inherit;
+    }
+}
+
+@layer base {
+    a {
+        text-decoration: inherit;
+    }
+}
+
+@layer base {
+    button {
+        cursor: pointer;
+    }
+}
+
+@layer base {
+    img,
+    video,
+    canvas,
+    svg {
+        display: block;
+        max-width: 100%;
+        height: auto;
+    }
+}
+
+@layer base {
+    :root {
+        font-size: 16px;
+        line-height: 1.6;
+        font-family:
+            Helvetica Neue,
+            Arial,
+            Hiragino Kaku Gothic ProN,
+            Hiragino Sans,
+            Noto Sans JP,
+            Meiryo,
+            sans-serif;
+    }
+}
