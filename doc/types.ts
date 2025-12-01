@@ -36,17 +36,42 @@ type Status<T> = {
     model: Model;
 }
 
-type LoadStatus = Status<"OK" | "NETWORK_ERROR" | "DB_INTERNAL_ERROR" | "CONFLICT">;
-type WriteStatus = Status<"OK" | "NETWORK_ERROR" | "DB_INTERNAL_ERROR" | "CONFLICT">;
+type CmdLoadTasks = {
+    inst: "LOAD_TASKS";
+}
 
-declare function init(): Model;
-declare function loadDB(): Promise<LoadStatus>;
+type CmdWriteTask = {
+    inst: "WRITE_TASK";
+    item: Task;
+}
+
+type CmdLoadUserSettings = {
+    inst: "LOAD_USER_SETTINGS";
+}
+
+type CmdWriteUserSettings = {
+    inst: "WRITE_USER_SETTINGS";
+    item: UserSettings;
+}
+
+type QueueCmd = CmdLoadTasks | CmdWriteTask | CmdLoadUserSettings | CmdWriteUserSettings;
+
+type Queue = QueueCmd[];
+
+type UpdatePolicy = "USE_DB" | "USE_LOCAL";
+
+type DBStatus = Status<"OK" | "NETWORK_ERROR" | "DB_INTERNAL_ERROR" | "CONFLICT">;
+
+declare function initLocalStorage(): Model;
+declare function loadDB(policy: UpdatePolicy): Promise<DBStatus>;
 
 declare function generateItem<T>(data: T): DBContainer<T>;
 
-declare function writeTask(item: Task, onError: (e: WriteStatus) => void): Model;
+declare function writeTask(item: Task, onError: (e: DBStatus) => void): Model;
 
-declare function writeUserSettings(item: UserSettings, onError: (e: WriteStatus) => void): UserSettings;
+declare function writeUserSettings(item: UserSettings, onError: (e: DBStatus) => void): Model;
+
+declare function syncQueue(policy: UpdatePolicy, queue: Queue): DBStatus;
 
 // -----------------------------------------------------------------------------
 // タスク関連型
