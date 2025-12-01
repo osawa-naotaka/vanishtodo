@@ -15,27 +15,50 @@ type TaskTitle = {
 }
 
 // -----------------------------------------------------------------------------
+// 永続化層関連型
+// -----------------------------------------------------------------------------
+
+type DBContainer<T> = {
+    id: string;                     // タスクID（UUIDv4、永続化層で生成）
+    version: number;                // 楽観的ロック用バージョン番号(永続化層で生成、DB層で検証)
+    createdAt: Date;                // 作成日時 (永続化層で生成)
+    updatedAt: Date;                // 更新日時（永続化層で生成）
+    data: T;                        // 実際のデータ
+}
+
+type Model = {
+    user_settings: UserSettings;      // ユーザー設定
+    tasks: Task[];                  // タスク一覧
+}
+
+type Status<T> = {
+    code: T;
+    model: Model;
+}
+
+type LoadStatus = Status<"OK" | "NETWORK_ERROR" | "DB_INTERNAL_ERROR" | "CONFLICT">;
+type WriteStatus = Status<"OK" | "NETWORK_ERROR" | "DB_INTERNAL_ERROR" | "CONFLICT">;
+
+declare function init(): Model;
+declare function loadDB(): Promise<LoadStatus>;
+
+declare function generateItem<T>(data: T): DBContainer<T>;
+
+declare function writeTask(item: Task, onError: (e: WriteStatus) => void): Model;
+
+declare function writeUserSettings(item: UserSettings, onError: (e: WriteStatus) => void): UserSettings;
+
+// -----------------------------------------------------------------------------
 // タスク関連型
 // -----------------------------------------------------------------------------
 
-// タスク作成入力（クライアント → サーバー）
-// サーバー生成フィールド（id, version, createdAt, updatedAt）は含まない
-type TaskCreateInput = {
-    title: string;                  // タスクタイトル（1-500文字）
-    weight?: TaskWeight | null;     // 重さ（省略時null）
-    dueDate?: Date | null;          // 締切日（省略時null）
-}
-
-// タスク更新入力（クライアント → サーバー）
-// id, createdAt, updatedAt は更新不可
-// version は楽観的ロック用に必須
-type TaskUpdateInput = {
+// タスク作成・更新入力（クライアント → サーバー）
+type TaskCreateUpdateInput = {
     title: string;                  // タスクタイトル（1-500文字）
     weight?: TaskWeight | null;     // 重さ
     dueDate?: Date | null;          // 締切日
     completedAt?: Date | null;      // 完了日時（nullでない場合は完了状態）
     isDeleted: boolean;             // 削除フラグ
-    version: number;                // 楽観的ロック用バージョン番号
 }
 
 // タスク削除入力（クライアント → サーバー）
@@ -44,20 +67,19 @@ type TaskDeleteInput = {
 }
 
 // タスク（サーバー → クライアント、DB格納データ）
-type Task = {
+type TaskContent = {
     id: string;                     // タスクID（UUID、サーバー生成）
     title: string;                  // タスクタイトル
     weight?: TaskWeight | null;     // 重さ
     dueDate?: Date | null;          // 締切日
     completedAt?: Date | null;      // 完了日時（nullの場合は未完了）
     isDeleted: boolean;             // 削除フラグ
-    version: number;                // 楽観的ロック用バージョン番号
-    createdAt: Date;                // 作成日時（サーバー生成）
-    updatedAt: Date;                // 更新日時（サーバー生成）
 }
 
-// LLM解析結果の個別タスク入力（TaskCreateInputと同じ構造）
-type TaskInput = TaskCreateInput;
+type Task = DBContainer<TaskContent>;
+
+// LLM解析結果の個別タスク入力（TaskCreateUpdateInputと同じ構造）
+type TaskInput = TaskCreateUpdateInput;
 
 // -----------------------------------------------------------------------------
 // API レスポンス型
@@ -114,25 +136,15 @@ interface ApiUserSettings {
 // -----------------------------------------------------------------------------
 
 // ユーザー設定（サーバー → クライアント）
-interface UserSettings {
-    id: string;                     // ユーザーID
+type UserSettingsContent = {
     dailyGoals: {
         heavy: number;              // 重タスク目標数（0-20）
         medium: number;             // 中タスク目標数（0-20）
         light: number;              // 軽タスク目標数（0-20）
     };
-    createdAt: Date;                // 作成日時
-    updatedAt: Date;                // 更新日時
 }
 
-// ユーザー設定更新入力（クライアント → サーバー）
-interface UserSettingsUpdate {
-    dailyGoals?: {
-        heavy?: number;             // 重タスク目標数（0-20）
-        medium?: number;            // 中タスク目標数（0-20）
-        light?: number;             // 軽タスク目標数（0-20）
-    };
-}
+type UserSettings = DBContainer<UserSettingsContent>;
 
 // -----------------------------------------------------------------------------
 // UI用の追加型（フロントエンド専用）
