@@ -70,7 +70,6 @@ sequenceDiagram
     participant Local as Local Storages<br>永続化層
     
     Business->>Front: read()
-    Front->>Front: バリデーション
     alt 成功
         Front->>Local: read()
         Local-->>Front: readデータ
@@ -92,9 +91,8 @@ sequenceDiagram
     participant API as Hono API<br>DB層
     participant DB as D1 Database<br>DB層
     
-    Business->>Front: create()
-    Front->>Front: バリデーション
-    Front->>Local: create()
+    Business->>Front: write()
+    Front->>Local: write()
     Front->>EnQueue: enqueue(REST API)
     EnQueue->>DeQueue: Go(async call)<br>without await
     Front-->>Business: 完了
@@ -236,7 +234,9 @@ declare function writeUserSettings(item: UserSettings, onError: (e: DBStatus) =>
 
 **概要:**
 
-未同期Queueに積まれた命令をDBと同期します。
+未同期Queueに積まれた命令をDBと同期します。命令は1度に1個ずつ処理され、命令に対するDB層からのレスポンスが完全に返ってきてから次の命令を処理します。
+これにより、命令の並列実行や追い越しを防ぎ、DBとLocalStorageのコヒーレンシを保ちます。
+
 未同期Queueに与えられる命令は4種類存在します。
 
 1. DBから`Task[]`の読み出しとLocalStorageへの格納
