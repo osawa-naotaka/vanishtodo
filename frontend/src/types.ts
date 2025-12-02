@@ -11,48 +11,48 @@ type TaskWeight = "light" | "medium" | "heavy";
 
 // タスクタイトル（LLM解析のリクエスト用）
 type TaskTitle = {
-    title: string;  // タスクタイトル（1-500文字、解析対象テキスト）
-}
+    title: string; // タスクタイトル（1-500文字、解析対象テキスト）
+};
 
 // -----------------------------------------------------------------------------
 // 永続化層関連型
 // -----------------------------------------------------------------------------
 
 export type DBContainer<T> = {
-    id: string;                     // タスクID（UUIDv4、永続化層で生成）
-    version: number;                // 楽観的ロック用バージョン番号(永続化層で生成、DB層で検証)
-    createdAt: Date;                // 作成日時 (永続化層で生成)
-    updatedAt: Date;                // 更新日時（永続化層で生成）
-    data: T;                        // 実際のデータ
-}
+    id: string; // タスクID（UUIDv4、永続化層で生成）
+    version: number; // 楽観的ロック用バージョン番号(永続化層で生成、DB層で検証)
+    createdAt: Date; // 作成日時 (永続化層で生成)
+    updatedAt: Date; // 更新日時（永続化層で生成）
+    data: T; // 実際のデータ
+};
 
 type Model = {
-    user_settings: UserSettings;      // ユーザー設定
-    tasks: Task[];                  // タスク一覧
-}
+    user_settings: UserSettings; // ユーザー設定
+    tasks: Task[]; // タスク一覧
+};
 
 type Status<T> = {
     code: T;
     model: Model;
-}
+};
 
 type CmdLoadTasks = {
     inst: "LOAD_TASKS";
-}
+};
 
 type CmdWriteTask = {
     inst: "WRITE_TASK";
     item: Task;
-}
+};
 
 type CmdLoadUserSettings = {
     inst: "LOAD_USER_SETTINGS";
-}
+};
 
 type CmdWriteUserSettings = {
     inst: "WRITE_USER_SETTINGS";
     item: UserSettings;
-}
+};
 
 type QueueCmd = CmdLoadTasks | CmdWriteTask | CmdLoadUserSettings | CmdWriteUserSettings;
 
@@ -79,24 +79,24 @@ declare function syncQueue(policy: UpdatePolicy, queue: Queue): DBStatus;
 
 // タスク作成・更新入力（クライアント → サーバー）
 export type TaskCreateContent = {
-    title: string;                  // タスクタイトル（1-500文字）
-    weight?: TaskWeight | null;     // 重さ
-    dueDate?: Date | null;          // 締切日
-}
+    title: string; // タスクタイトル（1-500文字）
+    weight?: TaskWeight | null; // 重さ
+    dueDate?: Date | null; // 締切日
+};
 
 // タスク削除入力（クライアント → サーバー）
 type TaskDeleteInput = {
-    version: number;                // 楽観的ロック用バージョン番号
-}
+    version: number; // 楽観的ロック用バージョン番号
+};
 
 // タスク（サーバー → クライアント、DB格納データ）
 export type TaskContent = {
-    title: string;                  // タスクタイトル
-    weight?: TaskWeight | null;     // 重さ
-    dueDate?: Date | null;          // 締切日
-    completedAt?: Date | null;      // 完了日時（nullの場合は未完了）
-    isDeleted: boolean;             // 削除フラグ
-}
+    title: string; // タスクタイトル
+    weight?: TaskWeight | null; // 重さ
+    dueDate?: Date | null; // 締切日
+    completedAt?: Date | null; // 完了日時（nullの場合は未完了）
+    isDeleted: boolean; // 削除フラグ
+};
 
 export type Task = DBContainer<TaskContent>;
 
@@ -120,9 +120,9 @@ interface ApiSuccessResponse {
 interface ApiFailResponse {
     status: "fail";
     error: {
-        code: string;                       // エラーコード
-        message: string;                    // エラーメッセージ（日本語）
-        details?: Record<string, string>;   // フィールド別のエラーメッセージ（省略可能）
+        code: string; // エラーコード
+        message: string; // エラーメッセージ（日本語）
+        details?: Record<string, string>; // フィールド別のエラーメッセージ（省略可能）
     };
 }
 
@@ -144,7 +144,7 @@ interface ApiTask {
 // LLM解析のレスポンスボディ
 interface ApiAnalyze {
     type: "analyze";
-    tasks: TaskInput[];  // 解析結果の複数タスク
+    tasks: TaskInput[]; // 解析結果の複数タスク
 }
 
 // ユーザー設定のレスポンスボディ
@@ -160,11 +160,11 @@ interface ApiUserSettings {
 // ユーザー設定（サーバー → クライアント）
 type UserSettingsContent = {
     dailyGoals: {
-        heavy: number;              // 重タスク目標数（0-20）
-        medium: number;             // 中タスク目標数（0-20）
-        light: number;              // 軽タスク目標数（0-20）
+        heavy: number; // 重タスク目標数（0-20）
+        medium: number; // 中タスク目標数（0-20）
+        light: number; // 軽タスク目標数（0-20）
     };
-}
+};
 
 type UserSettings = DBContainer<UserSettingsContent>;
 
@@ -178,12 +178,12 @@ type FilterType = "ALL" | "HEAVY" | "MEDIUM" | "LIGHT" | "DEADLINE";
 // 表示設定
 interface DisplayConfig {
     limits: {
-        heavy: number;              // 重タスク表示上限
-        medium: number;             // 中タスク表示上限
-        light: number;              // 軽タスク表示上限
+        heavy: number; // 重タスク表示上限
+        medium: number; // 中タスク表示上限
+        light: number; // 軽タスク表示上限
     };
-    currentFilter: FilterType;      // 現在のフィルタ
-    showCompletedToday: boolean;    // 本日完了分表示フラグ
+    currentFilter: FilterType; // 現在のフィルタ
+    showCompletedToday: boolean; // 本日完了分表示フラグ
 }
 
 // -----------------------------------------------------------------------------
@@ -201,32 +201,32 @@ type LLMProcessType = "ANALYZE" | "COMPLEMENT" | "WEIGHT_ESTIMATION";
 
 // 基底ログエントリ
 interface BaseLogEntry {
-    id: string;                     // ログID（UUID）
-    timestamp: Date;                // 記録日時
-    type: LogType;                  // ログ種別
+    id: string; // ログID（UUID）
+    timestamp: Date; // 記録日時
+    type: LogType; // ログ種別
 }
 
 // タスク操作ログ
 interface TaskOperationLog extends BaseLogEntry {
     type: "TASK_OPERATION";
-    taskId: string;                 // 対象タスクID
-    operation: TaskOperationType;   // 操作種別
-    beforeValue?: Partial<Task>;    // 変更前の値（UPDATE時）
-    afterValue?: Partial<Task>;     // 変更後の値（CREATE/UPDATE時）
+    taskId: string; // 対象タスクID
+    operation: TaskOperationType; // 操作種別
+    beforeValue?: Partial<Task>; // 変更前の値（UPDATE時）
+    afterValue?: Partial<Task>; // 変更後の値（CREATE/UPDATE時）
 }
 
 // LLM処理ログ
 interface LLMProcessLog extends BaseLogEntry {
     type: "LLM_PROCESS";
-    processType: LLMProcessType;    // 処理種別
-    taskId?: string;                // 関連タスクID（オプション）
-    inputText: string;              // 入力テキスト
-    outputResult: any;              // 出力結果
-    modelName: string;              // 使用モデル名
-    tokenCount?: number;            // 使用トークン数（オプション）
-    processTimeMs?: number;         // 処理時間（ミリ秒、オプション）
-    success: boolean;               // 成功フラグ
-    errorMessage?: string;          // エラーメッセージ（失敗時）
+    processType: LLMProcessType; // 処理種別
+    taskId?: string; // 関連タスクID（オプション）
+    inputText: string; // 入力テキスト
+    outputResult: any; // 出力結果
+    modelName: string; // 使用モデル名
+    tokenCount?: number; // 使用トークン数（オプション）
+    processTimeMs?: number; // 処理時間（ミリ秒、オプション）
+    success: boolean; // 成功フラグ
+    errorMessage?: string; // エラーメッセージ（失敗時）
 }
 
 // 統合ログエントリ型
@@ -234,11 +234,11 @@ type LogEntry = TaskOperationLog | LLMProcessLog;
 
 // ログストレージ
 interface LogStorage {
-    date: string;                   // YYYY-MM-DD形式の日付
-    logs: LogEntry[];               // ログエントリ配列
+    date: string; // YYYY-MM-DD形式の日付
+    logs: LogEntry[]; // ログエントリ配列
 }
 
 // Durable Object全体の状態
 interface DurableObjectState {
-    logStorage: LogStorage;                     // ログストレージ
+    logStorage: LogStorage; // ログストレージ
 }

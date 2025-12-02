@@ -1,5 +1,5 @@
-import { IPersistent } from "./Persistent"
 import type { Task, TaskContent, TaskCreateContent } from "../types";
+import type { IPersistent } from "./Persistent";
 
 export class Business {
     private m_persistent: IPersistent;
@@ -29,7 +29,7 @@ export class Business {
             data: {
                 ...data.data,
                 completedAt: date,
-            }
+            },
         };
         return this.m_persistent.writeTask(updated);
     }
@@ -42,7 +42,7 @@ export class Business {
             updatedAt: date,
             data: {
                 ...data.data,
-            }
+            },
         };
         return this.m_persistent.writeTask(updated);
     }

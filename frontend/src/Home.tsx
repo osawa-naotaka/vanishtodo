@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type JSX } from "react";
+import { type JSX, useEffect, useRef, useState } from "react";
 import { Business } from "./layer/Business";
 import { Persistent } from "./layer/Persistent";
 import type { Task } from "./types";
@@ -11,7 +11,7 @@ export function Home(): JSX.Element {
         const p = new Persistent();
         biz.current = new Business(p);
         setTasks(biz.current.tasks);
-    }, [])
+    }, []);
 
     function handleAddTask(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -24,25 +24,13 @@ export function Home(): JSX.Element {
         }
     }
 
-    function handleEditTask(event: React.ChangeEvent<HTMLInputElement>) {
-        const input = event.currentTarget;
-        const parent = input.parentElement;
-        if(parent === null) throw new Error("Parent element is null");
-        const taskIdx = parent.getAttribute("data-task-idx");
-        if(taskIdx === null) throw new Error("Task index is null");
-        const idx = parseInt(taskIdx, 10);
-        const newTitle = input.value;
+    function handleEditTask(taskId: string, newTitle: string) {
         if (biz.current) {
-            const task = tasks[idx]
-            const updatedTask: Task = {
-                ...task,
-                data: {
-                    ...task.data,
-                    title: newTitle,
-                }
-            };
-            setTasks(biz.current.edit(updatedTask));
-            console.log("Task edited:", updatedTask);
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) throw new Error("Task not found");
+
+            task.data.title = newTitle;
+            setTasks(biz.current.edit(task));
         }
     }
 
@@ -54,9 +42,9 @@ export function Home(): JSX.Element {
                 <button type="submit">Add</button>
             </form>
             <ul>
-                {tasks.map((task, idx) => (
-                    <li key={task.id} data-task-idx={idx}>
-                        <input type="text" defaultValue={task.data.title} onInput={handleEditTask}/>
+                {tasks.map((task) => (
+                    <li key={task.id}>
+                        <input type="text" defaultValue={task.data.title} onInput={(e) => handleEditTask(task.id, e.currentTarget.value)} />
                     </li>
                 ))}
             </ul>

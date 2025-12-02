@@ -1,4 +1,3 @@
-
 import type { DBContainer, Task } from "../types";
 
 export abstract class IPersistent {
@@ -31,7 +30,7 @@ export class Persistent extends IPersistent {
             version: 1,
             createdAt: date,
             updatedAt: date,
-            data: data
+            data: data,
         };
     }
 
