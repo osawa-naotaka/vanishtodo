@@ -3,6 +3,7 @@ import type { DBContainer, Task } from "../types";
 export abstract class IPersistent {
     abstract get items(): Task[];
     abstract generateItem<T>(data: T): DBContainer<T>;
+    abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
     abstract writeTask(item: Task): Task[];
 }
 
@@ -31,6 +32,16 @@ export class Persistent extends IPersistent {
             createdAt: date,
             updatedAt: date,
             data: data,
+        };
+    }
+
+    touchItem<T>(item: DBContainer<T>): DBContainer<T> {
+        return {
+            id: item.id,
+            version: item.version + 1,
+            createdAt: item.createdAt,
+            updatedAt: new Date(),
+            data: item.data,
         };
     }
 

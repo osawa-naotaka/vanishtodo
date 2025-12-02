@@ -20,30 +20,15 @@ export class Business {
         return this.m_persistent.writeTask(item);
     }
 
-    complete(data: Task): Task[] {
-        const date = new Date();
-        const updated: Task = {
-            ...data,
-            version: data.version + 1,
-            updatedAt: date,
-            data: {
-                ...data.data,
-                completedAt: date,
-            },
-        };
-        return this.m_persistent.writeTask(updated);
+    complete(item: Task): Task[] {
+        const c = this.m_persistent.touchItem<TaskContent>(item);
+        c.data.completedAt = c.updatedAt;
+        return this.m_persistent.writeTask(c);
     }
 
-    edit(data: Task): Task[] {
-        const date = new Date();
-        const updated: Task = {
-            ...data,
-            version: data.version + 1,
-            updatedAt: date,
-            data: {
-                ...data.data,
-            },
-        };
+    edit(item: Task): Task[] {
+        const updated = this.m_persistent.touchItem<TaskContent>(item);
+        updated.data = item.data;
         return this.m_persistent.writeTask(updated);
     }
 
