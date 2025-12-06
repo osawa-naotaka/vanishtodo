@@ -12,8 +12,15 @@ export function TaskInput({ onAddTask }: TaskInputProps): JSX.Element {
 
     function handleAddTask(e: React.FormEvent<HTMLFormElement>): void {
         e.preventDefault();
+        const form_data = new FormData(e.currentTarget);
+        const selectedWeight = form_data.get("weight");
+
         if (title.length > 0 && title.length <= 500) {
-            onAddTask({ title });
+            if (selectedWeight === "light" || selectedWeight === "medium" || selectedWeight === "heavy") {
+                onAddTask({ title, weight: selectedWeight});
+            } else  {
+                onAddTask({ title, dueDate: new Date().toISOString() });
+            }
             setTitle("");
         }
     }
@@ -23,14 +30,14 @@ export function TaskInput({ onAddTask }: TaskInputProps): JSX.Element {
             <input type="text" name="task" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New Task" />
             <div className="row">
                 <button type="submit">＋ 追加</button>
-                <input type="radio" name="task" id="task-light" defaultChecked />
-                <label htmlFor="task-light">軽</label>
-                <input type="radio" name="task" id="task-medium" />
-                <label htmlFor="task-medium">中</label>
-                <input type="radio" name="task" id="task-heavy" />
-                <label htmlFor="task-heavy">重</label>
-                <input type="radio" name="task" id="task-duedate" />
-                <label htmlFor="task-duedate">締切</label>
+                <input type="radio" name="weight" id="weight-light" value="light" defaultChecked />
+                <label htmlFor="weight-light">軽</label>
+                <input type="radio" name="weight" id="weight-medium" value="medium" />
+                <label htmlFor="weight-medium">中</label>
+                <input type="radio" name="weight" id="weight-heavy" value="heavy" />
+                <label htmlFor="weight-heavy">重</label>
+                <input type="radio" name="weight" id="weight-duedate" value="duedate" />
+                <label htmlFor="weight-duedate">締切</label>
             </div>
         </form>
     );

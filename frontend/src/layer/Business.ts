@@ -44,6 +44,13 @@ export class Business {
         return this.m_persistent.writeTask(c);
     }
 
+    /**
+     * タスクを編集します。具体的には、引数で渡されたタスクデータで上書きします。
+     * その際に、updatedAtだけが自動更新されます。
+     * 
+     * @param {Task} item 編集後のタスク
+     * @returns {Task[]} 全タスクリスト
+     */
     edit(item: Task): Task[] {
         const updated = this.m_persistent.touchItem<TaskContent>(item);
         updated.data = item.data;

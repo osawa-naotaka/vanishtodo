@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import type { Task, TaskContent } from "../../types";
+import { TaskWeightBadge } from "./TaskWeightBadge";
 
 export type TaskViewProps = {
     task: Task;
@@ -30,6 +31,8 @@ export function TaskView({ task, handleEditTask }: TaskViewProps): JSX.Element {
         <li key={item.id} className="card">
             <input type="checkbox" name="item" id={item.id} checked={item.data.completedAt !== undefined} onInput={() => handleToggleComplete()} />
             <input type="text" defaultValue={item.data.title} onInput={(e) => updateTaskDataField("title", e.currentTarget.value)} />
+            <div>{item.createdAt}</div>
+            <TaskWeightBadge task={item} />
         </li>
     );
 }

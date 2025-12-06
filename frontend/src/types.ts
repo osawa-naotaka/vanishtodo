@@ -7,7 +7,7 @@
 // -----------------------------------------------------------------------------
 
 // タスクの重さ
-type TaskWeight = "light" | "medium" | "heavy";
+export type TaskWeight = "light" | "medium" | "heavy";
 
 // タスクタイトル（LLM解析のリクエスト用）
 type TaskTitle = {
