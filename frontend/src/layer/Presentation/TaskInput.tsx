@@ -17,8 +17,8 @@ export function TaskInput({ onAddTask }: TaskInputProps): JSX.Element {
 
         if (title.length > 0 && title.length <= 500) {
             if (selectedWeight === "light" || selectedWeight === "medium" || selectedWeight === "heavy") {
-                onAddTask({ title, weight: selectedWeight});
-            } else  {
+                onAddTask({ title, weight: selectedWeight });
+            } else {
                 onAddTask({ title, dueDate: new Date().toISOString() });
             }
             setTitle("");

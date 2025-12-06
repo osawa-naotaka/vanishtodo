@@ -3,23 +3,19 @@ import type { Task, TaskWeight } from "../../types";
 
 export type TaskWeightBadgeProps = {
     task: Task;
-}
+};
 
 export function TaskWeightBadge({ task }: TaskWeightBadgeProps): JSX.Element {
     if (task.data.weight === undefined && task.data.dueDate === undefined) throw new Error("TaskWeightBadge requires task with weight or dueDate");
-    if (task.data.weight !== undefined && task.data.dueDate !== undefined) throw new Error("TaskWeightBadge requires task with either weight or dueDate, not both");
+    if (task.data.weight !== undefined && task.data.dueDate !== undefined)
+        throw new Error("TaskWeightBadge requires task with either weight or dueDate, not both");
     const weight_labels: Record<TaskWeight, string> = {
         light: "軽",
         medium: "中",
         heavy: "重",
     } as const;
-    const badge_text = task.data.weight ? weight_labels[task.data.weight] : 
-                       task.data.dueDate ? `締切:${shortDate(task.data.dueDate)}` : "";
-    return (
-        <span>
-            {badge_text}
-        </span>
-    );
+    const badge_text = task.data.weight ? weight_labels[task.data.weight] : task.data.dueDate ? `締切:${shortDate(task.data.dueDate)}` : "";
+    return <span>{badge_text}</span>;
 }
 
 function shortDate(dateString: string): string {
@@ -46,8 +42,8 @@ function shortDate(dateString: string): string {
 }
 
 function resetTimeWithTimezone(dateString: string): string {
-  const offset = dateString.match(/([+-]\d{2}:\d{2}|Z)$/)?.[1] || 'Z';
-  const datePart = dateString.split('T')[0];
+    const offset = dateString.match(/([+-]\d{2}:\d{2}|Z)$/)?.[1] || "Z";
+    const datePart = dateString.split("T")[0];
 
-  return `${datePart}T00:00:00.000${offset}`;
+    return `${datePart}T00:00:00.000${offset}`;
 }

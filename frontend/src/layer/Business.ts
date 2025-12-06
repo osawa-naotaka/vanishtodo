@@ -47,7 +47,7 @@ export class Business {
     /**
      * タスクを編集します。具体的には、引数で渡されたタスクデータで上書きします。
      * その際に、updatedAtだけが自動更新されます。
-     * 
+     *
      * @param {Task} item 編集後のタスク
      * @returns {Task[]} 全タスクリスト
      */
