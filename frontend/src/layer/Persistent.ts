@@ -12,6 +12,7 @@ export class Persistent extends IPersistent {
 
     constructor() {
         super();
+        // localStorage.removeItem("vanish-todo-tasks");
         const tasks = localStorage.getItem("vanish-todo-tasks");
         if (tasks) {
             this.m_tasks = JSON.parse(tasks);

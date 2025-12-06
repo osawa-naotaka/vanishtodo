@@ -3,40 +3,33 @@ import { useState } from "react";
 import type { Task, TaskContent } from "../../types";
 
 export type TaskViewProps = {
-    initialTask: Task;
+    task: Task;
     handleEditTask: (task: Task) => void;
 };
 
-export function TaskView({ initialTask, handleEditTask }: TaskViewProps): JSX.Element {
-    const [task, setTask] = useState<Task>(initialTask);
+export function TaskView({ task, handleEditTask }: TaskViewProps): JSX.Element {
+    const [item, setItem] = useState<Task>(task);
 
     function updateTaskDataField<K extends keyof TaskContent>(field: K, value: TaskContent[K]): void {
-        const updatedTask = {
-            ...task,
-            data: { ...task.data, [field]: value },
+        const updatedItem = {
+            ...item,
+            data: { ...item.data, [field]: value },
         };
-        setTask(updatedTask);
-        handleEditTask(updatedTask);
+        setItem(updatedItem);
+        handleEditTask(updatedItem);
     }
 
     function handleToggleComplete(): void {
-        const completedAt = task.data.completedAt === undefined ? new Date().toISOString() : undefined;
-        const updatedTask = { ...task, data: { ...task.data, completedAt } };
-        setTask(updatedTask);
+        const completedAt = item.data.completedAt === undefined ? new Date().toISOString() : undefined;
+        const updatedTask = { ...item, data: { ...item.data, completedAt } };
+        setItem(updatedTask);
         handleEditTask(updatedTask);
     }
 
     return (
-        <li key={task.id} className="card">
-            <input
-                type="checkbox"
-                name="item"
-                id={task.id}
-                defaultChecked={task.data.completedAt !== undefined}
-                checked={task.data.completedAt !== undefined}
-                onInput={() => handleToggleComplete()}
-            />
-            <input type="text" defaultValue={task.data.title} onInput={(e) => updateTaskDataField("title", e.currentTarget.value)} />
+        <li key={item.id} className="card">
+            <input type="checkbox" name="item" id={item.id} checked={item.data.completedAt !== undefined} onInput={() => handleToggleComplete()} />
+            <input type="text" defaultValue={item.data.title} onInput={(e) => updateTaskDataField("title", e.currentTarget.value)} />
         </li>
     );
 }

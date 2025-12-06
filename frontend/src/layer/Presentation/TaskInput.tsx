@@ -1,3 +1,4 @@
+import type React from "react";
 import type { JSX } from "react";
 import { useState } from "react";
 import type { TaskCreateContent } from "../../types";
@@ -9,7 +10,8 @@ export type TaskInputProps = {
 export function TaskInput({ onAddTask }: TaskInputProps): JSX.Element {
     const [title, setTitle] = useState<string>("");
 
-    function handleAddTask(): void {
+    function handleAddTask(e: React.FormEvent<HTMLFormElement>): void {
+        e.preventDefault();
         if (title.length > 0 && title.length <= 500) {
             onAddTask({ title });
             setTitle("");
