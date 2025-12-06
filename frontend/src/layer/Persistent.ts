@@ -25,7 +25,7 @@ export class Persistent extends IPersistent {
     }
 
     generateItem<T>(data: T): DBContainer<T> {
-        const date = new Date();
+        const date = new Date().toISOString();
         return {
             id: crypto.randomUUID(),
             version: 1,
@@ -40,7 +40,7 @@ export class Persistent extends IPersistent {
             id: item.id,
             version: item.version + 1,
             createdAt: item.createdAt,
-            updatedAt: new Date(),
+            updatedAt: new Date().toISOString(),
             data: item.data,
         };
     }

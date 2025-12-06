@@ -21,8 +21,8 @@ type TaskTitle = {
 export type DBContainer<T> = {
     id: string; // タスクID（UUIDv4、永続化層で生成）
     version: number; // 楽観的ロック用バージョン番号(永続化層で生成、DB層で検証)
-    createdAt: Date; // 作成日時 (永続化層で生成)
-    updatedAt: Date; // 更新日時（永続化層で生成）
+    createdAt: string; // 作成日時 (永続化層で生成)
+    updatedAt: string; // 更新日時（永続化層で生成）
     data: T; // 実際のデータ
 };
 
@@ -80,8 +80,8 @@ declare function syncQueue(policy: UpdatePolicy, queue: Queue): DBStatus;
 // タスク作成・更新入力（クライアント → サーバー）
 export type TaskCreateContent = {
     title: string; // タスクタイトル（1-500文字）
-    weight?: TaskWeight | null; // 重さ
-    dueDate?: Date | null; // 締切日
+    weight?: TaskWeight; // 重さ
+    dueDate?: string; // 締切日
 };
 
 // タスク削除入力（クライアント → サーバー）
@@ -92,9 +92,9 @@ type TaskDeleteInput = {
 // タスク（サーバー → クライアント、DB格納データ）
 export type TaskContent = {
     title: string; // タスクタイトル
-    weight?: TaskWeight | null; // 重さ
-    dueDate?: Date | null; // 締切日
-    completedAt?: Date | null; // 完了日時（nullの場合は未完了）
+    weight?: TaskWeight; // 重さ
+    dueDate?: string; // 締切日
+    completedAt?: string; // 完了日時（undefinedの場合は未完了）
     isDeleted: boolean; // 削除フラグ
 };
 

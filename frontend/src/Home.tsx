@@ -1,12 +1,13 @@
 import { type JSX, useEffect, useRef, useState } from "react";
 import { Business } from "./layer/Business";
 import { Persistent } from "./layer/Persistent";
-import type { Task } from "./types";
+import { TaskInput } from "./layer/Presentation/TaskInput";
+import { TaskView } from "./layer/Presentation/TaskView";
+import type { Task, TaskCreateContent } from "./types";
 
 export function Home(): JSX.Element {
     const biz = useRef<Business>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [title, setTitle] = useState<string>("");
 
     useEffect(() => {
         const p = new Persistent();
@@ -14,17 +15,15 @@ export function Home(): JSX.Element {
         setTasks(biz.current.tasks);
     }, []);
 
-    function handleAddTask(): void {
-        if (title && biz.current) {
-            setTasks(biz.current.create({ title }));
-            setTitle("");
+    function handleEditTask(task: Task): void {
+        if (biz.current) {
+            setTasks(biz.current.edit(task));
         }
     }
 
-    function handleEditTask(task: Task, newTitle: string): void {
+    function handleAddTask(data: TaskCreateContent): void {
         if (biz.current) {
-            task.data.title = newTitle;
-            setTasks(biz.current.edit(task));
+            setTasks(biz.current.create(data));
         }
     }
 
@@ -39,26 +38,10 @@ export function Home(): JSX.Element {
                 </div>
             </header>
             <main className="responsive">
-                <form className="card" onSubmit={handleAddTask}>
-                    <input type="text" name="task" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New Task" />
-                    <div className="row">
-                        <button type="submit">＋ 追加</button>
-                        <input type="radio" name="task" id="task-light" defaultChecked />
-                        <label htmlFor="task-light">軽</label>
-                        <input type="radio" name="task" id="task-medium" />
-                        <label htmlFor="task-medium">中</label>
-                        <input type="radio" name="task" id="task-heavy" />
-                        <label htmlFor="task-heavy">重</label>
-                        <input type="radio" name="task" id="task-duedate" />
-                        <label htmlFor="task-duedate">締切</label>
-                    </div>
-                </form>
+                <TaskInput onAddTask={handleAddTask} />
                 <ul>
                     {tasks.map((task) => (
-                        <li key={task.id} className="card">
-                            <input type="checkbox" name="item" id={task.id} />
-                            <input type="text" defaultValue={task.data.title} onInput={(e) => handleEditTask(task, e.currentTarget.value)} />
-                        </li>
+                        <TaskView key={task.id} initialTask={task} handleEditTask={handleEditTask} />
                     ))}
                 </ul>
             </main>
