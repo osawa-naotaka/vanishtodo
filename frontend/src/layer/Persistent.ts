@@ -1,23 +1,6 @@
 import * as v from "valibot";
-import { DBContainerMetaSchema, idSchema, taskContentSchema } from "../types";
-import type { DBContainer, Task } from "../types";
-
-const tasksSchema = v.record(
-    idSchema,
-    v.object({
-        meta: DBContainerMetaSchema,
-        data: taskContentSchema,
-    }),
-);
-
-type TasksType = v.InferOutput<typeof tasksSchema>;
-
-export abstract class IPersistent {
-    abstract get items(): Task[];
-    abstract generateItem<T>(data: T): DBContainer<T>;
-    abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
-    abstract writeTask(item: Task): Task[];
-}
+import type { DBContainer, Task, TasksType } from "../types";
+import { IPersistent, tasksSchema } from "../types";
 
 export class Persistent extends IPersistent {
     private m_tasks: TasksType;

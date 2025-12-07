@@ -8,21 +8,51 @@ import * as v from "valibot";
 // 基本型
 // -----------------------------------------------------------------------------
 
-// タスクの重さ
+export const idSchema = v.pipe(v.string(), v.uuid()); // タスクID（UUIDv4、永続化層で生成）
+export const dateSchema = v.pipe(v.string(), v.isoTimestamp());
 
-// タスクタイトル（LLM解析のリクエスト用）
-type TaskTitle = {
-    title: string; // タスクタイトル（1-500文字、解析対象テキスト）
+// -----------------------------------------------------------------------------
+// ビジネス層 - タスク関連型
+// -----------------------------------------------------------------------------
+
+// タスク作成・更新入力（クライアント → サーバー）
+export type TaskCreateContent = {
+    title: string; // タスクタイトル（1-500文字）
+    weight?: TaskWeight; // 重さ
+    dueDate?: string; // 締切日
 };
+
+// タスク削除入力（クライアント → サーバー）
+type TaskDeleteInput = {
+    version: number; // 楽観的ロック用バージョン番号
+};
+
+// タスク（サーバー → クライアント、DB格納データ）
+export const taskWeightList = ["light", "medium", "heavy"] as const;
+
+export const taskTitleSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(500));
+export const taskWeightSchema = v.picklist(taskWeightList);
+
+export const taskContentSchema = v.object({
+    title: taskTitleSchema,
+    weight: v.optional(taskWeightSchema),
+    dueDate: v.optional(dateSchema),
+    completedAt: v.optional(dateSchema),
+    isDeleted: v.boolean(),
+});
+
+export type TaskWeight = v.InferOutput<typeof taskWeightSchema>;
+export type TaskContent = v.InferOutput<typeof taskContentSchema>;
+export type Task = DBContainer<v.InferOutput<typeof taskContentSchema>>;
+
+// LLM解析結果の個別タスク入力（TaskCreateUpdateInputと同じ構造）
+type TaskInput = TaskCreateContent;
 
 // -----------------------------------------------------------------------------
 // 永続化層関連型
 // -----------------------------------------------------------------------------
 
 export type BaseSchemaType = v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>;
-
-export const idSchema = v.pipe(v.string(), v.uuid()); // タスクID（UUIDv4、永続化層で生成）
-export const dateSchema = v.pipe(v.string(), v.isoTimestamp());
 
 export const DBContainerMetaSchema = v.object({
     id: idSchema,
@@ -35,6 +65,26 @@ export type DBContainer<T> = {
     meta: v.InferOutput<typeof DBContainerMetaSchema>;
     data: T;
 };
+
+export const tasksSchema = v.record(
+    idSchema,
+    v.object({
+        meta: DBContainerMetaSchema,
+        data: taskContentSchema,
+    }),
+);
+
+export type TasksType = v.InferOutput<typeof tasksSchema>;
+
+export abstract class IPersistent {
+    abstract get items(): Task[];
+    abstract generateItem<T>(data: T): DBContainer<T>;
+    abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
+    abstract writeTask(item: Task): Task[];
+}
+
+
+
 
 type Model = {
     user_settings: UserSettings; // ユーザー設定
@@ -82,43 +132,6 @@ declare function writeTask(item: Task, onError: (e: DBStatus) => void): Model;
 declare function writeUserSettings(item: UserSettings, onError: (e: DBStatus) => void): Model;
 
 declare function syncQueue(policy: UpdatePolicy, queue: Queue): DBStatus;
-
-// -----------------------------------------------------------------------------
-// タスク関連型
-// -----------------------------------------------------------------------------
-
-// タスク作成・更新入力（クライアント → サーバー）
-export type TaskCreateContent = {
-    title: string; // タスクタイトル（1-500文字）
-    weight?: TaskWeight; // 重さ
-    dueDate?: string; // 締切日
-};
-
-// タスク削除入力（クライアント → サーバー）
-type TaskDeleteInput = {
-    version: number; // 楽観的ロック用バージョン番号
-};
-
-// タスク（サーバー → クライアント、DB格納データ）
-export const taskWeightList = ["light", "medium", "heavy"] as const;
-
-export const taskTitleSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(500));
-export const taskWeightSchema = v.picklist(taskWeightList);
-
-export const taskContentSchema = v.object({
-    title: taskTitleSchema,
-    weight: v.optional(taskWeightSchema),
-    dueDate: v.optional(dateSchema),
-    completedAt: v.optional(dateSchema),
-    isDeleted: v.boolean(),
-});
-
-export type TaskWeight = v.InferOutput<typeof taskWeightSchema>;
-export type TaskContent = v.InferOutput<typeof taskContentSchema>;
-export type Task = DBContainer<v.InferOutput<typeof taskContentSchema>>;
-
-// LLM解析結果の個別タスク入力（TaskCreateUpdateInputと同じ構造）
-type TaskInput = TaskCreateContent;
 
 // -----------------------------------------------------------------------------
 // API レスポンス型
