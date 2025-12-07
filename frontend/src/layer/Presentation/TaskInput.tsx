@@ -1,14 +1,17 @@
 import type React from "react";
 import type { JSX } from "react";
 import { useState } from "react";
+import { formDateToISOString, ISOStringToFormDate } from "../../lib/date";
 import type { TaskCreateContent } from "../../types";
 
 export type TaskInputProps = {
     onAddTask: (data: TaskCreateContent) => void;
+    defaultDate: string;
 };
 
-export function TaskInput({ onAddTask }: TaskInputProps): JSX.Element {
+export function TaskInput({ onAddTask, defaultDate }: TaskInputProps): JSX.Element {
     const [title, setTitle] = useState<string>("");
+    const [date, setDate] = useState<string>(ISOStringToFormDate(defaultDate));
 
     function handleAddTask(e: React.FormEvent<HTMLFormElement>): void {
         e.preventDefault();
@@ -19,7 +22,11 @@ export function TaskInput({ onAddTask }: TaskInputProps): JSX.Element {
             if (selectedWeight === "light" || selectedWeight === "medium" || selectedWeight === "heavy") {
                 onAddTask({ title, weight: selectedWeight });
             } else {
-                onAddTask({ title, dueDate: new Date().toISOString() });
+                const due_date = form_data.get("due-date");
+                if (due_date !== null) {
+                    const dueDate = formDateToISOString(due_date.toString());
+                    onAddTask({ title, dueDate });
+                }
             }
             setTitle("");
         }
@@ -38,6 +45,7 @@ export function TaskInput({ onAddTask }: TaskInputProps): JSX.Element {
                 <label htmlFor="weight-heavy">重</label>
                 <input type="radio" name="weight" id="weight-due-date" value="duedate" />
                 <label htmlFor="weight-due-date">締切</label>
+                <input type="date" name="due-date" id="due-date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
         </form>
     );

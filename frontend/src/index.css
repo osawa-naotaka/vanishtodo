@@ -147,6 +147,10 @@
         gap: 1rem;
     }
 
+    li.task > input[type="checkbox"]:checked + .task-text > input[type="text"] {
+        text-decoration: line-through;
+    }
+
     li.task > .task-text {
         flex-grow: 1;
     }

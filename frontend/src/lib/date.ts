@@ -15,12 +15,12 @@ export function shortFutureDate(target: string, current: string): ShortDate {
         if (target_day.year !== current_day.year) {
             return {
                 past_or_future: "past",
-                date: `${target_day.year}-${target_day.month}-${target_day.day}`,
+                date: `${target_day.year}/${target_day.month}/${target_day.day}`,
             };
         }
         return {
             past_or_future: "past",
-            date: `${target_day.month}-${target_day.day}`,
+            date: `${target_day.month}/${target_day.day}`,
         };
     }
 
@@ -55,13 +55,13 @@ export function shortFutureDate(target: string, current: string): ShortDate {
     if (target_day.year !== current_day.year) {
         return {
             past_or_future: "future",
-            date: `${target_day.year}-${target_day.month}-${target_day.day}`,
+            date: `${target_day.year}/${target_day.month}/${target_day.day}`,
         };
     }
 
     return {
         past_or_future: "future",
-        date: `${target_day.month}-${target_day.day}`,
+        date: `${target_day.month}/${target_day.day}`,
     };
 }
 
@@ -74,12 +74,12 @@ export function shortPastDate(target: string, current: string): ShortDate {
         if (target_day.year !== current_day.year) {
             return {
                 past_or_future: "future",
-                date: `${target_day.year}-${target_day.month}-${target_day.day}`,
+                date: `${target_day.year}/${target_day.month}/${target_day.day}`,
             };
         }
         return {
             past_or_future: "future",
-            date: `${target_day.month}-${target_day.day}`,
+            date: `${target_day.month}/${target_day.day}`,
         };
     }
 
@@ -114,13 +114,13 @@ export function shortPastDate(target: string, current: string): ShortDate {
     if (target_day.year !== current_day.year) {
         return {
             past_or_future: "past",
-            date: `${target_day.year}-${target_day.month}-${target_day.day}`,
+            date: `${target_day.year}/${target_day.month}/${target_day.day}`,
         };
     }
 
     return {
         past_or_future: "past",
-        date: `${target_day.month}-${target_day.day}`,
+        date: `${target_day.month}/${target_day.day}`,
     };
 }
 
@@ -156,4 +156,13 @@ export function resetTimeWithTimezone(dateString: string): string {
     const datePart = dateString.split("T")[0];
 
     return `${datePart}T00:00:00.000${offset}`;
+}
+
+export function ISOStringToFormDate(iso: string): string {
+    const iso_parsed = v.parse(dateSchema, iso);
+    return iso_parsed.split("T")[0];
+}
+
+export function formDateToISOString(form: string): string {
+    return new Date(form).toISOString();
 }

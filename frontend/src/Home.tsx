@@ -39,7 +39,7 @@ export function Home(): JSX.Element {
                 </div>
             </header>
             <main className="responsive">
-                <TaskInput onAddTask={handleAddTask} />
+                <TaskInput onAddTask={handleAddTask} defaultDate={current_date} />
                 <ul>
                     {tasks.map((task) => (
                         <TaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
