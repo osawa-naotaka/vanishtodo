@@ -41,7 +41,7 @@ export function Home(): JSX.Element {
                 <TaskInput onAddTask={handleAddTask} />
                 <ul>
                     {tasks.map((task) => (
-                        <TaskView key={task.id} task={task} handleEditTask={handleEditTask} />
+                        <TaskView key={task.meta.id} task={task} handleEditTask={handleEditTask} />
                     ))}
                 </ul>
             </main>

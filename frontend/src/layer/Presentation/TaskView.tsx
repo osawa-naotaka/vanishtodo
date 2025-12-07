@@ -28,10 +28,10 @@ export function TaskView({ task, handleEditTask }: TaskViewProps): JSX.Element {
     }
 
     return (
-        <li key={item.id} className="card">
-            <input type="checkbox" name="item" id={item.id} checked={item.data.completedAt !== undefined} onInput={() => handleToggleComplete()} />
+        <li key={item.meta.id} className="card">
+            <input type="checkbox" name="item" id={item.meta.id} checked={item.data.completedAt !== undefined} onInput={() => handleToggleComplete()} />
             <input type="text" defaultValue={item.data.title} onInput={(e) => updateTaskDataField("title", e.currentTarget.value)} />
-            <div>{item.createdAt}</div>
+            <div>{item.meta.createdAt}</div>
             <TaskWeightBadge task={item} />
         </li>
     );

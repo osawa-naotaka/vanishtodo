@@ -27,7 +27,7 @@ export class Business {
             completedAt: undefined,
             isDeleted: false,
         };
-        const item = this.m_persistent.generateItem<TaskContent>(c);
+        const item = this.m_persistent.generateItem(c);
         return this.m_persistent.writeTask(item);
     }
 
@@ -40,7 +40,7 @@ export class Business {
      */
     complete(item: Task): Task[] {
         const c = this.m_persistent.touchItem<TaskContent>(item);
-        c.data.completedAt = c.updatedAt;
+        c.data.completedAt = c.meta.updatedAt;
         return this.m_persistent.writeTask(c);
     }
 

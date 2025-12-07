@@ -2,12 +2,13 @@
 // VanishToDo - Type Definitions
 // =============================================================================
 
+import * as v from "valibot";
+
 // -----------------------------------------------------------------------------
 // 基本型
 // -----------------------------------------------------------------------------
 
 // タスクの重さ
-export type TaskWeight = "light" | "medium" | "heavy";
 
 // タスクタイトル（LLM解析のリクエスト用）
 type TaskTitle = {
@@ -18,12 +19,21 @@ type TaskTitle = {
 // 永続化層関連型
 // -----------------------------------------------------------------------------
 
+export type BaseSchemaType = v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>;
+
+export const idSchema = v.pipe(v.string(), v.uuid()); // タスクID（UUIDv4、永続化層で生成）
+export const dateSchema = v.pipe(v.string(), v.isoTimestamp());
+
+export const DBContainerMetaSchema = v.object({
+    id: idSchema,
+    version: v.pipe(v.number(), v.toMinValue(0)), // 楽観的ロック用バージョン番号(永続化層で生成、DB層で検証)
+    createdAt: dateSchema, // 作成日時 (永続化層で生成)
+    updatedAt: dateSchema, // 更新日時（永続化層で生成）
+});
+
 export type DBContainer<T> = {
-    id: string; // タスクID（UUIDv4、永続化層で生成）
-    version: number; // 楽観的ロック用バージョン番号(永続化層で生成、DB層で検証)
-    createdAt: string; // 作成日時 (永続化層で生成)
-    updatedAt: string; // 更新日時（永続化層で生成）
-    data: T; // 実際のデータ
+    meta: v.InferOutput<typeof DBContainerMetaSchema>;
+    data: T;
 };
 
 type Model = {
@@ -90,15 +100,22 @@ type TaskDeleteInput = {
 };
 
 // タスク（サーバー → クライアント、DB格納データ）
-export type TaskContent = {
-    title: string; // タスクタイトル
-    weight?: TaskWeight; // 重さ
-    dueDate?: string; // 締切日
-    completedAt?: string; // 完了日時（undefinedの場合は未完了）
-    isDeleted: boolean; // 削除フラグ
-};
+export const taskWeightList = ["light", "medium", "heavy"] as const;
 
-export type Task = DBContainer<TaskContent>;
+export const taskTitleSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(500));
+export const taskWeightSchema = v.picklist(taskWeightList);
+
+export const taskContentSchema = v.object({
+    title: taskTitleSchema,
+    weight: v.optional(taskWeightSchema),
+    dueDate: v.optional(dateSchema),
+    completedAt: v.optional(dateSchema),
+    isDeleted: v.boolean(),
+});
+
+export type TaskWeight = v.InferOutput<typeof taskWeightSchema>;
+export type TaskContent = v.InferOutput<typeof taskContentSchema>;
+export type Task = DBContainer<v.InferOutput<typeof taskContentSchema>>;
 
 // LLM解析結果の個別タスク入力（TaskCreateUpdateInputと同じ構造）
 type TaskInput = TaskCreateContent;
@@ -157,16 +174,19 @@ interface ApiUserSettings {
 // ユーザー設定型
 // -----------------------------------------------------------------------------
 
-// ユーザー設定（サーバー → クライアント）
-type UserSettingsContent = {
-    dailyGoals: {
-        heavy: number; // 重タスク目標数（0-20）
-        medium: number; // 中タスク目標数（0-20）
-        light: number; // 軽タスク目標数（0-20）
-    };
-};
+// タスク目標数 0~20
+export const NumDailyGoalsTypeSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(20));
 
-type UserSettings = DBContainer<UserSettingsContent>;
+// ユーザー設定（サーバー → クライアント）
+export const UserSettingsContentSchema = v.object({
+    dailyGoals: v.object({
+        heavy: NumDailyGoalsTypeSchema, // 重タスク目標数（0-20）
+        medium: NumDailyGoalsTypeSchema, // 中タスク目標数（0-20）
+        light: NumDailyGoalsTypeSchema, // 軽タスク目標数（0-20）
+    }),
+});
+
+type UserSettings = DBContainer<v.InferOutput<typeof UserSettingsContentSchema>>;
 
 // -----------------------------------------------------------------------------
 // UI用の追加型（フロントエンド専用）
