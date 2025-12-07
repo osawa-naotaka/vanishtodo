@@ -19,7 +19,7 @@ export function TaskWeightBadge({ task, current_date }: TaskWeightBadgeProps): J
     const badge_text = task.data.weight
         ? weight_labels[task.data.weight]
         : task.data.dueDate
-          ? `締切: ${shortFutureDate(task.data.dueDate, current_date)}`
+          ? `締切: ${shortFutureDate(task.data.dueDate, current_date).date}`
           : "";
     return <span>{badge_text}</span>;
 }

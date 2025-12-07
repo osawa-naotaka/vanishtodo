@@ -33,7 +33,7 @@ export function TaskView({ task, current_date, handleEditTask }: TaskViewProps):
         <li key={item.meta.id} className="card">
             <input type="checkbox" name="item" id={item.meta.id} checked={item.data.completedAt !== undefined} onChange={() => handleToggleComplete()} />
             <input type="text" defaultValue={item.data.title} onInput={(e) => updateTaskDataField("title", e.currentTarget.value)} />
-            <div>{shortPastDate(item.meta.createdAt, current_date).date}</div>
+            <div>{shortPastDate(item.meta.createdAt, current_date).date}作成</div>
             <TaskWeightBadge task={item} current_date={current_date} />
         </li>
     );
