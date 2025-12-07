@@ -21,5 +21,5 @@ export function TaskWeightBadge({ task, current_date }: TaskWeightBadgeProps): J
         : task.data.dueDate
           ? `締切: ${shortFutureDate(task.data.dueDate, current_date).date}`
           : "";
-    return <span>{badge_text}</span>;
+    return <div className={`weight-${task.data.weight || "due-date"}`}>{badge_text}</div>;
 }

@@ -56,8 +56,8 @@ export function Home(): JSX.Element {
                     <label htmlFor="tab-medium">中</label>
                     <input type="radio" name="tab" id="tab-heavy" />
                     <label htmlFor="tab-heavy">重</label>
-                    <input type="radio" name="tab" id="tab-duedate" />
-                    <label htmlFor="tab-duedate">締切</label>
+                    <input type="radio" name="tab" id="tab-due-date" />
+                    <label htmlFor="tab-due-date">締切</label>
                 </div>
             </footer>
         </>

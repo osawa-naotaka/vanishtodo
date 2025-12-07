@@ -36,8 +36,8 @@ export function TaskInput({ onAddTask }: TaskInputProps): JSX.Element {
                 <label htmlFor="weight-medium">中</label>
                 <input type="radio" name="weight" id="weight-heavy" value="heavy" />
                 <label htmlFor="weight-heavy">重</label>
-                <input type="radio" name="weight" id="weight-duedate" value="duedate" />
-                <label htmlFor="weight-duedate">締切</label>
+                <input type="radio" name="weight" id="weight-due-date" value="duedate" />
+                <label htmlFor="weight-due-date">締切</label>
             </div>
         </form>
     );

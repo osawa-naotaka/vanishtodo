@@ -141,6 +141,53 @@
         list-style-type: none;
     }
 
+    li.task {
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    li.task > .task-text {
+        flex-grow: 1;
+    }
+
+    .task-text > input[type="text"] {
+        width: 100%;
+    }
+
+    .task-text > .task-create-date {
+        color: #bbb;
+    }
+
+    li.task > .weight-light,
+    li.task > .weight-medium,
+    li.task > .weight-heavy,
+    li.task > .weight-due-date {
+        padding: 4px 1rem;
+        border-radius: 1rem;
+        font-weight: bold;
+    }
+
+    li.task > .weight-light {
+        color: #4caf50;
+        background: #e8f5e9;
+    }
+
+    li.task > .weight-medium {
+        color: #ff9800;
+        background: #fff3e0;
+    }
+
+    li.task > .weight-heavy {
+        color: #f44336;
+        background: #ffebee;
+    }
+
+    li.task > .weight-due-date {
+        color: #2196f3;
+        background: #e3f2fd;
+    }
+
     footer {
         position: fixed;
         bottom: 0;
@@ -169,5 +216,17 @@
 
     input:checked + label {
         background: #3f51b530;
+    }
+
+    main > ul > li.task {
+        display: none;
+    }
+
+    body:has(#tab-light:checked) > main > ul > li:has(.weight-light),
+    body:has(#tab-medium:checked) > main > ul > li:has(.weight-medium),
+    body:has(#tab-heavy:checked) > main > ul > li:has(.weight-heavy),
+    body:has(#tab-due-date:checked) > main > ul > li:has(.weight-due-date),
+    body:has(#tab-all:checked) > main > ul > li {
+        display: flex;
     }
 }
