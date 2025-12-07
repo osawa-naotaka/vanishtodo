@@ -83,9 +83,6 @@ export abstract class IPersistent {
     abstract writeTask(item: Task): Task[];
 }
 
-
-
-
 type Model = {
     user_settings: UserSettings; // ユーザー設定
     tasks: Task[]; // タスク一覧

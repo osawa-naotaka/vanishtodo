@@ -8,6 +8,7 @@ import type { Task, TaskCreateContent } from "./types";
 export function Home(): JSX.Element {
     const biz = useRef<Business>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const current_date = new Date().toISOString();
 
     useEffect(() => {
         const p = new Persistent();
@@ -41,7 +42,7 @@ export function Home(): JSX.Element {
                 <TaskInput onAddTask={handleAddTask} />
                 <ul>
                     {tasks.map((task) => (
-                        <TaskView key={task.meta.id} task={task} handleEditTask={handleEditTask} />
+                        <TaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
                     ))}
                 </ul>
             </main>

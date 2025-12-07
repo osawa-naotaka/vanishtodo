@@ -1,5 +1,4 @@
-import type { Task, TaskContent, TaskCreateContent } from "../types";
-import type { IPersistent } from "../types";
+import type { IPersistent, Task, TaskContent, TaskCreateContent } from "../types";
 
 /**
  * ビジネス層インターフェースクラス
