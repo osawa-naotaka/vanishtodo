@@ -18,4 +18,4 @@ if (root === null) {
 
 ReactDOM.createRoot(root).render(<RouterProvider router={router} />);
 
-console.log(await (await fetch("/api/v1/")).json());
+console.log(await (await fetch("/api/v1/tasks")).json());
