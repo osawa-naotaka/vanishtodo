@@ -4,21 +4,23 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "backend",
-	"main": "src/index.ts",
-	"compatibility_date": "2025-12-05",
+	"name": "vanishtodo",
+	"main": "worker/index.ts",
+	"compatibility_date": "2025-12-02",
+	"assets": {
+		"not_found_handling": "single-page-application"
+	},
 	"observability": {
 		"enabled": true
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "test-db",
+			"database_name": "vanishtodo-db",
 			"database_id": "c020574a-5623-407b-be0c-cd192bab9545",
 		    "preview_database_id": "DB"
 		}
-	]
-	/**
+	]	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
 	 */

@@ -13,9 +13,13 @@
 
 import { Hono } from "hono";
 
-const app = new Hono()
+type Bindings = {
+    DB: D1Database;
+};
 
-app.get('/', async (c) => {
+const app = new Hono<{ Bindings: Bindings }>()
+
+app.get('/api/v1/', async (c) => {
 	const ps = c.env.DB.prepare("SELECT * from users");
 	const data = await ps.first();
 	return c.json(data)
