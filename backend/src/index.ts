@@ -11,12 +11,25 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
-export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		const ps = env.DB.prepare("SELECT * from users");
-		const data = await ps.first();
+import { Hono } from "hono";
 
-		// return new Response('Hello World!');
-		return Response.json(data);
-	},
-} satisfies ExportedHandler<Env>;
+const app = new Hono()
+
+app.get('/', async (c) => {
+	const ps = c.env.DB.prepare("SELECT * from users");
+	const data = await ps.first();
+	return c.json(data)
+})
+
+export default app;
+
+
+// export default {
+// 	async fetch(request, env, ctx): Promise<Response> {
+// 		const ps = env.DB.prepare("SELECT * from users");
+// 		const data = await ps.first();
+
+// 		// return new Response('Hello World!');
+// 		return Response.json(data);
+// 	},
+// } satisfies ExportedHandler<Env>;
