@@ -9,7 +9,8 @@
 		"preview": "bun run build && vite preview",
 		"deploy": "bun run build && wrangler deploy",
 		"cf-typegen": "wrangler types",
-		"initdb": "wrangler d1 execute vanishtodo-db --local --file=./schema.sql"		
+		"migrate": "wrangler d1 migrations apply vanishtodo-db",
+		"initdb": "wrangler d1 execute vanishtodo-db --local --file=./migrations/0001_init-schema.sql"		
 	},
 	"dependencies": {
 		"hono": "^4.10.7",
