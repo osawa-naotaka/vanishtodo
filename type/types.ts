@@ -66,8 +66,7 @@ export type DBContainer<T> = {
     data: T;
 };
 
-export const tasksSchema = v.record(
-    idSchema,
+export const tasksSchema = v.array(
     v.object({
         meta: DBContainerMetaSchema,
         data: taskContentSchema,
@@ -79,6 +78,7 @@ export type TasksType = v.InferOutput<typeof tasksSchema>;
 export abstract class IPersistent {
     abstract get items(): Task[];
     abstract generateItem<T>(data: T): DBContainer<T>;
+    abstract readTasks(): Promise<Task[]>;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
     abstract writeTask(item: Task): Task[];
 }
@@ -135,16 +135,16 @@ declare function syncQueue(policy: UpdatePolicy, queue: Queue): DBStatus;
 // -----------------------------------------------------------------------------
 
 // 共通レスポンス型
-type ApiResponse = ApiSuccessResponse | ApiFailResponse;
+export type ApiResponse = ApiSuccessResponse | ApiFailResponse;
 
 // 成功レスポンス
-interface ApiSuccessResponse {
+export interface ApiSuccessResponse {
     status: "success";
     data: ApiResponseData;
 }
 
 // 失敗レスポンス
-interface ApiFailResponse {
+export interface ApiFailResponse {
     status: "fail";
     error: {
         code: string; // エラーコード
@@ -154,28 +154,28 @@ interface ApiFailResponse {
 }
 
 // API呼び出し成功時のレスポンスボディ型
-type ApiResponseData = ApiTasks | ApiTask | ApiAnalyze | ApiUserSettings;
+export type ApiResponseData = ApiTasks | ApiTask | ApiAnalyze | ApiUserSettings;
 
 // タスク一覧取得のレスポンスボディ
-interface ApiTasks {
+export interface ApiTasks {
     type: "tasks";
     tasks: Task[];
 }
 
 // タスク単体操作（作成・取得・更新）のレスポンスボディ
-interface ApiTask {
+export interface ApiTask {
     type: "task";
     task: Task;
 }
 
 // LLM解析のレスポンスボディ
-interface ApiAnalyze {
+export interface ApiAnalyze {
     type: "analyze";
     tasks: TaskInput[]; // 解析結果の複数タスク
 }
 
 // ユーザー設定のレスポンスボディ
-interface ApiUserSettings {
+export interface ApiUserSettings {
     type: "settings";
     settings: UserSettings;
 }
@@ -190,30 +190,40 @@ export const NumDailyGoalsTypeSchema = v.pipe(v.number(), v.minValue(0), v.maxVa
 // ユーザー設定（サーバー → クライアント）
 export const UserSettingsContentSchema = v.object({
     dailyGoals: v.object({
+        timezone: v.number(),
         heavy: NumDailyGoalsTypeSchema, // 重タスク目標数（0-20）
         medium: NumDailyGoalsTypeSchema, // 中タスク目標数（0-20）
         light: NumDailyGoalsTypeSchema, // 軽タスク目標数（0-20）
     }),
 });
 
-type UserSettings = DBContainer<v.InferOutput<typeof UserSettingsContentSchema>>;
+export type UserSettings = DBContainer<v.InferOutput<typeof UserSettingsContentSchema>>;
 
-// -----------------------------------------------------------------------------
-// UI用の追加型（フロントエンド専用）
-// -----------------------------------------------------------------------------
 
-// フィルタ種別
-type FilterType = "ALL" | "HEAVY" | "MEDIUM" | "LIGHT" | "DEADLINE";
+// ========================================
+// Database Schema関連の型
+// ========================================
 
-// 表示設定
-interface DisplayConfig {
-    limits: {
-        heavy: number; // 重タスク表示上限
-        medium: number; // 中タスク表示上限
-        light: number; // 軽タスク表示上限
-    };
-    currentFilter: FilterType; // 現在のフィルタ
-    showCompletedToday: boolean; // 本日完了分表示フラグ
+export interface DBUser {
+    id: string;
+    timezone: number;
+    heavy: number;
+    medium: number;
+    light: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DBTask {
+    id: string;
+    title: string;
+    weight: "light" | "medium" | "heavy" | null;
+    due_date: string | null;
+    completed_at: string | null;
+    is_deleted: number;
+    version: number;
+    created_at: string;
+    updated_at: string;
 }
 
 // -----------------------------------------------------------------------------

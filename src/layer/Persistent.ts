@@ -1,6 +1,6 @@
 import * as v from "valibot";
-import type { DBContainer, Task, TasksType } from "../types";
-import { IPersistent, tasksSchema } from "../types";
+import type { DBContainer, Task, TasksType } from "../../type/types";
+import { IPersistent, tasksSchema } from "../../type/types";
 
 export class Persistent extends IPersistent {
     private m_tasks: TasksType;
@@ -12,7 +12,7 @@ export class Persistent extends IPersistent {
         if (tasks) {
             this.m_tasks = v.parse(tasksSchema, JSON.parse(tasks));
         } else {
-            this.m_tasks = {};
+            this.m_tasks = [];
         }
     }
 
@@ -45,9 +45,22 @@ export class Persistent extends IPersistent {
         };
     }
 
-    writeTask(item: Task): Task[] {
-        this.m_tasks[item.meta.id] = item;
+    async readTasks(): Promise<Task[]> {
+        const ret = await (await fetch("/api/v1/tasks")).json();
+        console.log(ret);
+        this.m_tasks = v.parse(tasksSchema, ret.data.tasks);
         localStorage.setItem("vanish-todo-tasks", JSON.stringify(this.m_tasks));
-        return Object.values(this.m_tasks);
+        return this.m_tasks;
+    }
+
+    writeTask(item: Task): Task[] {
+        const idx = this.m_tasks.findIndex((x) => x.meta.id === item.meta.id);
+        if (idx >= 0) {
+            this.m_tasks[idx] = item;
+        } else {
+            this.m_tasks.push(item);
+        }
+        localStorage.setItem("vanish-todo-tasks", JSON.stringify(this.m_tasks));
+        return JSON.parse(JSON.stringify(this.m_tasks));
     }
 }

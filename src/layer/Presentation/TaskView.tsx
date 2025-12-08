@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useState } from "react";
+import type { Task, TaskContent } from "../../../type/types";
 import { shortPastDate } from "../../lib/date";
-import type { Task, TaskContent } from "../../types";
 import { TaskWeightBadge } from "./TaskWeightBadge";
 
 export type TaskViewProps = {

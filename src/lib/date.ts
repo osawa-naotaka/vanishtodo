@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { dateSchema } from "../types";
+import { dateSchema } from "../../type/types";
 
 export type ShortDate = {
     past_or_future: "past" | "future" | "now";

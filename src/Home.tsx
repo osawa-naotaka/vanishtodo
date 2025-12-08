@@ -1,9 +1,9 @@
 import { type JSX, useEffect, useRef, useState } from "react";
+import type { Task, TaskCreateContent } from "../type/types";
 import { Business } from "./layer/Business";
 import { Persistent } from "./layer/Persistent";
 import { TaskInput } from "./layer/Presentation/TaskInput";
 import { TaskView } from "./layer/Presentation/TaskView";
-import type { Task, TaskCreateContent } from "./types";
 
 export function Home(): JSX.Element {
     const biz = useRef<Business>(null);
@@ -14,6 +14,7 @@ export function Home(): JSX.Element {
         const p = new Persistent();
         biz.current = new Business(p);
         setTasks(biz.current.tasks);
+        biz.current.init().then((v) => setTasks(v));
     }, []);
 
     function handleEditTask(task: Task): void {

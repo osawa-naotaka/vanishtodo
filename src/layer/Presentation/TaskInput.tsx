@@ -1,8 +1,8 @@
 import type React from "react";
 import type { JSX } from "react";
 import { useState } from "react";
+import type { TaskCreateContent } from "../../../type/types";
 import { formDateToISOString, ISOStringToFormDate } from "../../lib/date";
-import type { TaskCreateContent } from "../../types";
 
 export type TaskInputProps = {
     onAddTask: (data: TaskCreateContent) => void;

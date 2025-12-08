@@ -1,6 +1,6 @@
 import type { JSX } from "react";
+import type { Task, TaskWeight } from "../../../type/types";
 import { shortFutureDate } from "../../lib/date";
-import type { Task, TaskWeight } from "../../types";
 
 export type TaskWeightBadgeProps = {
     task: Task;

@@ -1,4 +1,4 @@
-import type { IPersistent, Task, TaskContent, TaskCreateContent } from "../types";
+import type { IPersistent, Task, TaskContent, TaskCreateContent } from "../../type/types";
 
 /**
  * ビジネス層インターフェースクラス
@@ -8,10 +8,15 @@ export class Business {
 
     /**
      * 永続化層をDIしてビジネス層を初期化します
+     *
      * @param {IPersistent} persistent - 永続化層インターフェース(DI)
      */
     constructor(persistent: IPersistent) {
         this.m_persistent = persistent;
+    }
+
+    async init(): Promise<Task[]> {
+        return this.m_persistent.readTasks();
     }
 
     /**
