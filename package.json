@@ -8,6 +8,7 @@
 		"build": "tsc -b && vite build",
 		"preview": "bun run build && vite preview",
 		"deploy": "bun run build && wrangler deploy",
+		"check": "biome check --write ./src ./worker",
 		"cf-typegen": "wrangler types",
 		"migrate": "wrangler d1 migrations apply vanishtodo-db",
 		"initdb": "wrangler d1 execute vanishtodo-db --local --file=./migrations/0001_init-schema.sql"		

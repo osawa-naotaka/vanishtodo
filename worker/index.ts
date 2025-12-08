@@ -17,16 +17,15 @@ type Bindings = {
     DB: D1Database;
 };
 
-const app = new Hono<{ Bindings: Bindings }>()
+const app = new Hono<{ Bindings: Bindings }>();
 
-app.get('/api/v1/', async (c) => {
-	const ps = c.env.DB.prepare("SELECT * from users");
-	const data = await ps.first();
-	return c.json(data)
-})
+app.get("/api/v1/", async (c) => {
+    const ps = c.env.DB.prepare("SELECT * from users");
+    const data = await ps.first();
+    return c.json(data);
+});
 
 export default app;
-
 
 // export default {
 // 	async fetch(request, env, ctx): Promise<Response> {
