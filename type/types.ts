@@ -10,12 +10,16 @@ import * as v from "valibot";
 
 export const idSchema = v.pipe(v.string(), v.uuid()); // タスクID（UUIDv4、永続化層で生成）
 export const dateSchema = v.pipe(v.string(), v.isoTimestamp());
+export const taskWeightList = ["light", "medium", "heavy"] as const;
+export const taskTitleSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(500));
+export const taskWeightSchema = v.picklist(taskWeightList);
+export const taksVersionSchema = v.pipe(v.number(), v.toMinValue(0)); // 楽観的ロック用バージョン番号
 
 // -----------------------------------------------------------------------------
 // エラー型
 // -----------------------------------------------------------------------------
 
-export type VRespStatus = "success" | "network_error" | "server_internal_error" | "conflict" | "parse_error" | "other";
+export type VRespStatus = "success" | "network_error" | "server_internal_error" | "conflict" | "parse_error" | "http_error" | "abort";
 
 export type VResp<T> = {
     status: VRespStatus;
@@ -28,23 +32,22 @@ export type VResp<T> = {
 // -----------------------------------------------------------------------------
 
 // タスク作成・更新入力（クライアント → サーバー）
-export type TaskCreateContent = {
-    title: string; // タスクタイトル（1-500文字）
-    weight?: TaskWeight; // 重さ
-    dueDate?: string; // 締切日
-};
+export const taskCreateContentSchema = v.object({
+    title: taskTitleSchema,
+    weight: v.optional(taskWeightSchema),
+    dueDate: v.optional(dateSchema)
+});
+
+export type TaskCreateContent = v.InferOutput<typeof taskCreateContentSchema>;
 
 // タスク削除入力（クライアント → サーバー）
-type TaskDeleteInput = {
-    version: number; // 楽観的ロック用バージョン番号
-};
+export const taskDeleteContentSchema = v.object({
+    version: taksVersionSchema, 
+});
+
+export type TaskDeleteContent = v.InferOutput<typeof taskDeleteContentSchema>;
 
 // タスク（サーバー → クライアント、DB格納データ）
-export const taskWeightList = ["light", "medium", "heavy"] as const;
-
-export const taskTitleSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(500));
-export const taskWeightSchema = v.picklist(taskWeightList);
-
 export const taskContentSchema = v.object({
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
@@ -55,7 +58,7 @@ export const taskContentSchema = v.object({
 
 export type TaskWeight = v.InferOutput<typeof taskWeightSchema>;
 export type TaskContent = v.InferOutput<typeof taskContentSchema>;
-export type Task = DBContainer<v.InferOutput<typeof taskContentSchema>>;
+// export type Task = DBContainer<v.InferOutput<typeof taskContentSchema>>;
 
 // LLM解析結果の個別タスク入力（TaskCreateUpdateInputと同じ構造）
 type TaskInput = TaskCreateContent;
@@ -78,21 +81,23 @@ export type DBContainer<T> = {
     data: T;
 };
 
-export const tasksSchema = v.array(
-    v.object({
-        meta: DBContainerMetaSchema,
-        data: taskContentSchema,
-    }),
-);
+export const taskSchema = v.object({
+    meta: DBContainerMetaSchema,
+    data: taskContentSchema,
+});
 
-export type TasksType = v.InferOutput<typeof tasksSchema>;
+export type Task = v.InferOutput<typeof taskSchema>;
+
+export const tasksSchema = v.array(taskSchema);
+
+export type Tasks = v.InferOutput<typeof tasksSchema>;
 
 export abstract class IPersistent {
     abstract get items(): Task[];
     abstract generateItem<T>(data: T): DBContainer<T>;
     abstract readTasks(): Promise<VResp<Task[]>>;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
-    abstract writeTask(item: Task): Task[];
+    abstract writeTask(item: Task, onError: (r: VResp<null>) => void): Task[];
 }
 
 type Model = {
@@ -150,35 +155,44 @@ declare function syncQueue(policy: UpdatePolicy, queue: Queue): DBStatus;
 export type ApiResponse = ApiSuccessResponse | ApiFailResponse;
 
 // 成功レスポンス
-export interface ApiSuccessResponse {
-    status: "success";
-    data: ApiResponseData;
-}
+export const apiSuccessResponseSchema = v.object({
+    status: v.picklist(["success"]),
+    data: v.unknown(),
+});
+
+export type ApiSuccessResponse = v.InferOutput<typeof apiSuccessResponseSchema>;
 
 // 失敗レスポンス
-export interface ApiFailResponse {
-    status: "fail";
-    error: {
-        code: string; // エラーコード
-        message: string; // エラーメッセージ（日本語）
-        details?: Record<string, string>; // フィールド別のエラーメッセージ（省略可能）
-    };
-}
+export const apiFailResponseSchema = v.object({
+    status: v.picklist(["fail"]),
+    error: v.optional(v.object({
+        code: v.string(), // エラーコード
+        message: v.string(), // エラーメッセージ（日本語）
+        details: v.optional(v.record(v.string(), v.string())), // フィールド別のエラーメッセージ（省略可能）
+    })),
+});
+
+export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
+
 
 // API呼び出し成功時のレスポンスボディ型
 export type ApiResponseData = ApiTasks | ApiTask | ApiAnalyze | ApiUserSettings;
 
 // タスク一覧取得のレスポンスボディ
-export interface ApiTasks {
-    type: "tasks";
-    tasks: Task[];
-}
+export const apiTasksSchema = v.object({
+    type: v.picklist(["tasks"]),
+    tasks: tasksSchema,
+});
+
+export type ApiTasks = v.InferOutput<typeof apiTasksSchema>;
 
 // タスク単体操作（作成・取得・更新）のレスポンスボディ
-export interface ApiTask {
-    type: "task";
-    task: Task;
-}
+export const apiTaskSchema = v.object({
+    type: v.picklist(["task"]),
+    task: taskSchema,
+});
+
+export type ApiTask = v.InferOutput<typeof apiTaskSchema>;
 
 // LLM解析のレスポンスボディ
 export interface ApiAnalyze {
@@ -291,6 +305,6 @@ interface LogStorage {
 }
 
 // Durable Object全体の状態
-interface DurableObjectState {
+export interface DurableObjectState {
     logStorage: LogStorage; // ログストレージ
 }

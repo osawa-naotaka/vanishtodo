@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTasks, DBTask, Task } from "../type/types";
+import type { ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTask, ApiTasks, DBTask, Task } from "../type/types";
+import { taskSchema } from "../type/types";
+import * as v from "valibot";
 
 type Bindings = {
     DB: D1Database;
@@ -75,6 +77,20 @@ app.get("/api/v1/tasks", async (c) => {
         return successResponse(response);
     } catch (error) {
         console.error("Error fetching tasks:", error);
+        return errorResponse("INTERNAL_ERROR", "サーバーエラーが発生しました", 500);
+    }
+});
+
+app.put("/api/v1/tasks/:id", async (c) => {
+    const body = v.safeParse(taskSchema, await c.req.json());
+    if (body.success) {
+        const response: ApiTask = {
+            type: "task",
+            task: body.output,
+        };
+
+        return successResponse(response)
+    } else {
         return errorResponse("INTERNAL_ERROR", "サーバーエラーが発生しました", 500);
     }
 });

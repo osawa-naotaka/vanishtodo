@@ -16,7 +16,7 @@ export class Business {
     }
 
     async init(): Promise<VResp<Task[]>> {
-        return await this.m_persistent.readTasks();
+        return this.m_persistent.readTasks();
     }
 
     /**
@@ -32,7 +32,9 @@ export class Business {
             isDeleted: false,
         };
         const item = this.m_persistent.generateItem(c);
-        return this.m_persistent.writeTask(item);
+        return this.m_persistent.writeTask(item, (e) => {
+            console.log(e);
+        });
     }
 
     /**
@@ -45,7 +47,9 @@ export class Business {
     complete(item: Task): Task[] {
         const c = this.m_persistent.touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
-        return this.m_persistent.writeTask(c);
+        return this.m_persistent.writeTask(c, (e) => {
+            console.log(e);
+        });
     }
 
     /**
@@ -58,7 +62,9 @@ export class Business {
     edit(item: Task): Task[] {
         const updated = this.m_persistent.touchItem<TaskContent>(item);
         updated.data = item.data;
-        return this.m_persistent.writeTask(updated);
+        return this.m_persistent.writeTask(updated, (e) => {
+            console.log(e);
+        });
     }
 
     /**
