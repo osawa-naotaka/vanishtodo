@@ -12,6 +12,18 @@ export const idSchema = v.pipe(v.string(), v.uuid()); // タスクID（UUIDv4、
 export const dateSchema = v.pipe(v.string(), v.isoTimestamp());
 
 // -----------------------------------------------------------------------------
+// エラー型
+// -----------------------------------------------------------------------------
+
+export type VRespStatus = "success" | "network_error" | "server_internal_error" | "conflict" | "parse_error" | "other";
+
+export type VResp<T> = {
+    status: VRespStatus;
+    message?: string;
+    data: T;
+}
+
+// -----------------------------------------------------------------------------
 // ビジネス層 - タスク関連型
 // -----------------------------------------------------------------------------
 
@@ -78,7 +90,7 @@ export type TasksType = v.InferOutput<typeof tasksSchema>;
 export abstract class IPersistent {
     abstract get items(): Task[];
     abstract generateItem<T>(data: T): DBContainer<T>;
-    abstract readTasks(): Promise<Task[]>;
+    abstract readTasks(): Promise<VResp<Task[]>>;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
     abstract writeTask(item: Task): Task[];
 }

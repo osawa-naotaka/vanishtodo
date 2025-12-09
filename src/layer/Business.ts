@@ -1,4 +1,4 @@
-import type { IPersistent, Task, TaskContent, TaskCreateContent } from "../../type/types";
+import type { IPersistent, Task, TaskContent, TaskCreateContent, VResp } from "../../type/types";
 
 /**
  * ビジネス層インターフェースクラス
@@ -15,8 +15,8 @@ export class Business {
         this.m_persistent = persistent;
     }
 
-    async init(): Promise<Task[]> {
-        return this.m_persistent.readTasks();
+    async init(): Promise<VResp<Task[]>> {
+        return await this.m_persistent.readTasks();
     }
 
     /**

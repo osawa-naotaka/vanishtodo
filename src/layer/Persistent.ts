@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { DBContainer, Task, TasksType } from "../../type/types";
+import type { DBContainer, Task, TasksType, VResp } from "../../type/types";
 import { IPersistent, tasksSchema } from "../../type/types";
 
 export class Persistent extends IPersistent {
@@ -45,12 +45,47 @@ export class Persistent extends IPersistent {
         };
     }
 
-    async readTasks(): Promise<Task[]> {
-        const ret = await (await fetch("/api/v1/tasks")).json();
-        console.log(ret);
-        this.m_tasks = v.parse(tasksSchema, ret.data.tasks);
-        localStorage.setItem("vanish-todo-tasks", JSON.stringify(this.m_tasks));
-        return this.m_tasks;
+    async readTasks(): Promise<VResp<Task[]>> {
+        try {
+            const resp = await fetch("/api/v1/tasks");
+            if(!resp.ok) {
+                if(resp.status === 500) {
+                    return {
+                        status: "server_internal_error",
+                        message: resp.statusText,
+                        data: this.m_tasks,
+                    }
+                }
+                return {
+                    status: "other",
+                    message: resp.statusText,
+                    data: this.m_tasks,
+                };
+            }
+            const ret = await resp.json();
+            this.m_tasks = v.parse(tasksSchema, ret.data.tasks);
+            localStorage.setItem("vanish-todo-tasks", JSON.stringify(this.m_tasks));
+            return {
+                status: "success",
+                data: this.m_tasks,
+            };
+        } catch (e: unknown) {
+            if (e instanceof TypeError) {
+                return {
+                    status: "network_error",
+                    message: e.message,
+                    data: this.m_tasks,
+                };
+            } else if (e instanceof v.ValiError) {
+                return {
+                    status: "parse_error",
+                    message: e.stack,
+                    data: this.m_tasks,
+                };                
+            }
+
+            throw e;
+        }
     }
 
     writeTask(item: Task): Task[] {

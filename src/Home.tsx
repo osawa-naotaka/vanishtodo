@@ -14,7 +14,7 @@ export function Home(): JSX.Element {
         const p = new Persistent();
         biz.current = new Business(p);
         setTasks(biz.current.tasks);
-        biz.current.init().then((v) => setTasks(v));
+        biz.current.init().then((v) => setTasks(v.data));
     }, []);
 
     function handleEditTask(task: Task): void {
