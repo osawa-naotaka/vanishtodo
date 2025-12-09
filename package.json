@@ -14,6 +14,7 @@
 		"initdb": "wrangler d1 execute vanishtodo-db --local --file=./migrations/0001_init-schema.sql"
 	},
 	"dependencies": {
+		"drizzle-orm": "^0.45.0",
 		"hono": "^4.10.7",
 		"react": "^19.2.1",
 		"react-dom": "^19.2.1",
@@ -29,6 +30,7 @@
 		"@types/react-dom": "^19.2.3",
 		"@types/uuid": "^11.0.0",
 		"@vitejs/plugin-react": "^5.1.1",
+		"drizzle-kit": "^0.31.8",
 		"typescript": "^5.9.3",
 		"vite": "^7.2.7",
 		"wrangler": "^4.53.0"
