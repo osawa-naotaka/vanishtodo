@@ -162,16 +162,19 @@ export const apiSuccessResponseSchema = v.object({
 
 export type ApiSuccessResponse = v.InferOutput<typeof apiSuccessResponseSchema>;
 
+export const apiErrorSchema = v.object({
+    code: v.string(), // エラーコード
+    message: v.string(), // エラーメッセージ（日本語）
+    details: v.optional(v.array(v.unknown())), // フィールド別のエラーメッセージ（省略可能）
+});
+
 // 失敗レスポンス
 export const apiFailResponseSchema = v.object({
     status: v.picklist(["fail"]),
-    error: v.optional(v.object({
-        code: v.string(), // エラーコード
-        message: v.string(), // エラーメッセージ（日本語）
-        details: v.optional(v.record(v.string(), v.string())), // フィールド別のエラーメッセージ（省略可能）
-    })),
+    error: v.optional(apiErrorSchema),
 });
 
+export type ApiError = v.InferOutput<typeof apiErrorSchema>;
 export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
 
 
