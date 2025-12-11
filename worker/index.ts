@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import * as v from "valibot";
-import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTask, ApiTasks, Task } from "../type/types";
+import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTasks, ApiVoid, Task } from "../type/types";
 import { taskSchema } from "../type/types";
 import { tasks } from "./schema";
 
@@ -144,12 +144,8 @@ app.put("/api/v1/tasks/:id", async (c) => {
 
         await db.update(tasks).set(taskToDbTask(updateData)).where(eq(tasks.id, taskId));
 
-        // 更新後のタスクを取得
-        const updatedTask = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
-
-        const response: ApiTask = {
-            type: "task",
-            task: dbTaskToTask(updatedTask[0]),
+        const response: ApiVoid = {
+            type: "void",
         };
 
         return successResponse(response);
@@ -183,12 +179,8 @@ app.post("/api/v1/tasks", async (c) => {
 
         await db.insert(tasks).values(taskToDbTask(createData));
 
-        // 更新後のタスクを取得
-        const updatedTask = await db.select().from(tasks).where(eq(tasks.id, createData.meta.id)).limit(1);
-
-        const response: ApiTask = {
-            type: "task",
-            task: dbTaskToTask(updatedTask[0]),
+        const response: ApiVoid = {
+            type: "void",
         };
 
         return successResponse(response);

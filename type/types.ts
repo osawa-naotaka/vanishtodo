@@ -126,7 +126,7 @@ export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
 
 
 // API呼び出し成功時のレスポンスボディ型
-export type ApiResponseData = ApiTasks | ApiTask | ApiAnalyze | ApiUserSettings;
+export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSettings;
 
 // タスク一覧取得のレスポンスボディ
 export const apiTasksSchema = v.object({
@@ -136,13 +136,20 @@ export const apiTasksSchema = v.object({
 
 export type ApiTasks = v.InferOutput<typeof apiTasksSchema>;
 
-// タスク単体操作（作成・取得・更新）のレスポンスボディ
+// タスク単体取得のレスポンスボディ
 export const apiTaskSchema = v.object({
     type: v.picklist(["task"]),
     task: taskSchema,
 });
 
 export type ApiTask = v.InferOutput<typeof apiTaskSchema>;
+
+// タスク単体作成・更新のレスポンスボディ
+export const apiVoidShema = v.object({
+    type: v.picklist(["void"]),
+});
+
+export type ApiVoid = v.InferOutput<typeof apiVoidShema>;
 
 // LLM解析のレスポンスボディ
 export interface ApiAnalyze {
