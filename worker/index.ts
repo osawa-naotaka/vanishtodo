@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { ApiError, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTask, ApiTasks, Task } from "../type/types";
+import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTask, ApiTasks, Task } from "../type/types";
 import { taskContentSchema } from "../type/types";
 import * as v from "valibot";
 import { drizzle } from "drizzle-orm/d1";
@@ -19,10 +19,10 @@ app.use("*", cors());
 // ユーティリティ関数
 // ========================================
 
-function errorResponse(status: number, error?: ApiError): Response {
+function errorResponse(status: number, error_info: ApiErrorInfo): Response {
     const response: ApiFailResponse = {
         status: "fail",
-        error,
+        error_info,
     };
     return new Response(JSON.stringify(response), {
         status,
@@ -75,11 +75,15 @@ app.get("/api/v1/tasks", async (c) => {
         };
 
         return successResponse(response);
-    } catch (error) {
-        console.error("Error fetching tasks:", error);
+    } catch (error: unknown) {
+        let details = "";
+        if (error instanceof Error) {
+            details = error.stack || error.message;
+        }
         return errorResponse(500, {
             code: "INTERNAL_ERROR", 
-            message: "サーバーエラーが発生しました"
+            message: "/api/v1/tasksの取得中にサーバー側のロジック異常が検出されました",
+            details
         });
     }
 });
@@ -95,7 +99,7 @@ app.put("/api/v1/tasks/:id", async (c) => {
             return errorResponse(400, {
                 code: "VALIDATION_ERROR",
                 message: "入力内容に誤りがあります",
-                details: parseResult.issues,
+                details: parseResult.issues.join(", "),
             });
         }
 

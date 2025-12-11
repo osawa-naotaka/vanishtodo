@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { DBContainer, Task, Tasks, VResp } from "../../type/types";
+import type { DBContainer, Task, Tasks, PersistentResult } from "../../type/types";
 import { apiFailResponseSchema, apiSuccessResponseSchema, apiTasksSchema, IPersistent, tasksSchema } from "../../type/types";
 
 export class Persistent extends IPersistent {
@@ -45,7 +45,7 @@ export class Persistent extends IPersistent {
         };
     }
 
-    readTasks(): Promise<VResp<Task[]>> {
+    readTasks(): Promise<PersistentResult<Task[]>> {
         return new Promise((resolve) => {
             const promise = fetch("/api/v1/tasks");
             this.processResponse(promise, (e) => {
@@ -59,7 +59,11 @@ export class Persistent extends IPersistent {
                     });
                 } else {
                     resolve({
-                        status: "server_internal_error",
+                        status: "fatal",
+                        error_info: {
+                            code: "INTERNAL_ERROR",
+                            message: "サーバーから取得したタスクデータの構造が想定と違います",
+                        },
                         data: this.m_tasks,
                     });
                 }
@@ -67,7 +71,7 @@ export class Persistent extends IPersistent {
         });
     }
 
-    writeTask(item: Task, onError: (r: VResp<null>) => void): Task[] {
+    writeTask(item: Task, onError: (r: PersistentResult<null>) => void): Task[] {
         const idx = this.m_tasks.findIndex((x) => x.meta.id === item.meta.id);
         if (idx >= 0) {
             this.m_tasks[idx] = item;
@@ -80,7 +84,7 @@ export class Persistent extends IPersistent {
         return JSON.parse(JSON.stringify(this.m_tasks));
     }
 
-    writeTaskToDb(item: Task, onError: (r: VResp<null>) => void): void {
+    writeTaskToDb(item: Task, onError: (r: PersistentResult<null>) => void): void {
         const promise = fetch(`/api/v1/tasks/${item.meta.id}`, {
             method: "PUT",
             headers: {
@@ -89,33 +93,28 @@ export class Persistent extends IPersistent {
             body: JSON.stringify(item),
         });
 
-        this.processResponse(promise, (e: VResp<unknown>) => {
+        this.processResponse(promise, (e: PersistentResult<unknown>) => {
             if (e.status !== "success") {
-                onError({
-                    status: e.status,
-                    message: e.message,
-                    data: null,
-                });
+                onError({ ...e, data: null });
             }
         });
     }
 
-    processResponse(promise: Promise<Response>, then: (r: VResp<unknown>) => void): void {
+    processResponse(promise: Promise<Response>, then: (r: PersistentResult<unknown>) => void): void {
         promise
             .then((resp) => {
                 if (!resp.ok) {
-                    if (resp.status === 500) {
-                        then({
-                            status: "server_internal_error",
-                            message: resp.statusText,
-                            data: null,
-                        });
-                    } else {
-                        then({
-                            status: "http_error",
-                            message: `${resp.status} ${resp.statusText}`,
-                            data: null,
-                        });
+                    switch (resp.status) {
+                        default: {
+                            then({
+                                status: "fatal",
+                                error_info: {
+                                    code: "INTERNAL_ERROR",
+                                    message: "サーバー内部でエラーが発生しました",
+                                },
+                                data: null,
+                            });
+                        }
                     }
                 } else {
                     resp.json()
@@ -129,7 +128,17 @@ export class Persistent extends IPersistent {
                             const parse_fail = v.safeParse(apiFailResponseSchema, r);
                             if (parse_fail.success) {
                                 then({
-                                    status: "server_internal_error",
+                                    status: "fatal",
+                                    error_info: parse_fail.output.error_info,
+                                    data: null,
+                                });
+                            } else {
+                                then({
+                                    status: "fatal",
+                                    error_info: {
+                                        code: "INTERNAL_ERROR",
+                                        message: "サーバーからのレスポンスの構造が想定と違います",
+                                    },
                                     data: null,
                                 });
                             }
@@ -156,11 +165,16 @@ export class Persistent extends IPersistent {
             .catch((e: unknown) => {
                 if (e instanceof TypeError) {
                     then({
-                        status: "network_error",
-                        message: e.message,
+                        status: "recoverable",
+                        error_info: {
+                            code: "NETWORK_ERROR",
+                            message: e.message,
+                        },
                         data: null,
                     });
                     return;
+                } else if () {
+
                 }
 
                 throw e;
