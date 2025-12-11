@@ -1,5 +1,5 @@
 import { type JSX, useEffect, useRef, useState } from "react";
-import type { Task, TaskCreateContent } from "../type/types";
+import type { Task, TaskInput as TaskInputT } from "../type/types";
 import { Business } from "./layer/Business";
 import { Persistent } from "./layer/Persistent";
 import { TaskInput } from "./layer/Presentation/TaskInput";
@@ -23,7 +23,7 @@ export function Home(): JSX.Element {
         }
     }
 
-    function handleAddTask(data: TaskCreateContent): void {
+    function handleAddTask(data: TaskInputT): void {
         if (biz.current) {
             setTasks(biz.current.create(data));
         }

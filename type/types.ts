@@ -112,6 +112,7 @@ export const apiErrorInfoSchema = v.object({
     code: v.string(), // エラーコード
     message: v.string(), // エラーメッセージ（日本語）
     details: v.optional(v.string()), // stack traceなど
+    input: v.optional(v.string()), // 入力データ（任意）
 });
 
 // 失敗レスポンス

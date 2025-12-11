@@ -1,11 +1,11 @@
+import { desc, eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTask, ApiTasks, Task } from "../type/types";
-import { taskContentSchema } from "../type/types";
 import * as v from "valibot";
-import { drizzle } from "drizzle-orm/d1";
+import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTask, ApiTasks, Task } from "../type/types";
+import { taskSchema } from "../type/types";
 import { tasks } from "./schema";
-import { desc, eq } from "drizzle-orm";
 
 type Bindings = {
     DB: D1Database;
@@ -81,9 +81,9 @@ app.get("/api/v1/tasks", async (c) => {
             details = error.stack || error.message;
         }
         return errorResponse(500, {
-            code: "INTERNAL_ERROR", 
+            code: "INTERNAL_ERROR",
             message: "/api/v1/tasksの取得中にサーバー側のロジック異常が検出されました",
-            details
+            details,
         });
     }
 });
@@ -94,24 +94,17 @@ app.put("/api/v1/tasks/:id", async (c) => {
         const requestBody = await c.req.json();
 
         // バリデーション
-        const parseResult = v.safeParse(taskContentSchema, requestBody);
+        const parseResult = v.safeParse(taskSchema, requestBody);
         if (!parseResult.success) {
             return errorResponse(400, {
                 code: "VALIDATION_ERROR",
                 message: "入力内容に誤りがあります",
-                details: parseResult.issues.join(", "),
+                details: parseResult.issues.map((issue) => issue.message).join("; "),
+                input: JSON.stringify(requestBody),
             });
         }
 
         const updateData = parseResult.output;
-        const version = requestBody.version;
-
-        if (typeof version !== "number" || version < 0) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "バージョン番号が必要です",
-            });
-        }
 
         const db = drizzle(c.env.DB);
 
@@ -125,28 +118,27 @@ app.put("/api/v1/tasks/:id", async (c) => {
             });
         }
 
+        console.log(`Updating task ${taskId} with version ${updateData.meta.version}, previous version ${existingTask[0].version}`);
         // 楽観的ロックのチェック
         const force = c.req.query("force") === "true";
-        if (!force && existingTask[0].version !== version) {
+        if (!force && existingTask[0].version + 1 !== updateData.meta.version) {
             return errorResponse(400, {
                 code: "CONFLICT",
-                message: "タスクが他で更新されています。ページをリロードしてください。"
+                message: "タスクが他で更新されています。ページをリロードしてください。",
+                input: `${existingTask[0].version}|${updateData.meta.version}`,
             });
         }
 
-        // 更新処理
-        const now = new Date().toISOString();
-        const newVersion = existingTask[0].version + 1;
-
-        await db.update(tasks)
+        await db
+            .update(tasks)
             .set({
-                title: updateData.title,
-                weight: updateData.weight || null,
-                due_date: updateData.dueDate || null,
-                completed_at: updateData.completedAt || null,
-                is_deleted: updateData.isDeleted,
-                version: newVersion,
-                updated_at: now,
+                title: updateData.data.title,
+                weight: updateData.data.weight || null,
+                due_date: updateData.data.dueDate || null,
+                completed_at: updateData.data.completedAt || null,
+                is_deleted: updateData.data.isDeleted,
+                version: updateData.meta.version,
+                updated_at: updateData.meta.updatedAt,
             })
             .where(eq(tasks.id, taskId));
 
@@ -163,9 +155,60 @@ app.put("/api/v1/tasks/:id", async (c) => {
         console.error("Error updating task:", error);
         return errorResponse(500, {
             code: "INTERNAL_ERROR",
-            message: "サーバーエラーが発生しました"
+            message: "サーバーエラーが発生しました",
         });
     }
 });
+
+app.post("/api/v1/tasks", async (c) => {
+    try {
+        const requestBody = await c.req.json();
+
+        // バリデーション
+        const parseResult = v.safeParse(taskSchema, requestBody);
+        if (!parseResult.success) {
+            return errorResponse(400, {
+                code: "VALIDATION_ERROR",
+                message: "入力内容に誤りがあります",
+                details: parseResult.issues.map((issue) => issue.message).join("; "),
+                input: JSON.stringify(requestBody),
+            });
+        }
+
+        const createData = parseResult.output;
+
+        const db = drizzle(c.env.DB);
+
+        await db
+            .insert(tasks)
+            .values({
+                id: createData.meta.id,
+                title: createData.data.title,
+                weight: createData.data.weight || null,
+                due_date: createData.data.dueDate || null,
+                completed_at: createData.data.completedAt || null,
+                is_deleted: createData.data.isDeleted,
+                version: createData.meta.version,
+                updated_at: createData.meta.updatedAt,
+            });
+
+        // 更新後のタスクを取得
+        const updatedTask = await db.select().from(tasks).where(eq(tasks.id, createData.meta.id)).limit(1);
+
+        const response: ApiTask = {
+            type: "task",
+            task: dbTaskToTask(updatedTask[0]),
+        };
+
+        return successResponse(response);
+    } catch (error) {
+        console.error("Error updating task:", error);
+        return errorResponse(500, {
+            code: "INTERNAL_ERROR",
+            message: "サーバーエラーが発生しました",
+        });
+    }
+});
+
 
 export default app;

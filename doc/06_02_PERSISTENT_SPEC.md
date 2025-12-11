@@ -22,6 +22,96 @@ QueueはLocalStorage上に構成されます。ブラウザの再起動やリロ
 
 エラーがあり、DB層へのアクセスができない場合は、LocalStorageに残った値のみを使ってビジネス層からのアクセスに答えます。
 
+### エラー処理
+
+1. fetch()が発生する例外
+  - AbortError DOMException
+    - エラー要因: AbortController の abort() メソッドの呼び出しによりリクエストが中止された。
+    - 処理方針: DeQueueは処理を停止します。DeQueueは行われません。Queueに次のEnQueueアクセスがあった際、またはユーザーから明示的なリロード指定があった際に、あらためてQueueの先頭からDB層へのアクセスをはじめます。
+  - NotAllowedError DOMException
+    - エラー要因: トピック API関連。vanishtodoでは利用しません
+    - 処理方針: AbortErrorと同じ処理方針です。
+  - TypeError: 
+    - エラー要因: ネットワークエラー、もしくは様々な要因で発生します。https://developer.mozilla.org/ja/docs/Web/API/Window/fetch
+    - 処理方針: ネットワークエラーが含まれているので、リトライ対象です。DeQueueは行わなず、リトライを何回か行います。それでもエラーの場合はDeQueueはリトライを一時停止します。Queueに次のEnQueueアクセスがあった際、またはユーザーから明示的なリロード指定があった際に、あらためてQueueの先頭からDB層へのリトライアクセスをはじめます。
+    - 懸念事項: TypeErrorはネットワークエラー以外でも発生します。主にvanishtodoのロジックが異常な場合に発生し、回復不可能です。正しくはデバッグ対象で、リトライしても回復しません。しかし、ネットワークエラーとその他のエラーを区別する手法がわからないため、本仕様のままでは一律にリトライになってしまいます。Queueはクリアされないため、それ以降は再起動しても継続して動作することは不可能になってしまいます。フェイルセーフの考え方からすると問題がありそうです。解決方法はまだ考えられていません。
+
+2. httpレスポンスが200-299以外のステータスを返した
+
+- Hono本体が返すエラー
+
+| Status  | 名称                    | 発生条件                  | 備考                      |
+| ------- | --------------------- | --------------------- | ----------------------- |
+| **404** | Not Found             | ルート未定義                | `app.notFound()` で上書き可  |
+| **405** | Method Not Allowed    | パス一致・メソッド不一致          | バージョンや設定で 404 に退化する場合あり |
+| **500** | Internal Server Error | 未ハンドル例外 / Response未返却 | `app.onError()` で上書き可   |
+
+- Cloudflare Workersが返すエラー
+
+| Status  | 名称                              | 発生条件                      | 捕捉可否 |
+| ------- | ------------------------------- | ------------------------- | ---- |
+| **400** | Bad Request                     | リクエスト形式が不正（壊れたHTTP、異常ヘッダ） | ❌    |
+| **413** | Payload Too Large               | Body サイズが Workers 上限超過    | ❌    |
+| **414** | URI Too Long                    | URL が上限超過                 | ❌    |
+| **431** | Request Header Fields Too Large | Cookie / Header が大きすぎる    | ❌    |
+| **500** | Internal Error                  | Workers エンジン内部エラー         | ❌    |
+| **503** | Service Unavailable             | Workers 側の一時障害            | ❌    |
+
+- Cloudflare Edgeが返すエラー
+
+| Status  | 名称                   | 発生条件                            | 補足            |
+| ------- | -------------------- | ------------------------------- | ------------- |
+| **403** | Forbidden            | WAF / Bot Fight / 地域制限          | Hono 未到達      |
+| **429** | Too Many Requests    | Rate Limiting / DDoS Protection | Hono 未到達      |
+| **522** | Connection Timed Out | オリジン（Workers含む）応答なし             | Cloudflare 固有 |
+| **523** | Origin Unreachable   | オリジン未到達                         | 同上            |
+| **524** | A Timeout Occurred   | Workers 実行時間超過                  | 同上            |
+| **530** | Origin DNS Error     | DNS 解決失敗                        | 同上            |
+
+
+
+- DB層が返すエラー(参考情報。本物はDB_API_SPECを参照)
+
+| エラーコード | HTTPステータス | 説明 |
+|------------|--------------|------|
+| VALIDATION_ERROR | 400 | 入力バリデーションエラー |
+| NOT_FOUND | 404 | リソースが見つからない |
+| CONFLICT | 409 | 楽観的ロック競合 |
+| INTERNAL_ERROR | 500 | サーバー内部エラー |
+| LLM_UNAVAILABLE | 503 | LLM APIが利用不可 |
+
+
+#### エラー分類
+
+1. 回復可能なエラー
+   - 409 CONFLICT
+     - 上書きかQueueの破棄かを選ぶ
+   - fetch()のAbortError
+     - DeQueueせずに処理中断
+   - fetch()のTypeError (そのうちネットワークエラー)
+   - 503 LLM_UNABAILABLE, Workers Service Unavailable
+   - 429 Too Many Request
+   - 522 Connection Timed Out
+   - 524 A Timeout Occured
+     - リトライ、5回リトライ失敗で処理中断
+   - 523 Origin Unreachable
+   - 530 Origin DNS Error
+     - 暫定でリトライ、5回リトライ失敗で処理中断
+2. 回復不可能なエラー(1): 当該アクセスをDeQueue
+   - 400 VALIDATION_ERROR, Bad Request
+     - vanishtodoのバグ。本来はフロントエンドでバリデーションエラーを発生するからおこらない
+   - 404 Not Found, 405 Method Not Allowed, 500 Internal Server Error
+     - vanishtodoのバグ
+   - 413, 414, 431
+   - 403
+
+#### エラー用の型
+
+- conflict
+- network error
+- internal error
+
+
 ## 2 機能リスト
 
 | 機能ID | 機能名 | 優先度 | 対応要件ID |

@@ -1,4 +1,4 @@
-import type { IPersistent, Task, TaskContent, TaskCreateContent, VResp } from "../../type/types";
+import type { IPersistent, PersistentResult, Task, TaskContent, TaskInput } from "../../type/types";
 
 /**
  * ビジネス層インターフェースクラス
@@ -15,7 +15,7 @@ export class Business {
         this.m_persistent = persistent;
     }
 
-    async init(): Promise<VResp<Task[]>> {
+    async init(): Promise<PersistentResult<Task[]>> {
         return this.m_persistent.readTasks();
     }
 
@@ -25,7 +25,7 @@ export class Business {
      * @param {TaskCreateContent} data 作成するタスクデータ
      * @returns {Task[]} 全タスクリスト
      */
-    create(data: TaskCreateContent): Task[] {
+    create(data: TaskInput): Task[] {
         const c: TaskContent = {
             ...data,
             completedAt: undefined,
@@ -75,7 +75,7 @@ export class Business {
      * @param {TaskContent} data バリデート対象
      * @returns {boolean} バリデート結果
      */
-    validateTaskCreateContent(data: TaskCreateContent): boolean {
+    validateTaskCreateContent(data: TaskInput): boolean {
         if (data.title.length > 500 || data.title.length === 0) return false;
         if ((data.weight === null && data.dueDate === null) || (data.weight !== null && data.dueDate !== null)) return false;
 
