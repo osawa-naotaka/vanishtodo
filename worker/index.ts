@@ -118,7 +118,6 @@ app.put("/api/v1/tasks/:id", async (c) => {
             });
         }
 
-        console.log(`Updating task ${taskId} with version ${updateData.meta.version}, previous version ${existingTask[0].version}`);
         // 楽観的ロックのチェック
         const force = c.req.query("force") === "true";
         if (!force && existingTask[0].version + 1 !== updateData.meta.version) {
