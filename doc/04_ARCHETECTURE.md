@@ -15,6 +15,7 @@
 |------------|------|----------|
 | 1.0 | 2025-11-15 | 初版作成 |
 | 2.0 | 2025-11-27 | 4層レイヤードアーキテクチャ+2サービスに再設計 |
+| 3.0 | 2025-12-12 | 5層レイヤードアーキテクチャ+2サービスに再設計 |
 
 ---
 
@@ -40,6 +41,10 @@ graph TB
             SyncQueue[(LocalStorage<br/>未送信キュー)]
             SyncManager[同期マネージャー<br/>キュー処理/リトライ]
         end
+
+        subgraph "ネット層"
+            Fetch[フェッチマネージャ]
+        end
     end
     
     subgraph "Cloudflare Edge"
@@ -59,10 +64,12 @@ graph TB
     State --> TaskOps
     TaskOps --> LLMClient
     TaskOps --> SyncManager
-    LLMClient -.LLM API.-> AI
+    LLMClient -.LLM API.-> Fetch
     SyncManager --> LocalStorage
     SyncManager --> SyncQueue
-    SyncManager -.REST API.-> Workers
+    SyncManager -.REST API.-> Fetch
+    Fetch --> Workers
+    Fetch --> AI
     Workers --> D1
     Workers -.ログ.-> DurableObj
     Cron -.定期実行.-> Workers
@@ -78,6 +85,7 @@ graph TB
 | プレゼンテーション層 | ブラウザ | UI表示、ユーザー操作、状態管理（React State） |
 | ビジネス層 | ブラウザ | タスク操作ロジック、LLMプロンプト生成 |
 | 永続化層 | ブラウザ | LocalStorage管理、DB同期、キュー処理 |
+| ネット層 | ブラウザ | Fetch&レスポンス処理 |
 | DB層 | Cloudflare Workers | REST API、CRUD操作 |
 
 | サービス | 配置 | 責務 |
@@ -155,7 +163,7 @@ DIの手法により、ビジネス層の実体化の際に永続化層の実体
 永続化層はひとつのクラスとして実装します。
 永続化層は、タスクリストとセッティングを保持し、ビジネス層からのリクエストに応えてこれらの値を読み書きします。
 タスクリストやセッティングの初期値はDB層に保存されているため、アプリの起動直後にDB層からこれらのデータを取得しLocalStorageに保存します。
-ビジネス層からの読み書きリクエストはまずLocalStorageに対して行われます。書き込みアクセスはLocalStorageに加えDB層へのアクセスも行い、DB層のDBとLocalStorageのコヒーレントを保ちます。
+ビジネス層からの読み書きリクエストはまずLocalStorageに対して行われます。書き込みアクセスはLocalStorageに加えネット層を通じてDB層へのアクセスも行い、DB層のDBとLocalStorageのコヒーレントを保ちます。
 
 
 #### データフロー
@@ -201,8 +209,17 @@ interface QueueEntry {
 }
 ```
 
+### 3.4 ネット層
 
-### 3.4 DB層
+#### 責務
+
+- 永続化層からのget,put,post,delete要求をfetch()に変換して実行
+- fetch()のレスポンスを処理（エラー・レスポンスパースを含む）
+
+永続化層はひとつのクラスとして実装します。永続化層から呼び出される抽象的なget/postリクエスト等を
+実際のfetchリクエストに変換してDB層との通信を行います。
+
+### 3.5 DB層
 
 #### 責務
 

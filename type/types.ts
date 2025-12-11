@@ -163,7 +163,18 @@ export interface ApiUserSettings {
     settings: UserSettings;
 }
 
+// -----------------------------------------------------------------------------
+// ネット層関連型
+// -----------------------------------------------------------------------------
 
+export type OnComplete = (r: PersistentResult<unknown>) => void;
+
+export abstract class IFetch {
+    abstract getJson(path: string): Promise<Response>;
+    abstract postJson(path: string, body: object): Promise<Response>;
+    abstract putJson(path: string, body: object): Promise<Response>;
+    abstract processResponse(promise: Promise<Response>, onComplete: OnComplete): Promise<void>;
+}
 
 // -----------------------------------------------------------------------------
 // 永続化層関連型
