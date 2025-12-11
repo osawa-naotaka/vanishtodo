@@ -178,18 +178,16 @@ app.post("/api/v1/tasks", async (c) => {
 
         const db = drizzle(c.env.DB);
 
-        await db
-            .insert(tasks)
-            .values({
-                id: createData.meta.id,
-                title: createData.data.title,
-                weight: createData.data.weight || null,
-                due_date: createData.data.dueDate || null,
-                completed_at: createData.data.completedAt || null,
-                is_deleted: createData.data.isDeleted,
-                version: createData.meta.version,
-                updated_at: createData.meta.updatedAt,
-            });
+        await db.insert(tasks).values({
+            id: createData.meta.id,
+            title: createData.data.title,
+            weight: createData.data.weight || null,
+            due_date: createData.data.dueDate || null,
+            completed_at: createData.data.completedAt || null,
+            is_deleted: createData.data.isDeleted,
+            version: createData.meta.version,
+            updated_at: createData.meta.updatedAt,
+        });
 
         // 更新後のタスクを取得
         const updatedTask = await db.select().from(tasks).where(eq(tasks.id, createData.meta.id)).limit(1);
@@ -208,6 +206,5 @@ app.post("/api/v1/tasks", async (c) => {
         });
     }
 });
-
 
 export default app;

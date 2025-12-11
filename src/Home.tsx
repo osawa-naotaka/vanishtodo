@@ -2,7 +2,7 @@ import { type JSX, useEffect, useRef, useState } from "react";
 import type { Task, TaskInput as TaskInputT } from "../type/types";
 import { Business } from "./layer/Business";
 import { Persistent } from "./layer/Persistent";
-import { TaskInput } from "./layer/Presentation/TaskInput";
+import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 import { TaskView } from "./layer/Presentation/TaskView";
 
 export function Home(): JSX.Element {
@@ -40,7 +40,7 @@ export function Home(): JSX.Element {
                 </div>
             </header>
             <main className="responsive">
-                <TaskInput onAddTask={handleAddTask} defaultDate={current_date} />
+                <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
                 <ul>
                     {tasks.map((task) => (
                         <TaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />

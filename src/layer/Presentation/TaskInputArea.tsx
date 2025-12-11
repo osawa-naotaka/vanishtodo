@@ -1,15 +1,15 @@
 import type React from "react";
 import type { JSX } from "react";
 import { useState } from "react";
-import type { TaskCreateContent } from "../../../type/types";
+import type { TaskInput } from "../../../type/types";
 import { formDateToISOString, ISOStringToFormDate } from "../../lib/date";
 
 export type TaskInputProps = {
-    onAddTask: (data: TaskCreateContent) => void;
+    onAddTask: (data: TaskInput) => void;
     defaultDate: string;
 };
 
-export function TaskInput({ onAddTask, defaultDate }: TaskInputProps): JSX.Element {
+export function TaskInputArea({ onAddTask, defaultDate }: TaskInputProps): JSX.Element {
     const [title, setTitle] = useState<string>("");
     const [date, setDate] = useState<string>(ISOStringToFormDate(defaultDate));
 
