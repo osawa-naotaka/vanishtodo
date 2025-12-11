@@ -59,6 +59,20 @@ function dbTaskToTask(dbTask: typeof tasks.$inferSelect): Task {
     };
 }
 
+function taskToDbTask(task: Task): typeof tasks.$inferInsert {
+    return {
+        id: task.meta.id,
+        title: task.data.title,
+        weight: task.data.weight || null,
+        due_date: task.data.dueDate || null,
+        completed_at: task.data.completedAt || null,
+        is_deleted: task.data.isDeleted,
+        version: task.meta.version,
+        created_at: task.meta.createdAt,
+        updated_at: task.meta.updatedAt,
+    };
+}
+
 // ========================================
 // API-001: タスク一覧取得
 // ========================================
@@ -128,18 +142,7 @@ app.put("/api/v1/tasks/:id", async (c) => {
             });
         }
 
-        await db
-            .update(tasks)
-            .set({
-                title: updateData.data.title,
-                weight: updateData.data.weight || null,
-                due_date: updateData.data.dueDate || null,
-                completed_at: updateData.data.completedAt || null,
-                is_deleted: updateData.data.isDeleted,
-                version: updateData.meta.version,
-                updated_at: updateData.meta.updatedAt,
-            })
-            .where(eq(tasks.id, taskId));
+        await db.update(tasks).set(taskToDbTask(updateData)).where(eq(tasks.id, taskId));
 
         // 更新後のタスクを取得
         const updatedTask = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
@@ -178,16 +181,7 @@ app.post("/api/v1/tasks", async (c) => {
 
         const db = drizzle(c.env.DB);
 
-        await db.insert(tasks).values({
-            id: createData.meta.id,
-            title: createData.data.title,
-            weight: createData.data.weight || null,
-            due_date: createData.data.dueDate || null,
-            completed_at: createData.data.completedAt || null,
-            is_deleted: createData.data.isDeleted,
-            version: createData.meta.version,
-            updated_at: createData.meta.updatedAt,
-        });
+        await db.insert(tasks).values(taskToDbTask(createData));
 
         // 更新後のタスクを取得
         const updatedTask = await db.select().from(tasks).where(eq(tasks.id, createData.meta.id)).limit(1);

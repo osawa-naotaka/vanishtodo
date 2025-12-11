@@ -47,9 +47,13 @@ export class Persistent extends IPersistent {
         };
     }
 
-    readTasks(): Promise<PersistentResult<Task[]>> {
+    async readTasks(): Promise<PersistentResult<Task[]>> {
+        const promise = fetch("/api/v1/tasks");
+        // const promise = fetch("/api/v1/tasks", {
+        //     cache: "no-store",
+        // });
+
         return new Promise((resolve) => {
-            const promise = fetch("/api/v1/tasks");
             this.processResponse(promise, (e) => {
                 const resp = v.safeParse(apiTasksSchema, e.data);
                 if (resp.success) {
@@ -65,6 +69,7 @@ export class Persistent extends IPersistent {
                         error_info: {
                             code: "INTERNAL_ERROR",
                             message: "サーバーから取得したタスクデータの構造が想定と違います",
+                            details: resp.issues.map((issue) => issue.message).join("; "),
                         },
                         data: this.m_tasks,
                     });
@@ -75,7 +80,6 @@ export class Persistent extends IPersistent {
 
     writeTask(item: Task, onError: (r: PersistentResult<null>) => void): Task[] {
         const idx = this.m_tasks.findIndex((x) => x.meta.id === item.meta.id);
-        console.log("writeTask idx:", idx);
         if (idx >= 0) {
             this.m_tasks[idx] = item;
             this.writeTaskToDb(item, onError);
