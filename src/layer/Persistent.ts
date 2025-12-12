@@ -1,22 +1,29 @@
 import * as v from "valibot";
-import type { ApiVoid, DBContainer, Result, Task, Tasks } from "../../type/types";
+import type { ApiTasks, ApiVoid, DBContainer, Result, Task, Tasks } from "../../type/types";
 import { apiTasksSchema, apiVoidSchema, IPersistent, tasksSchema } from "../../type/types";
 import type { Network } from "./Network";
 
 export class Persistent extends IPersistent {
+    private m_storage_key = "vanish-todo-storage";
     private m_tasks: Tasks;
-    private m_net: Network;
+    private m_network: Network;
 
-    constructor(net: Network) {
+    constructor(network: Network) {
         super();
-        // localStorage.removeItem("vanish-todo-tasks");
-        const tasks = localStorage.getItem("vanish-todo-tasks");
+        // localStorage.removeItem(this.m_storage_key);
+        const tasks = localStorage.getItem(this.m_storage_key);
         if (tasks) {
-            this.m_tasks = v.parse(tasksSchema, JSON.parse(tasks));
+            const result = v.safeParse(tasksSchema, JSON.parse(tasks));
+            if (result.success) {
+                this.m_tasks = result.output;
+            } else {
+                console.log("Persistent: failed to parse tasks from localStorage. use empty list.");
+                this.m_tasks = [];
+            }
         } else {
             this.m_tasks = [];
         }
-        this.m_net = net;
+        this.m_network = network;
     }
 
     get tasks(): Task[] {
@@ -48,65 +55,61 @@ export class Persistent extends IPersistent {
         };
     }
 
-    async readTasks(): Promise<Result<Task[]>> {
-        const promise = this.m_net.getJson("/tasks");
+    async readTasks(): Promise<Result<ApiTasks>> {
+        const promise = this.m_network.getJson("/tasks");
         // const promise = fetch("/api/v1/tasks", {
         //     cache: "no-store",
         // });
-
-        return new Promise((resolve) => {
-            this.m_net.processResponse(promise, apiTasksSchema, (e) => {
-                if (e.status === "success") {
-                    this.m_tasks = e.data.tasks;
-                    localStorage.setItem("vanish-todo-tasks", JSON.stringify(this.m_tasks));
-                    resolve({
-                        status: "success",
-                        data: this.m_tasks,
-                    });
-                } else {
-                    resolve({
-                        status: "fatal",
-                        error_info: e.error_info,
-                        data: this.m_tasks,
-                    });
-                }
-            });
-        });
+        const result = await this.m_network.processResponse(promise, apiTasksSchema);
+        if (result.status === "success") {
+            this.m_tasks = result.data.tasks;
+            const str = JSON.stringify(this.m_tasks);
+            localStorage.setItem(this.m_storage_key, str);
+            return {
+                status: "success",
+                data: result.data,
+            };
+        } else {
+            return {
+                status: "fatal",
+                error_info: result.error_info,
+                data: {
+                    type: "tasks",
+                    tasks: this.m_tasks,
+                },
+            };
+        }
     }
 
-    writeTask(item: Task, onError: (r: Result<null>) => void): Task[] {
+    async createTask(item: Task): Promise<Result<ApiVoid>> {
         const idx = this.m_tasks.findIndex((x) => x.meta.id === item.meta.id);
         if (idx >= 0) {
-            this.m_tasks[idx] = item;
-            this.writeTaskToDb(item, onError);
-        } else {
-            this.m_tasks.push(item);
-            this.createTaskToDb(item, onError);
+            return {
+                status: "fatal",
+                error_info: {
+                    code: "INTERNAL_ERROR",
+                    message: "タスク作成時にIDが重複しました",
+                },
+            };
         }
-
-        const str = JSON.stringify(this.m_tasks);
-        localStorage.setItem("vanish-todo-tasks", str);
-
-        return JSON.parse(str);
+        this.m_tasks.push(item);
+        const promise = this.m_network.postJson("/tasks", item);
+        return this.m_network.processResponse(promise, apiVoidSchema);
     }
 
-    private createTaskToDb(item: Task, onError: (r: Result<null>) => void): void {
-        const promise = this.m_net.postJson("/tasks", item);
-
-        this.m_net.processResponse(promise, apiVoidSchema, (e: Result<ApiVoid>) => {
-            if (e.status !== "success") {
-                onError({ ...e, data: null });
-            }
-        });
-    }
-
-    private writeTaskToDb(item: Task, onError: (r: Result<null>) => void): void {
-        const promise = this.m_net.putJson(`/tasks/${item.meta.id}`, item);
-
-        this.m_net.processResponse(promise, apiVoidSchema, (e: Result<unknown>) => {
-            if (e.status !== "success") {
-                onError({ ...e, data: null });
-            }
-        });
+    async updateTask(item: Task): Promise<Result<ApiVoid>> {
+        const idx = this.m_tasks.findIndex((x) => x.meta.id === item.meta.id);
+        if (idx < 0) {
+            return {
+                status: "fatal",
+                error_info: {
+                    code: "INTERNAL_ERROR",
+                    message: "タスク更新時にIDが見つかりません",
+                },
+            };
+        }
+        this.m_tasks[idx] = item;
+        const promise = this.m_network.putJson(`/tasks/${item.meta.id}`, item);
+        return this.m_network.processResponse(promise, apiVoidSchema);
     }
 }

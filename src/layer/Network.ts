@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { ApiErrorInfo, OnComplete, Result, ResultErrorStatus } from "../../type/types";
+import type { ApiErrorInfo, Result, ResultErrorStatus } from "../../type/types";
 import { apiFailResponseSchema, apiSuccessResponseSchema } from "../../type/types";
 
 export class Network {
@@ -40,7 +40,7 @@ export class Network {
      * @param {OnComplete} onComplete
      * @returns {Promise<void>}
      */
-    async processResponse<T>(promise: Promise<Response>, schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>, onComplete: OnComplete<T>): Promise<void> {
+    async processResponse<T>(promise: Promise<Response>, schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>): Promise<Result<T>> {
         try {
             // response header
             const resp = await promise;
@@ -58,78 +58,70 @@ export class Network {
             if (parse_success.success) {
                 const data_parse = v.safeParse(schema, parse_success.output.data);
                 if (data_parse.success) {
-                    onComplete({ status: "success", data: data_parse.output });
-                    return;
+                    return { status: "success", data: data_parse.output };
                 }
-                onComplete({
+                return {
                     status: "fatal",
                     error_info: {
                         code: "INTERNAL_ERROR",
                         message: "サーバーからのレスポンスのデータ構造が想定と違います",
                         details: data_parse.issues.map((issue) => issue.message).join("; "),
                     },
-                });
-                return;
+                };
             }
 
             // fail response
             const parse_fail = v.safeParse(apiFailResponseSchema, r);
             if (parse_fail.success) {
-                onComplete({
+                return {
                     status: "fatal",
                     error_info: parse_fail.output.error_info,
-                });
-                return;
+                };
             }
 
             if (!resp.ok) {
-                onComplete(this.processStatus(resp.status));
-                return;
+                return this.processStatus(resp.status);
             }
 
             // malformed response
-            onComplete({
+            return {
                 status: "fatal",
                 error_info: {
                     code: "INTERNAL_ERROR",
                     message: "サーバーからのレスポンスの構造が想定と違います",
                 },
-            });
-
-            return;
+            };
         } catch (e: unknown) {
             // ネットワークエラーの可能性ありなのでrecoverableで返す
             if (e instanceof TypeError) {
-                onComplete({
+                return {
                     status: "recoverable",
                     error_info: {
                         code: "NETWORK_ERROR",
                         message: e.message,
                     },
-                });
-                return;
+                };
             }
 
             // Abort指示
             if (e instanceof DOMException) {
-                onComplete({
+                return {
                     status: "abort",
                     error_info: {
                         code: "ABORTED",
                         message: e.message,
                     },
-                });
-                return;
+                };
             }
 
             // 未知のエラーはfatalで返す
-            onComplete({
+            return {
                 status: "fatal",
                 error_info: {
                     code: "INTERNAL_ERROR",
                     message: "不明なエラーが発生しました",
                 },
-            });
+            };
         }
     }
 

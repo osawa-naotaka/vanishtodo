@@ -10,8 +10,27 @@ import * as v from "valibot";
 
 
 // -----------------------------------------------------------------------------
-// エラー型
+// リザルト・エラー型
 // -----------------------------------------------------------------------------
+
+export type ResultStatus = "success" | ResultErrorStatus;
+export type ResultErrorStatus = "abort" | "recoverable" | "conflict" | "fatal";
+
+export type Result<T> = ResultSuccess<T> | ResultFail<T>;
+
+export type ResultSuccess<T> = {
+    status: "success";
+    data: T;
+}
+
+export type ResultFail<T> = {
+    status: ResultErrorStatus;
+    error_info: ApiErrorInfo;
+    data?: T;
+}
+
+export type OnComplete<T> = (r: Result<T>) => void;
+export type OnError = OnComplete<ApiVoid>;
 
 
 // -----------------------------------------------------------------------------
@@ -47,7 +66,6 @@ export const taskTitleSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(50
 export const taskWeightList = ["light", "medium", "heavy"] as const;
 export const taskWeightSchema = v.picklist(taskWeightList);
 
-// タスク（DB格納データ）
 export const taskContentSchema = v.object({
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
@@ -91,6 +109,19 @@ export const taskInputSchema = v.object({
 });
 
 export type TaskInput = v.InferOutput<typeof taskInputSchema>;
+
+
+// -----------------------------------------------------------------------------
+// ネットワーク層関連型
+// -----------------------------------------------------------------------------
+
+export abstract class IFetch {
+    abstract getJson(path: string): Promise<Response>;
+    abstract postJson(path: string, body: object): Promise<Response>;
+    abstract putJson(path: string, body: object): Promise<Response>;
+    abstract processResponse<T>(promise: Promise<Response>, onComplete: OnComplete<T>): Promise<void>;
+}
+
 
 
 //
@@ -164,48 +195,18 @@ export interface ApiUserSettings {
 }
 
 // -----------------------------------------------------------------------------
-// ネット層関連型
-// -----------------------------------------------------------------------------
-
-export type OnComplete<T> = (r: Result<T>) => void;
-
-export abstract class IFetch {
-    abstract getJson(path: string): Promise<Response>;
-    abstract postJson(path: string, body: object): Promise<Response>;
-    abstract putJson(path: string, body: object): Promise<Response>;
-    abstract processResponse<T>(promise: Promise<Response>, onComplete: OnComplete<T>): Promise<void>;
-}
-
-// -----------------------------------------------------------------------------
 // 永続化層関連型
 // -----------------------------------------------------------------------------
-
-// 戻り値
-export type ResultStatus = "success" | ResultErrorStatus;
-export type ResultErrorStatus = "abort" | "recoverable" | "conflict" | "fatal";
-
-export type Result<T> = ResultSuccess<T> | ResultFail<T>;
-
-export type ResultSuccess<T> = {
-    status: "success";
-    data: T;
-}
-
-export type ResultFail<T> = {
-    status: ResultErrorStatus;
-    error_info: ApiErrorInfo;
-    data?: T;
-}
-
 
 export type BaseSchemaType = v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>;
 
 export abstract class IPersistent {
     abstract get tasks(): Task[];
     abstract generateItem<T>(data: T): DBContainer<T>;
-    abstract readTasks(): Promise<Result<Task[]>>;
+    abstract readTasks(): Promise<Result<ApiTasks>>;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
-    abstract writeTask(item: Task, onError: (r: Result<null>) => void): Task[];
+    abstract createTask(item: Task): Promise<Result<ApiVoid>>;
+    abstract updateTask(item: Task): Promise<Result<ApiVoid>>;
 }
 
 type Model = {

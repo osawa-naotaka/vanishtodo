@@ -1,4 +1,4 @@
-import type { IPersistent, Result, Task, TaskContent, TaskInput } from "../../type/types";
+import type { ApiTasks, IPersistent, OnError, Result, Task, TaskContent, TaskInput } from "../../type/types";
 
 /**
  * ビジネス層インターフェースクラス
@@ -15,7 +15,7 @@ export class Business {
         this.m_persistent = persistent;
     }
 
-    async init(): Promise<Result<Task[]>> {
+    init(): Promise<Result<ApiTasks>> {
         return this.m_persistent.readTasks();
     }
 
@@ -25,16 +25,19 @@ export class Business {
      * @param {TaskCreateContent} data 作成するタスクデータ
      * @returns {Task[]} 全タスクリスト
      */
-    create(data: TaskInput): Task[] {
+    create(data: TaskInput, onError: OnError): Task[] {
         const c: TaskContent = {
             ...data,
             completedAt: undefined,
             isDeleted: false,
         };
         const item = this.m_persistent.generateItem(c);
-        return this.m_persistent.writeTask(item, (e) => {
-            console.log(e);
+        this.m_persistent.createTask(item).then((e) => {
+            if (e.status !== "success") {
+                onError(e);
+            }
         });
+        return this.m_persistent.tasks;
     }
 
     /**
@@ -44,12 +47,15 @@ export class Business {
      * @param {Task} item
      * @returns {Task[]} 全タスクリスト
      */
-    complete(item: Task): Task[] {
+    complete(item: Task, onError: OnError): Task[] {
         const c = this.m_persistent.touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
-        return this.m_persistent.writeTask(c, (e) => {
-            console.log(e);
+        this.m_persistent.updateTask(c).then((e) => {
+            if (e.status !== "success") {
+                onError(e);
+            }
         });
+        return this.m_persistent.tasks;
     }
 
     /**
@@ -59,12 +65,15 @@ export class Business {
      * @param {Task} item 編集後のタスク
      * @returns {Task[]} 全タスクリスト
      */
-    edit(item: Task): Task[] {
+    edit(item: Task, onError: OnError): Task[] {
         const updated = this.m_persistent.touchItem<TaskContent>(item);
         updated.data = item.data;
-        return this.m_persistent.writeTask(updated, (e) => {
-            console.log(e);
+        this.m_persistent.updateTask(updated).then((e) => {
+            if (e.status !== "success") {
+                onError(e);
+            }
         });
+        return this.m_persistent.tasks;
     }
 
     /**

@@ -18,20 +18,28 @@ export function Home(): JSX.Element {
         setTasks(biz.current.tasks);
         biz.current.init().then((v) => {
             if (v.status === "success") {
-                setTasks(v.data);
+                setTasks(v.data.tasks);
             }
         });
     }, []);
 
     function handleEditTask(task: Task): void {
         if (biz.current) {
-            setTasks(biz.current.edit(task));
+            setTasks(
+                biz.current.edit(task, (e) => {
+                    console.error(e);
+                }),
+            );
         }
     }
 
     function handleAddTask(data: TaskInput): void {
         if (biz.current) {
-            setTasks(biz.current.create(data));
+            setTasks(
+                biz.current.create(data, (e) => {
+                    console.error(e);
+                }),
+            );
         }
     }
 
