@@ -1,6 +1,6 @@
 import * as v from "valibot";
-import type { DBContainer, PersistentResult, Task, Tasks } from "../../type/types";
-import { apiTasksSchema, IPersistent, tasksSchema } from "../../type/types";
+import type { ApiVoid, DBContainer, PersistentResult, Task, Tasks } from "../../type/types";
+import { apiTasksSchema, apiVoidSchema, IPersistent, tasksSchema } from "../../type/types";
 import type { Net } from "./Net";
 
 export class Persistent extends IPersistent {
@@ -19,7 +19,7 @@ export class Persistent extends IPersistent {
         this.m_net = net;
     }
 
-    get items(): Task[] {
+    get tasks(): Task[] {
         return Object.values(this.m_tasks);
     }
 
@@ -55,10 +55,9 @@ export class Persistent extends IPersistent {
         // });
 
         return new Promise((resolve) => {
-            this.m_net.processResponse(promise, (e) => {
-                const resp = v.safeParse(apiTasksSchema, e.data);
-                if (resp.success) {
-                    this.m_tasks = resp.output.tasks;
+            this.m_net.processResponse(promise, apiTasksSchema, (e) => {
+                if (e.status === "success") {
+                    this.m_tasks = e.data.tasks;
                     localStorage.setItem("vanish-todo-tasks", JSON.stringify(this.m_tasks));
                     resolve({
                         status: "success",
@@ -67,11 +66,7 @@ export class Persistent extends IPersistent {
                 } else {
                     resolve({
                         status: "fatal",
-                        error_info: {
-                            code: "INTERNAL_ERROR",
-                            message: "サーバーから取得したタスクデータの構造が想定と違います",
-                            details: resp.issues.map((issue) => issue.message).join("; "),
-                        },
+                        error_info: e.error_info,
                         data: this.m_tasks,
                     });
                 }
@@ -98,7 +93,7 @@ export class Persistent extends IPersistent {
     private createTaskToDb(item: Task, onError: (r: PersistentResult<null>) => void): void {
         const promise = this.m_net.postJson("/tasks", item);
 
-        this.m_net.processResponse(promise, (e: PersistentResult<unknown>) => {
+        this.m_net.processResponse(promise, apiVoidSchema, (e: PersistentResult<ApiVoid>) => {
             if (e.status !== "success") {
                 onError({ ...e, data: null });
             }
@@ -108,7 +103,7 @@ export class Persistent extends IPersistent {
     private writeTaskToDb(item: Task, onError: (r: PersistentResult<null>) => void): void {
         const promise = this.m_net.putJson(`/tasks/${item.meta.id}`, item);
 
-        this.m_net.processResponse(promise, (e: PersistentResult<unknown>) => {
+        this.m_net.processResponse(promise, apiVoidSchema, (e: PersistentResult<unknown>) => {
             if (e.status !== "success") {
                 onError({ ...e, data: null });
             }

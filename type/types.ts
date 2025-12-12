@@ -145,11 +145,11 @@ export const apiTaskSchema = v.object({
 export type ApiTask = v.InferOutput<typeof apiTaskSchema>;
 
 // タスク単体作成・更新のレスポンスボディ
-export const apiVoidShema = v.object({
+export const apiVoidSchema = v.object({
     type: v.picklist(["void"]),
 });
 
-export type ApiVoid = v.InferOutput<typeof apiVoidShema>;
+export type ApiVoid = v.InferOutput<typeof apiVoidSchema>;
 
 // LLM解析のレスポンスボディ
 export interface ApiAnalyze {
@@ -167,13 +167,13 @@ export interface ApiUserSettings {
 // ネット層関連型
 // -----------------------------------------------------------------------------
 
-export type OnComplete = (r: PersistentResult<unknown>) => void;
+export type OnComplete<T> = (r: PersistentResult<T>) => void;
 
 export abstract class IFetch {
     abstract getJson(path: string): Promise<Response>;
     abstract postJson(path: string, body: object): Promise<Response>;
     abstract putJson(path: string, body: object): Promise<Response>;
-    abstract processResponse(promise: Promise<Response>, onComplete: OnComplete): Promise<void>;
+    abstract processResponse<T>(promise: Promise<Response>, onComplete: OnComplete<T>): Promise<void>;
 }
 
 // -----------------------------------------------------------------------------
@@ -194,14 +194,14 @@ export type PersistentSuccess<T> = {
 export type PersistentFail<T> = {
     status: PersistentErrorStatus;
     error_info: ApiErrorInfo;
-    data: T;
+    data?: T;
 }
 
 
 export type BaseSchemaType = v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>;
 
 export abstract class IPersistent {
-    abstract get items(): Task[];
+    abstract get tasks(): Task[];
     abstract generateItem<T>(data: T): DBContainer<T>;
     abstract readTasks(): Promise<PersistentResult<Task[]>>;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;

@@ -102,6 +102,9 @@ app.get("/api/v1/tasks", async (c) => {
     }
 });
 
+// ========================================
+// API-004: タスク更新
+// ========================================
 app.put("/api/v1/tasks/:id", async (c) => {
     try {
         const taskId = c.req.param("id");
@@ -158,6 +161,9 @@ app.put("/api/v1/tasks/:id", async (c) => {
     }
 });
 
+// ========================================
+// API-003: タスク作成
+// ========================================
 app.post("/api/v1/tasks", async (c) => {
     try {
         const requestBody = await c.req.json();

@@ -40,7 +40,7 @@ export class Net {
      * @param {OnComplete} onComplete
      * @returns {Promise<void>}
      */
-    async processResponse(promise: Promise<Response>, onComplete: OnComplete): Promise<void> {
+    async processResponse<T>(promise: Promise<Response>, schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>, onComplete: OnComplete<T>): Promise<void> {
         try {
             // response header
             const resp = await promise;
@@ -56,7 +56,19 @@ export class Net {
             // success response
             const parse_success = v.safeParse(apiSuccessResponseSchema, r);
             if (parse_success.success) {
-                onComplete(parse_success.output);
+                const data_parse = v.safeParse(schema, parse_success.output.data);
+                if (data_parse.success) {
+                    onComplete({ status: "success", data: data_parse.output });
+                    return;
+                }
+                onComplete({
+                    status: "fatal",
+                    error_info: {
+                        code: "INTERNAL_ERROR",
+                        message: "サーバーからのレスポンスのデータ構造が想定と違います",
+                        details: data_parse.issues.map((issue) => issue.message).join("; "),
+                    },
+                });
                 return;
             }
 
@@ -66,7 +78,6 @@ export class Net {
                 onComplete({
                     status: "fatal",
                     error_info: parse_fail.output.error_info,
-                    data: null,
                 });
                 return;
             }
@@ -83,7 +94,6 @@ export class Net {
                     code: "INTERNAL_ERROR",
                     message: "サーバーからのレスポンスの構造が想定と違います",
                 },
-                data: null,
             });
 
             return;
@@ -96,7 +106,6 @@ export class Net {
                         code: "NETWORK_ERROR",
                         message: e.message,
                     },
-                    data: null,
                 });
                 return;
             }
@@ -109,7 +118,6 @@ export class Net {
                         code: "ABORTED",
                         message: e.message,
                     },
-                    data: null,
                 });
                 return;
             }
@@ -121,7 +129,6 @@ export class Net {
                     code: "INTERNAL_ERROR",
                     message: "不明なエラーが発生しました",
                 },
-                data: null,
             });
         }
     }
@@ -146,7 +153,7 @@ export class Net {
         [500, "fatal", { code: "INTERNAL_ERROR", message: "サーバー内部でエラーが発生しました" }],
     ];
 
-    private processStatus(st: number, onComplet: OnComplete): void {
+    private processStatus<T>(st: number, onComplet: OnComplete<T>): void {
         const index = this.process_status.findIndex(([code]) => code === st);
         if (index === -1) {
             onComplet({
@@ -155,7 +162,6 @@ export class Net {
                     code: `UNHANDLED_STATUS_${st}`,
                     message: `httpステータスコード${st}はハンドルされず致命的エラーになりました`,
                 },
-                data: null,
             });
             return;
         }
@@ -164,7 +170,6 @@ export class Net {
         onComplet({
             status: status,
             error_info,
-            data: null,
         });
         return;
     }

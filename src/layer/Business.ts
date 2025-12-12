@@ -83,6 +83,6 @@ export class Business {
     }
 
     get tasks(): Task[] {
-        return this.m_persistent.items;
+        return this.m_persistent.tasks;
     }
 }
