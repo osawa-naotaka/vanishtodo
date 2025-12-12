@@ -64,12 +64,12 @@ graph TB
     State --> TaskOps
     TaskOps --> LLMClient
     TaskOps --> SyncManager
-    LLMClient -.LLM API.-> Fetch
+    LLMClient --> Fetch
     SyncManager --> LocalStorage
     SyncManager --> SyncQueue
-    SyncManager -.REST API.-> Fetch
-    Fetch --> Workers
-    Fetch --> AI
+    SyncManager --> Fetch
+    Fetch -.REST API.-> Workers
+    Fetch -.LLM API.-> AI
     Workers --> D1
     Workers -.ログ.-> DurableObj
     Cron -.定期実行.-> Workers
@@ -151,6 +151,13 @@ graph TB
 ビジネス層はひとつのクラスとして実装します。
 DIの手法により、ビジネス層の実体化の際に永続化層の実体を渡し、その実体を経由して永続化層にアクセス（メソッド呼び出し）します。
 
+#### インターフェース関数
+
+- init()
+- createTask()
+- editTask()
+- editConfig()
+
 ### 3.3 永続化層
 
 #### 責務
@@ -165,6 +172,13 @@ DIの手法により、ビジネス層の実体化の際に永続化層の実体
 タスクリストやセッティングの初期値はDB層に保存されているため、アプリの起動直後にDB層からこれらのデータを取得しLocalStorageに保存します。
 ビジネス層からの読み書きリクエストはまずLocalStorageに対して行われます。書き込みアクセスはLocalStorageに加えネット層を通じてDB層へのアクセスも行い、DB層のDBとLocalStorageのコヒーレントを保ちます。
 
+#### インターフェース関数
+
+- readTasks()
+- createTask()
+- updateTask()
+- readConfig()
+- updateConfig()
 
 #### データフロー
 
@@ -218,6 +232,12 @@ interface QueueEntry {
 
 永続化層はひとつのクラスとして実装します。永続化層から呼び出される抽象的なget/postリクエスト等を
 実際のfetchリクエストに変換してDB層との通信を行います。
+
+#### インターフェース関数
+
+- getJson()
+- putJson()
+- postJson()
 
 ### 3.5 DB層
 
