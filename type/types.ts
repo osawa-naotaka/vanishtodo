@@ -119,10 +119,7 @@ export abstract class IFetch {
     abstract getJson(path: string): Promise<Response>;
     abstract postJson(path: string, body: object): Promise<Response>;
     abstract putJson(path: string, body: object): Promise<Response>;
-    abstract processResponse<T>(promise: Promise<Response>, onComplete: OnComplete<T>): Promise<void>;
 }
-
-
 
 //
 // APIレスポンス関連型
@@ -198,7 +195,7 @@ export interface ApiUserSettings {
 // 永続化層関連型
 // -----------------------------------------------------------------------------
 
-export type BaseSchemaType = v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>;
+export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
 export abstract class IPersistent {
     abstract get tasks(): Task[];

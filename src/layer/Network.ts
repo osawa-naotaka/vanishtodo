@@ -1,46 +1,77 @@
 import * as v from "valibot";
-import type { ApiErrorInfo, Result, ResultErrorStatus } from "../../type/types";
-import { apiFailResponseSchema, apiSuccessResponseSchema } from "../../type/types";
+import type { ApiErrorInfo, ApiVoid, Result, ResultErrorStatus, Schema } from "../../type/types";
+import { apiFailResponseSchema, apiSuccessResponseSchema, apiVoidSchema } from "../../type/types";
 
+/**
+ * ネットワーク層インターフェースクラス
+ */
 export class Network {
     private baseUrl: string;
 
+    /**
+     * ネットワーク層を初期化します
+     *
+     * @param {string} baseUrl - ベースURL
+     */
     constructor(baseUrl: string) {
         this.baseUrl = baseUrl;
     }
 
-    getJson(path: string): Promise<Response> {
-        return fetch(`${this.baseUrl}${path}`);
+    /**
+     * GETリクエストを送信します
+     *
+     * @param {string} path - リクエストパス
+     * @returns {Promise<Response>} レスポンスのPromise
+     */
+    getJson<T>(path: string, schema: Schema<T>): Promise<Result<T>> {
+        const promise = fetch(`${this.baseUrl}${path}`);
+        return this.processResponse(promise, schema);
     }
 
-    postJson(path: string, body: object): Promise<Response> {
-        return fetch(`${this.baseUrl}${path}`, {
+    /**
+     * POSTリクエストを送信します
+     *
+     * @param {string} path - リクエストパス
+     * @param {object} body - リクエストボディ
+     * @returns {Promise<Response>} レスポンスのPromise
+     */
+    postJson(path: string, body: object): Promise<Result<ApiVoid>> {
+        const promise = fetch(`${this.baseUrl}${path}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(body),
         });
+        return this.processResponse(promise, apiVoidSchema);
     }
 
-    putJson(path: string, body: object): Promise<Response> {
-        return fetch(`${this.baseUrl}${path}`, {
+    /**
+     * PUTリクエストを送信します
+     *
+     * @param {string} path - リクエストパス
+     * @param {object} body - リクエストボディ
+     * @returns {Promise<Result<T>>} レスポンスのパース結果のPromise
+     */
+    putJson(path: string, body: object): Promise<Result<ApiVoid>> {
+        const promise = fetch(`${this.baseUrl}${path}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(body),
         });
+        return this.processResponse(promise, apiVoidSchema);
     }
 
     /**
-     * fetch()が生成するPromise<Response>を処理し、onCompleteコールバックを呼び出します
+     * レスポンスを処理します
      *
-     * @param {Promise<Response>} promise
-     * @param {OnComplete} onComplete
-     * @returns {Promise<void>}
+     * @param {Promise<Response>} promise - fetch()が生成するPromise<Response>
+     * @param {Schema<T>} schema - バリデーションスキーマ
+     * @returns {Promise<Result<T>>} 処理結果
      */
-    async processResponse<T>(promise: Promise<Response>, schema: v.BaseSchema<unknown, T, v.BaseIssue<unknown>>): Promise<Result<T>> {
+    private async processResponse<T>(promise: Promise<Response>, schema: Schema<T>): Promise<Result<T>> {
         try {
             // response header
             const resp = await promise;
