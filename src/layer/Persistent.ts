@@ -1,13 +1,13 @@
 import * as v from "valibot";
 import type { ApiVoid, DBContainer, PersistentResult, Task, Tasks } from "../../type/types";
 import { apiTasksSchema, apiVoidSchema, IPersistent, tasksSchema } from "../../type/types";
-import type { Net } from "./Net";
+import type { Network } from "./Network";
 
 export class Persistent extends IPersistent {
     private m_tasks: Tasks;
-    private m_net: Net;
+    private m_net: Network;
 
-    constructor(net: Net) {
+    constructor(net: Network) {
         super();
         // localStorage.removeItem("vanish-todo-tasks");
         const tasks = localStorage.getItem("vanish-todo-tasks");

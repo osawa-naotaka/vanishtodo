@@ -2,7 +2,7 @@ import * as v from "valibot";
 import type { ApiErrorInfo, OnComplete, PersistentErrorStatus } from "../../type/types";
 import { apiFailResponseSchema, apiSuccessResponseSchema } from "../../type/types";
 
-export class Net {
+export class Network {
     private baseUrl: string;
 
     constructor(baseUrl: string) {

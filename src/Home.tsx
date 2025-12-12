@@ -1,7 +1,7 @@
 import { type JSX, useEffect, useRef, useState } from "react";
-import type { Task, TaskInput as TaskInputT } from "../type/types";
+import type { Task, TaskInput } from "../type/types";
 import { Business } from "./layer/Business";
-import { Net } from "./layer/Net";
+import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
 import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 import { TaskView } from "./layer/Presentation/TaskView";
@@ -12,11 +12,15 @@ export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
 
     useEffect(() => {
-        const n = new Net("/api/v1");
+        const n = new Network("/api/v1");
         const p = new Persistent(n);
         biz.current = new Business(p);
         setTasks(biz.current.tasks);
-        biz.current.init().then((v) => setTasks(v.data));
+        biz.current.init().then((v) => {
+            if (v.status === "success") {
+                setTasks(v.data);
+            }
+        });
     }, []);
 
     function handleEditTask(task: Task): void {
@@ -25,7 +29,7 @@ export function Home(): JSX.Element {
         }
     }
 
-    function handleAddTask(data: TaskInputT): void {
+    function handleAddTask(data: TaskInput): void {
         if (biz.current) {
             setTasks(biz.current.create(data));
         }
