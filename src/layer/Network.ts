@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { ApiErrorInfo, OnComplete, PersistentErrorStatus } from "../../type/types";
+import type { ApiErrorInfo, OnComplete, Result, ResultErrorStatus } from "../../type/types";
 import { apiFailResponseSchema, apiSuccessResponseSchema } from "../../type/types";
 
 export class Network {
@@ -83,7 +83,7 @@ export class Network {
             }
 
             if (!resp.ok) {
-                this.processStatus(resp.status, onComplete);
+                onComplete(this.processStatus(resp.status));
                 return;
             }
 
@@ -133,7 +133,7 @@ export class Network {
         }
     }
 
-    private process_status: [number, PersistentErrorStatus, ApiErrorInfo][] = [
+    private process_status: [number, ResultErrorStatus, ApiErrorInfo][] = [
         // [HTTPステータスコード, 永続化層ステータス, エラー情報]
         [409, "conflict", { code: "CONFLICT", message: "タスクのversionフィールドの不一致が検出されました。二か所以上での書き込みが競合したと思われます。" }],
         [429, "recoverable", { code: "TOO_MANY_REQUESTS", message: "リクエストが多すぎます" }],
@@ -153,24 +153,29 @@ export class Network {
         [500, "fatal", { code: "INTERNAL_ERROR", message: "サーバー内部でエラーが発生しました" }],
     ];
 
-    private processStatus<T>(st: number, onComplet: OnComplete<T>): void {
+    /**
+     * httpレスポンスのステータスコードを用いて、VanishToDo用のエラー情報を生成します。
+     *
+     * @param {number} st httpレスポンスステータスコード
+     * @param {OnComplete<T>} onComplete エラー発生時に呼び出すコールバック
+     * @returns
+     */
+    private processStatus<T>(st: number): Result<T> {
         const index = this.process_status.findIndex(([code]) => code === st);
         if (index === -1) {
-            onComplet({
+            return {
                 status: "fatal",
                 error_info: {
                     code: `UNHANDLED_STATUS_${st}`,
                     message: `httpステータスコード${st}はハンドルされず致命的エラーになりました`,
                 },
-            });
-            return;
+            };
         }
 
         const [_code, status, error_info] = this.process_status[index];
-        onComplet({
+        return {
             status: status,
             error_info,
-        });
-        return;
+        };
     }
 }

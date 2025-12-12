@@ -42,7 +42,7 @@ graph TB
             SyncManager[同期マネージャー<br/>キュー処理/リトライ]
         end
 
-        subgraph "ネット層"
+        subgraph "ネットワーク層"
             Fetch[フェッチマネージャ]
         end
     end
@@ -85,7 +85,7 @@ graph TB
 | プレゼンテーション層 | ブラウザ | UI表示、ユーザー操作、状態管理（React State） |
 | ビジネス層 | ブラウザ | タスク操作ロジック、LLMプロンプト生成 |
 | 永続化層 | ブラウザ | LocalStorage管理、DB同期、キュー処理 |
-| ネット層 | ブラウザ | Fetch&レスポンス処理 |
+| ネットワーク層 | ブラウザ | Fetch&レスポンス処理 |
 | DB層 | Cloudflare Workers | REST API、CRUD操作 |
 
 | サービス | 配置 | 責務 |
@@ -209,7 +209,7 @@ interface QueueEntry {
 }
 ```
 
-### 3.4 ネット層
+### 3.4 ネットワーク層
 
 #### 責務
 

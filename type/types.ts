@@ -167,7 +167,7 @@ export interface ApiUserSettings {
 // ネット層関連型
 // -----------------------------------------------------------------------------
 
-export type OnComplete<T> = (r: PersistentResult<T>) => void;
+export type OnComplete<T> = (r: Result<T>) => void;
 
 export abstract class IFetch {
     abstract getJson(path: string): Promise<Response>;
@@ -181,18 +181,18 @@ export abstract class IFetch {
 // -----------------------------------------------------------------------------
 
 // 戻り値
-export type PersistentStatus = "success" | "abort" | "recoverable" | "conflict" | "fatal";
-export type PersistentErrorStatus = Exclude<PersistentStatus, "success">;
+export type ResultStatus = "success" | ResultErrorStatus;
+export type ResultErrorStatus = "abort" | "recoverable" | "conflict" | "fatal";
 
-export type PersistentResult<T> = PersistentSuccess<T> | PersistentFail<T>;
+export type Result<T> = ResultSuccess<T> | ResultFail<T>;
 
-export type PersistentSuccess<T> = {
+export type ResultSuccess<T> = {
     status: "success";
     data: T;
 }
 
-export type PersistentFail<T> = {
-    status: PersistentErrorStatus;
+export type ResultFail<T> = {
+    status: ResultErrorStatus;
     error_info: ApiErrorInfo;
     data?: T;
 }
@@ -203,9 +203,9 @@ export type BaseSchemaType = v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>
 export abstract class IPersistent {
     abstract get tasks(): Task[];
     abstract generateItem<T>(data: T): DBContainer<T>;
-    abstract readTasks(): Promise<PersistentResult<Task[]>>;
+    abstract readTasks(): Promise<Result<Task[]>>;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
-    abstract writeTask(item: Task, onError: (r: PersistentResult<null>) => void): Task[];
+    abstract writeTask(item: Task, onError: (r: Result<null>) => void): Task[];
 }
 
 type Model = {

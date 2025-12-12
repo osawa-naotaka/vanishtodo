@@ -1,4 +1,4 @@
-import type { IPersistent, PersistentResult, Task, TaskContent, TaskInput } from "../../type/types";
+import type { IPersistent, Result, Task, TaskContent, TaskInput } from "../../type/types";
 
 /**
  * ビジネス層インターフェースクラス
@@ -15,7 +15,7 @@ export class Business {
         this.m_persistent = persistent;
     }
 
-    async init(): Promise<PersistentResult<Task[]>> {
+    async init(): Promise<Result<Task[]>> {
         return this.m_persistent.readTasks();
     }
 

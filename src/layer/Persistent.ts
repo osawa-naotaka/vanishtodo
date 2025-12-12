@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { ApiVoid, DBContainer, PersistentResult, Task, Tasks } from "../../type/types";
+import type { ApiVoid, DBContainer, Result, Task, Tasks } from "../../type/types";
 import { apiTasksSchema, apiVoidSchema, IPersistent, tasksSchema } from "../../type/types";
 import type { Network } from "./Network";
 
@@ -48,7 +48,7 @@ export class Persistent extends IPersistent {
         };
     }
 
-    async readTasks(): Promise<PersistentResult<Task[]>> {
+    async readTasks(): Promise<Result<Task[]>> {
         const promise = this.m_net.getJson("/tasks");
         // const promise = fetch("/api/v1/tasks", {
         //     cache: "no-store",
@@ -74,7 +74,7 @@ export class Persistent extends IPersistent {
         });
     }
 
-    writeTask(item: Task, onError: (r: PersistentResult<null>) => void): Task[] {
+    writeTask(item: Task, onError: (r: Result<null>) => void): Task[] {
         const idx = this.m_tasks.findIndex((x) => x.meta.id === item.meta.id);
         if (idx >= 0) {
             this.m_tasks[idx] = item;
@@ -90,20 +90,20 @@ export class Persistent extends IPersistent {
         return JSON.parse(str);
     }
 
-    private createTaskToDb(item: Task, onError: (r: PersistentResult<null>) => void): void {
+    private createTaskToDb(item: Task, onError: (r: Result<null>) => void): void {
         const promise = this.m_net.postJson("/tasks", item);
 
-        this.m_net.processResponse(promise, apiVoidSchema, (e: PersistentResult<ApiVoid>) => {
+        this.m_net.processResponse(promise, apiVoidSchema, (e: Result<ApiVoid>) => {
             if (e.status !== "success") {
                 onError({ ...e, data: null });
             }
         });
     }
 
-    private writeTaskToDb(item: Task, onError: (r: PersistentResult<null>) => void): void {
+    private writeTaskToDb(item: Task, onError: (r: Result<null>) => void): void {
         const promise = this.m_net.putJson(`/tasks/${item.meta.id}`, item);
 
-        this.m_net.processResponse(promise, apiVoidSchema, (e: PersistentResult<unknown>) => {
+        this.m_net.processResponse(promise, apiVoidSchema, (e: Result<unknown>) => {
             if (e.status !== "success") {
                 onError({ ...e, data: null });
             }
