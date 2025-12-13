@@ -8,6 +8,7 @@ import { taskSchema, tasks } from "../type/types";
 
 type Bindings = {
     DB: D1Database;
+    AI: Ai;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();

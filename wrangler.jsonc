@@ -21,7 +21,10 @@
 		    "preview_database_id": "DB",
 			"migrations_dir": "./migrations"
 		}
-	]
+	],
+	"ai": {
+    	"binding": "AI"
+  	}
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

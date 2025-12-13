@@ -27,8 +27,7 @@
 graph TB
     subgraph "クライアント（ブラウザ）"
         subgraph "プレゼンテーション層"
-            UI[React SPA<br/>+ React Router<br/>+ BeerCSS]
-            State[React State]
+            UI[React SPA<br/>+ React Router<br/>+ React State]
         end
         
         subgraph "ビジネス層"
@@ -48,37 +47,47 @@ graph TB
     end
     
     subgraph "Cloudflare Edge"
-        Access[Cloudflare Access<br/>Email OTP認証]
-        
-        subgraph "DB層（Workers API）"
+
+        subgraph "調停層"
+            Access[Cloudflare Access<br/>Email OTP認証]
             Workers[Hono API<br/>REST Endpoints]
-            D1[(Cloudflare D1<br/>SQLite)]
-            Cron[DBクリーンアップ<br/>cron駆動]
         end
-        
-        AI[Cloudflare AI<br/>LLM処理]
-        DurableObj[Durable Objects<br/>ログサービス]
+
+        subgraph "DB層（Workers API）"
+            Cron[DBクリーンアップ<br/>cron駆動]
+            DB[DBマネージャ<br/>D1読み書き]
+            D1[(Cloudflare D1<br/>SQLite)]
+        end
+
+        subgraph "AI層（Workers API）"
+            AI[Cloudflare AI<br/>LLM処理]
+        end
+
+        subgraph "ロギング層（Workers API）"
+            DurableObj[Durable Objects<br/>ログサービス]
+        end
+
     end
     
-    UI --> State
-    State --> TaskOps
-    TaskOps --> LLMClient
+    UI --> TaskOps
+    UI --> LLMClient
     TaskOps --> SyncManager
     LLMClient --> Fetch
     SyncManager --> LocalStorage
     SyncManager --> SyncQueue
     SyncManager --> Fetch
-    Fetch -.REST API.-> Workers
-    Fetch -.LLM API.-> AI
-    Workers --> D1
+    Fetch -.REST API.-> Access
+    Access --> Workers
+    Workers --> DB
     Workers -.ログ.-> DurableObj
-    Cron -.定期実行.-> Workers
-    Access -.認証.-> Workers
+    Workers --> AI
+    Cron -.定期実行.-> D1
+    DB --> D1
 ```
 
 ### 2.2 アーキテクチャパターン
 
-**4層レイヤードアーキテクチャ + 2独立サービス**
+**6+2層レイヤードアーキテクチャ**
 
 | 層 | 配置 | 責務 |
 |----|------|------|
@@ -86,13 +95,10 @@ graph TB
 | ビジネス層 | ブラウザ | タスク操作ロジック、LLMプロンプト生成 |
 | 永続化層 | ブラウザ | LocalStorage管理、DB同期、キュー処理 |
 | ネットワーク層 | ブラウザ | Fetch&レスポンス処理 |
-| DB層 | Cloudflare Workers | REST API、CRUD操作 |
-
-| サービス | 配置 | 責務 |
-|----------|------|------|
-| DBクリーンアップサービス | cron（外部プロセス） | ソフト削除データの物理削除 |
-| ログサービス | Durable Objects | DB層リクエストのログ記録 |
-
+| 調停層 | Cloudflare Workers | 認証、REST AP(Hono) |
+| DB層 | Cloudflare Workers | CRUD操作、定期クリーンアップ |
+| AI層 | Cloudflare Workers AI | AI処理 |
+| ロギング層 | Cloudflare Workers | Durable Objectにロギング |
 
 
 ### 2.3 レイヤード採用理由
@@ -100,8 +106,6 @@ graph TB
 1. **段階的実装との整合性**: MVPからフェーズごとに必要な層だけ実装可能
 2. **責務の明確化**: 各層の役割が明確で保守しやすい
 3. **耐障害性**: 永続化層でネットワーク断からの復旧を独立して管理
-
-
 
 ---
 
@@ -116,7 +120,7 @@ graph TB
 - ユーザー設定の表示・編集
 - LLMエラー時のフォールバック処理（入力テキスト復帰）
 
-プレゼンテーション層は、ブラウザ上で動くReact Router v8を用いたReactコンポーネントとして実装されます。
+プレゼンテーション層は、ブラウザ上で動くReact Router v7を用いたReactコンポーネントとして実装されます。
 コンポーネントの各イベントをハンドルし、ビジネス層のメソッドを呼び出します。
 ビジネス層はページTopで実体化され、同ページトップのRefに格納されます。
 
@@ -126,7 +130,6 @@ graph TB
 |------|------|
 | React x.y | UI構築 |
 | React Router x.y | クライアントサイドルーティング |
-| BeerCSS x.y | マテリアルデザインUI |
 | TypeScript x.y | 型安全な開発 |
 
 
@@ -169,8 +172,8 @@ DIの手法により、ビジネス層の実体化の際に永続化層の実体
 
 永続化層はひとつのクラスとして実装します。
 永続化層は、タスクリストとセッティングを保持し、ビジネス層からのリクエストに応えてこれらの値を読み書きします。
-タスクリストやセッティングの初期値はDB層に保存されているため、アプリの起動直後にDB層からこれらのデータを取得しLocalStorageに保存します。
-ビジネス層からの読み書きリクエストはまずLocalStorageに対して行われます。書き込みアクセスはLocalStorageに加えネット層を通じてDB層へのアクセスも行い、DB層のDBとLocalStorageのコヒーレントを保ちます。
+タスクリストやセッティングの初期値はDBに保存されているため、アプリの起動直後にネットワーク層を通じてDB層からこれらのデータを取得しLocalStorageに保存します。
+ビジネス層からの読み書きリクエストはまずLocalStorageに対して行われます。書き込みアクセスはLocalStorageに加えネットワーク層を通じてDB層へのアクセスも行い、DB層のDBとLocalStorageのコヒーレントを保ちます。
 
 #### インターフェース関数
 
@@ -188,7 +191,7 @@ sequenceDiagram
     participant PM as 永続化層
     participant LS as LocalStorage
     participant Q as 未送信キュー
-    participant DB as DB層
+    participant NET as ネットワーク層
 
     BL->>PM: createTask(task)
     PM->>LS: タスクデータ保存（同期）
@@ -197,8 +200,8 @@ sequenceDiagram
     
     loop キュー処理
         PM->>Q: 先頭を取得
-        PM->>DB: REST API呼び出し
-        DB-->>PM: レスポンス
+        PM->>NET: postJson()
+        NET-->>PM: レスポンス
         PM->>Q: 成功時: キューから削除
         Note over PM,Q: 失敗時: リトライキューへ
     end
@@ -227,10 +230,10 @@ interface QueueEntry {
 
 #### 責務
 
-- 永続化層からのget,put,post,delete要求をfetch()に変換して実行
+- 永続化層(タスク・セッティング)及びビジネス層(AI)からのget,put,post要求をfetch()に変換して実行
 - fetch()のレスポンスを処理（エラー・レスポンスパースを含む）
 
-永続化層はひとつのクラスとして実装します。永続化層から呼び出される抽象的なget/postリクエスト等を
+永続化層はひとつのクラスとして実装します。永続化層から呼び出される抽象的なget/put/postリクエスト等を
 実際のfetchリクエストに変換してDB層との通信を行います。
 
 #### インターフェース関数
@@ -239,13 +242,27 @@ interface QueueEntry {
 - putJson()
 - postJson()
 
-### 3.5 DB層
+### 3.5 調停層
+
+- HonoによるREST APIルーティング
+- Cloudflare Accessによる認証・認可
+
+調停層はHono Appとして実装します。ネットワーク層からのリクエストを受け入れ、REST APIエンドポイントごとにDB層とAI層に処理を振り分けます。
+全てのリクエストはロギング層に伝えられ、そこでログに書き出されます。
+
+#### 技術スタック
+
+| 技術 | 用途 |
+|------|------|
+| Hono x.y | APIフレームワーク |
+| Cloudflare Workers | 実行環境 |
+
+
+### 3.6 DB層
 
 #### 責務
 
-- タスクとユーザー設定のCRUD操作のみ
-- REST APIの提供
-- ログサービスへのリクエスト記録
+- タスクとユーザー設定のCRUD操作
 - DBクリーンアップ（cron Trigger）
   - 1日1回起動
 
@@ -261,16 +278,17 @@ interface QueueEntry {
 
 | 技術 | 用途 |
 |------|------|
-| Hono x.y | APIフレームワーク |
 | Cloudflare Workers | 実行環境 |
 | Cloudflare D1 | SQLiteデータベース |
 | Drizzle ORM | 型安全なDBアクセス |
 
----
+### 3.7 AI層
 
-## 4. 独立サービス
+#### 概要
 
-### 4.1 ログサービス
+- LLMへのリクエスト・レスポンス
+
+### 3.8 ロギング層
 
 #### 概要
 
@@ -315,8 +333,8 @@ sequenceDiagram
     participant DB as DB層
 
     User->>PL: タスク作成
-    PL->>BL: createTask()
-    BL->>SL: persist(CREATE, task)
+    PL->>BL: createTask(task)
+    BL->>SL: createTask(task)
     SL->>LS: タスク保存（同期）
     SL->>Q: キュー追加（同期）
     SL-->>BL: 完了
@@ -423,7 +441,6 @@ DBの値を採用するか、LocalStorageの値を採用するかは決め打ち
 | コアフレームワーク | React | 18.x | UI構築 |
 | 言語 | TypeScript | 5.x | 型安全な開発 |
 | ルーティング | React Router | 7.x | 画面遷移 |
-| UIフレームワーク | BeerCSS | 3.x | マテリアルデザイン |
 | ビルドツール | Vite | 5.x | 開発環境 |
 
 ### バックエンド
@@ -439,8 +456,7 @@ DBの値を採用するか、LocalStorageの値を採用するかは決め打ち
 
 | カテゴリ | 技術 | 用途 |
 |---------|------|------|
-| ホスティング | Cloudflare Pages | フロントエンド配信 |
-| コンピューティング | Cloudflare Workers | API実行 |
+| ホスティング<br/>コンピューティング | Cloudflare Workers | フロントエンド配信<br/>API実行 |
 | データベース | Cloudflare D1 | データ永続化 |
 | AI | Cloudflare AI | LLM処理 |
 | 認証 | Cloudflare Access | Email OTP |
