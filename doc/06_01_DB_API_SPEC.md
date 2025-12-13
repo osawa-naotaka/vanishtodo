@@ -170,7 +170,7 @@
 
 **レスポンス:**
 
-- **成功時（201 Created）**: ApiTask型
+- **成功時（201 Created）**: ApiVoid型
 
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
@@ -211,7 +211,7 @@
 
 **レスポンス:**
 
-- **成功時（200 OK）**: ApiTask型
+- **成功時（200 OK）**: ApiVoid型
 
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
@@ -257,7 +257,7 @@
 
 **レスポンス:**
 
-- **成功時（204 No Content）**: レスポンスボディなし
+- **成功時（204 No Content）**: ApiVoid型
 
 - **エラー時**:
   - **404 Not Found**: タスクが見つからない
@@ -325,8 +325,6 @@
     }
   }
   ```
-
-  **注意**: 返却される`tasks`は`TaskInput`型（`TaskCreateInput`と同じ構造）なので、そのまま`POST /api/v1/tasks`で作成可能
 
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
@@ -432,30 +430,7 @@
 
 **レスポンス:**
 
-- **成功時（200 OK）**: ApiUserSettings型
-  ```json
-  {
-    "status": "success",
-    "data": {
-      "type": "settings",
-      "settings": {
-        "id": "user-001",
-        "dailyGoals": {
-          "heavy": 2,
-          "medium": 3,
-          "light": 5
-        },
-        "displayLimits": {
-          "heavy": 5,
-          "medium": 7,
-          "light": 10
-        },
-        "createdAt": "2025-11-01T00:00:00Z",
-        "updatedAt": "2025-11-15T10:05:00Z"
-      }
-    }
-  }
-  ```
+- **成功時（200 OK）**: ApiVoid型
 
 - **エラー時**:
   - **400 Bad Request**: バリデーションエラー
@@ -472,9 +447,8 @@
       "error": {
         "code": "VALIDATION_ERROR",
         "message": "入力内容に誤りがあります",
-        "details": {
-          "title": "タイトルは1-500文字で入力してください"
-        }
+        "details": "タイトルは1-500文字で入力してください",
+        "input": "...(JSONのstringify()したもの)"
       }
     }
     ```
@@ -487,35 +461,3 @@
 | ERR-003 | 409 Conflict | 楽観的ロック競合 | CONFLICT | タスクが他で更新されています。ページをリロードしてください。 | API-004, 005 |
 | ERR-004 | 500 Internal Server Erro | サーバー内部エラー | INTERNAL_ERROR | サーバーエラーが発生しました | すべてのAPI |
 | ERR-005 | 503 Service Unavailable | LLM API利用不可 | LLM_UNAVAILABLE | AI処理が一時的に利用できません | API-006 |
-
-## 5 フロントエンド実装パターン
-
-### Date型とISO 8601 string型の変換
-```typescript
-// API送信用の変換（Date → ISO 8601 string）
-function convertToApiFormat(task: TaskUpdateInput): any {
-  return {
-    ...task,
-    dueDate: task.dueDate?.toISOString() ?? null,
-    completedAt: task.completedAt?.toISOString() ?? null,
-  };
-}
-
-// API受信後の変換（ISO 8601 string → Date）
-function convertDates(apiTask: any): Task {
-  return {
-    ...apiTask,
-    dueDate: apiTask.dueDate ? new Date(apiTask.dueDate) : null,
-    completedAt: apiTask.completedAt ? new Date(apiTask.completedAt) : null,
-    createdAt: new Date(apiTask.createdAt),
-    updatedAt: new Date(apiTask.updatedAt),
-  };
-}
-```
-
----
-
-*本文書は、VanishToDoシステムのAPI仕様を定義し、フロントエンド・バックエンド開発の基盤となるものである。*
-
-*バージョン: 2.0*  
-*最終更新: 2025年11月17日*
