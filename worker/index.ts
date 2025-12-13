@@ -4,8 +4,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import * as v from "valibot";
 import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTasks, ApiVoid, Task } from "../type/types";
-import { taskSchema } from "../type/types";
-import { tasks } from "./schema";
+import { taskSchema, tasks } from "../type/types";
 
 type Bindings = {
     DB: D1Database;
