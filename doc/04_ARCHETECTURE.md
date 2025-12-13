@@ -15,6 +15,7 @@
 |------------|------|----------|
 | 1.0 | 2025-11-15 | 初版作成 |
 | 2.0 | 2025-11-27 | 4層レイヤードアーキテクチャ+2サービスに再設計 |
+| 3.0 | 2025-12-12 | 5層レイヤードアーキテクチャ+2サービスに再設計 |
 
 ---
 
@@ -40,6 +41,10 @@ graph TB
             SyncQueue[(LocalStorage<br/>未送信キュー)]
             SyncManager[同期マネージャー<br/>キュー処理/リトライ]
         end
+
+        subgraph "ネットワーク層"
+            Fetch[フェッチマネージャ]
+        end
     end
     
     subgraph "Cloudflare Edge"
@@ -48,24 +53,23 @@ graph TB
         subgraph "DB層（Workers API）"
             Workers[Hono API<br/>REST Endpoints]
             D1[(Cloudflare D1<br/>SQLite)]
+            Cron[DBクリーンアップ<br/>cron駆動]
         end
         
         AI[Cloudflare AI<br/>LLM処理]
         DurableObj[Durable Objects<br/>ログサービス]
     end
     
-    subgraph "独立サービス"
-        Cron[DBクリーンアップ<br/>cron駆動]
-    end
-    
     UI --> State
     State --> TaskOps
     TaskOps --> LLMClient
     TaskOps --> SyncManager
-    LLMClient -.LLM API.-> AI
+    LLMClient --> Fetch
     SyncManager --> LocalStorage
     SyncManager --> SyncQueue
-    SyncManager -.REST API.-> Workers
+    SyncManager --> Fetch
+    Fetch -.REST API.-> Workers
+    Fetch -.LLM API.-> AI
     Workers --> D1
     Workers -.ログ.-> DurableObj
     Cron -.定期実行.-> Workers
@@ -81,6 +85,7 @@ graph TB
 | プレゼンテーション層 | ブラウザ | UI表示、ユーザー操作、状態管理（React State） |
 | ビジネス層 | ブラウザ | タスク操作ロジック、LLMプロンプト生成 |
 | 永続化層 | ブラウザ | LocalStorage管理、DB同期、キュー処理 |
+| ネットワーク層 | ブラウザ | Fetch&レスポンス処理 |
 | DB層 | Cloudflare Workers | REST API、CRUD操作 |
 
 | サービス | 配置 | 責務 |
@@ -88,11 +93,15 @@ graph TB
 | DBクリーンアップサービス | cron（外部プロセス） | ソフト削除データの物理削除 |
 | ログサービス | Durable Objects | DB層リクエストのログ記録 |
 
+
+
 ### 2.3 レイヤード採用理由
 
 1. **段階的実装との整合性**: MVPからフェーズごとに必要な層だけ実装可能
 2. **責務の明確化**: 各層の役割が明確で保守しやすい
 3. **耐障害性**: 永続化層でネットワーク断からの復旧を独立して管理
+
+
 
 ---
 
@@ -106,6 +115,10 @@ graph TB
 - ユーザー操作への応答とビジネス層への伝達
 - ユーザー設定の表示・編集
 - LLMエラー時のフォールバック処理（入力テキスト復帰）
+
+プレゼンテーション層は、ブラウザ上で動くReact Router v8を用いたReactコンポーネントとして実装されます。
+コンポーネントの各イベントをハンドルし、ビジネス層のメソッドを呼び出します。
+ビジネス層はページTopで実体化され、同ページトップのRefに格納されます。
 
 #### 技術スタック
 
@@ -134,8 +147,16 @@ graph TB
 - タスクの作成・完了・復帰・削除操作
 - ユーザー設定の編集
 - LLMへのプロンプト生成とAPI呼び出し
-- **ステートレス**: 状態を持たず、LocalStorageから毎回取得
 
+ビジネス層はひとつのクラスとして実装します。
+DIの手法により、ビジネス層の実体化の際に永続化層の実体を渡し、その実体を経由して永続化層にアクセス（メソッド呼び出し）します。
+
+#### インターフェース関数
+
+- init()
+- createTask()
+- editTask()
+- editConfig()
 
 ### 3.3 永続化層
 
@@ -145,6 +166,19 @@ graph TB
 - 未送信キューの管理（LocalStorageに保存）
 - DB層とLocalStorageの同期(非同期)
 - ネットワーク断からの復旧処理
+
+永続化層はひとつのクラスとして実装します。
+永続化層は、タスクリストとセッティングを保持し、ビジネス層からのリクエストに応えてこれらの値を読み書きします。
+タスクリストやセッティングの初期値はDB層に保存されているため、アプリの起動直後にDB層からこれらのデータを取得しLocalStorageに保存します。
+ビジネス層からの読み書きリクエストはまずLocalStorageに対して行われます。書き込みアクセスはLocalStorageに加えネット層を通じてDB層へのアクセスも行い、DB層のDBとLocalStorageのコヒーレントを保ちます。
+
+#### インターフェース関数
+
+- readTasks()
+- createTask()
+- updateTask()
+- readConfig()
+- updateConfig()
 
 #### データフロー
 
@@ -189,14 +223,39 @@ interface QueueEntry {
 }
 ```
 
+### 3.4 ネットワーク層
 
-### 3.4 DB層
+#### 責務
+
+- 永続化層からのget,put,post,delete要求をfetch()に変換して実行
+- fetch()のレスポンスを処理（エラー・レスポンスパースを含む）
+
+永続化層はひとつのクラスとして実装します。永続化層から呼び出される抽象的なget/postリクエスト等を
+実際のfetchリクエストに変換してDB層との通信を行います。
+
+#### インターフェース関数
+
+- getJson()
+- putJson()
+- postJson()
+
+### 3.5 DB層
 
 #### 責務
 
 - タスクとユーザー設定のCRUD操作のみ
 - REST APIの提供
 - ログサービスへのリクエスト記録
+- DBクリーンアップ（cron Trigger）
+  - 1日1回起動
+
+#### DBクリーンアップ削除対象
+
+| 対象 | 条件 |
+|------|------|
+| 完了タスク | 完了から30日経過 |
+| 削除タスク | ソフト削除から7日経過 |
+
 
 #### 技術スタック
 
@@ -211,23 +270,7 @@ interface QueueEntry {
 
 ## 4. 独立サービス
 
-### 4.1 DBクリーンアップサービス
-
-#### 概要
-
-- **実行方式**: cron駆動の外部プロセス
-- **実行頻度**: 毎日深夜（例: 03:00 JST）
-- **デプロイ**: Cloudflare Workers（Cron Triggers）
-
-#### 削除対象
-
-| 対象 | 条件 |
-|------|------|
-| 完了タスク | 完了から30日経過 |
-| 削除タスク | ソフト削除から7日経過 |
-
-
-### 4.2 ログサービス
+### 4.1 ログサービス
 
 #### 概要
 
