@@ -1,4 +1,4 @@
-import type { ApiTasks, IPersistent, OnError, Result, Task, TaskContent, TaskInput } from "../../type/types";
+import type { ApiTasks, IPersistent, OnComplete, OnError, Task, TaskContent, TaskInput } from "../../type/types";
 
 /**
  * ビジネス層インターフェースクラス
@@ -15,8 +15,8 @@ export class Business {
         this.m_persistent = persistent;
     }
 
-    init(): Promise<Result<ApiTasks>> {
-        return this.m_persistent.readTasks();
+    init(onComplete: OnComplete<ApiTasks>): void {
+        this.m_persistent.readTasks(onComplete);
     }
 
     /**
@@ -32,7 +32,7 @@ export class Business {
             isDeleted: false,
         };
         const item = this.m_persistent.generateItem(c);
-        this.m_persistent.createTask(item).then((e) => {
+        this.m_persistent.createTask(item, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
@@ -50,7 +50,7 @@ export class Business {
     complete(item: Task, onError: OnError): Task[] {
         const c = this.m_persistent.touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
-        this.m_persistent.updateTask(c).then((e) => {
+        this.m_persistent.updateTask(c, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
@@ -68,7 +68,7 @@ export class Business {
     edit(item: Task, onError: OnError): Task[] {
         const updated = this.m_persistent.touchItem<TaskContent>(item);
         updated.data = item.data;
-        this.m_persistent.updateTask(updated).then((e) => {
+        this.m_persistent.updateTask(updated, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }

@@ -201,10 +201,10 @@ export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 export abstract class IPersistent {
     abstract get tasks(): Task[];
     abstract generateItem<T>(data: T): DBContainer<T>;
-    abstract readTasks(): Promise<Result<ApiTasks>>;
+    abstract readTasks(onComplete: OnComplete<ApiTasks>): void;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
-    abstract createTask(item: Task): Promise<Result<ApiVoid>>;
-    abstract updateTask(item: Task): Promise<Result<ApiVoid>>;
+    abstract createTask(item: Task, onError: OnError): void;
+    abstract updateTask(item: Task, onError: OnError): void;
 }
 
 type Model = {

@@ -16,9 +16,11 @@ export function Home(): JSX.Element {
         const p = new Persistent(n);
         biz.current = new Business(p);
         setTasks(biz.current.tasks);
-        biz.current.init().then((v) => {
-            if (v.status === "success") {
-                setTasks(v.data.tasks);
+        biz.current.init((e) => {
+            if (e.status === "success") {
+                setTasks(e.data.tasks);
+            } else {
+                console.error(e);
             }
         });
     }, []);
