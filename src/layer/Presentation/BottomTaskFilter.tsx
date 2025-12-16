@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 
-export function BottomNav(): JSX.Element {
+export function BottomTaskFilter(): JSX.Element {
     return (
         <footer className="bottom-nav">
             <div className="responsive">

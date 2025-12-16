@@ -125,6 +125,99 @@
             border-radius: 16px;
             text-align: center;
         }
+
+        /* Bottom Buttons */
+        .bottom-buttons {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: #ffffff;
+            border-top: 1px solid #ddd;
+            padding: 1rem;
+        }
+
+        .bottom-buttons .responsive {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .bottom-buttons .buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .bottom-buttons .revert {
+            padding: 0.5rem 1rem;
+            color: #3f51b5;
+            border: 2px solid #3f51b5;
+            border-radius: 32px;
+
+            font-weight: bold;
+        }
+
+        .bottom-buttons .delete {
+            padding: 0.5rem 1rem;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 32px;
+
+            font-weight: bold;
+        }
+
+        /* Drawer Menu */
+        .drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease-in-out allow-discrete;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 250px;
+            background: white;
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(-100%);
+        }
+
+        body:has(#menu-toggle:checked) .drawer {
+            transform: translateX(0);
+        }
+
+        body:has(#menu-toggle:checked) .drawer-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .drawer-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            height: 120px;
+            background: #3f51b5;
+            color: white;
+        }
+
+        .drawer-menu {
+            list-style-type: none;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 2rem;
+        }
+
+        .drawer-menu-item {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #3f51b5;
+        }
     }
 
     /* Desktop Styles */
@@ -183,8 +276,13 @@
     }
 
     /* Task List */
-    .task-list {
+    .task-list,
+    .readonly-task-list {
         list-style-type: none;
+    }
+
+    .readonly-task-list > .task {
+        display: flex;
     }
 
     .task {
@@ -193,11 +291,18 @@
         gap: 1rem;
     }
 
+    .task-is-complete,
+    .task-sel {
+        width: 1.5rem;
+        height: 1.5rem;
+        cursor: pointer;
+    }
+
     .task-text {
         width: 100%;
     }
 
-    .task-is-complete:checked + .task-description > .task-text {
+    .task-completed .task-text {
         text-decoration: line-through;
     }
 
@@ -254,5 +359,12 @@
     /* when radio button is checked, style the corresponding label */
     input:checked + label {
         background: #3f51b530;
+    }
+}
+
+@layer high {
+    /* hide completed tasks */
+    .task:has(.task-is-complete:checked) {
+        display: none;
     }
 }

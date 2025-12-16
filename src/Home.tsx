@@ -4,7 +4,8 @@ import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
 import { AppBar } from "./layer/Presentation/AppBar";
-import { BottomNav } from "./layer/Presentation/BottomNav";
+import { BottomTaskFilter } from "./layer/Presentation/BottomTaskFilter";
+import { Drawer } from "./layer/Presentation/Drawer";
 import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 import { TaskView } from "./layer/Presentation/TaskView";
 
@@ -50,6 +51,7 @@ export function Home(): JSX.Element {
     return (
         <>
             <AppBar />
+            <Drawer />
             <main className="responsive">
                 <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
                 <ul className="task-list">
@@ -58,7 +60,7 @@ export function Home(): JSX.Element {
                     ))}
                 </ul>
             </main>
-            <BottomNav />
+            <BottomTaskFilter />
         </>
     );
 }
