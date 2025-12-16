@@ -33,18 +33,18 @@ export function TaskInputArea({ onAddTask, defaultDate }: TaskInputProps): JSX.E
     }
 
     return (
-        <form className="card" onSubmit={handleAddTask}>
-            <input type="text" name="task" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New Task" />
+        <form className="card task-input" onSubmit={handleAddTask}>
+            <input type="text" className="task-input-text" name="task" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New Task" />
             <div className="row">
-                <button type="submit">＋ 追加</button>
+                <button type="submit" className="task-add-button">＋ 追加</button>
                 <input type="radio" name="weight" id="weight-light" value="light" defaultChecked />
-                <label htmlFor="weight-light">軽</label>
+                <label htmlFor="weight-light" className="task-weight-sel">軽</label>
                 <input type="radio" name="weight" id="weight-medium" value="medium" />
-                <label htmlFor="weight-medium">中</label>
+                <label htmlFor="weight-medium" className="task-weight-sel">中</label>
                 <input type="radio" name="weight" id="weight-heavy" value="heavy" />
-                <label htmlFor="weight-heavy">重</label>
+                <label htmlFor="weight-heavy" className="task-weight-sel">重</label>
                 <input type="radio" name="weight" id="weight-due-date" value="duedate" />
-                <label htmlFor="weight-due-date">締切</label>
+                <label htmlFor="weight-due-date" className="task-weight-sel">締切</label>
                 <input type="date" name="due-date" id="due-date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
         </form>

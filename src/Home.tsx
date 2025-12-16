@@ -47,23 +47,23 @@ export function Home(): JSX.Element {
 
     return (
         <>
-            <header>
+            <header className="app-bar">
                 <div className="responsive">
-                    <h1>VanishToDo</h1>
-                    <button type="button">
+                    <h1 className="app-bar-title">VanishToDo</h1>
+                    <button type="button" className="app-bar-menu-button">
                         <img src="asset/icon/bars.svg" alt="menu" className="icon" />
                     </button>
                 </div>
             </header>
             <main className="responsive">
                 <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
-                <ul>
+                <ul className="task-list">
                     {tasks.map((task) => (
                         <TaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
                     ))}
                 </ul>
             </main>
-            <footer>
+            <footer className="bottom-nav">
                 <div className="responsive">
                     <input type="radio" name="tab" id="tab-all" />
                     <label htmlFor="tab-all">すべて</label>

@@ -107,7 +107,7 @@ export function shortPastDate(target: string, current: string): ShortDate {
     if (diff > -7) {
         return {
             past_or_future: "past",
-            date: `${diff}日前`,
+            date: `${-diff}日前`,
         };
     }
 

@@ -56,33 +56,44 @@
         margin: 0 auto;
     }
 
-    header {
+    /* all radio button is hidden, use label instead */
+    input[type="radio"] {
+        display: none;
+    }
+
+    /* when radio button is checked, style the corresponding label */
+    input:checked + label {
+        background: #3f51b530;
+    }
+
+    /* App Bar */
+    .app-bar {
         background: #3f51b5;
         padding: 1rem;
     }
 
-    header .responsive,
-    footer .responsive {
+    .app-bar .responsive,
+    .bottom-nav .responsive {
         display: flex;
         justify-content: space-between;
         align-items: center;
         width: 100%;
     }
 
-    header h1 {
+    .app-bar-title {
         color: white;
         font-size: 1.5rem;
         font-weight: bold;
     }
 
-    header button {
+    .app-bar-menu-button {
         background: none;
         border: none;
         color: white;
         font-size: 1.5rem;
     }
 
-    header button .icon {
+    .app-bar-menu-button .icon {
         width: 1.5rem;
         height: 1.5rem;
         filter: invert(1);
@@ -100,7 +111,8 @@
         padding: 0.5rem 1rem;
     }
 
-    form input[type="text"] {
+    /* Task Input Area */
+    .task-input-text {
         display: block;
         width: 100%;
         padding: 0.5rem;
@@ -109,7 +121,7 @@
         margin-right: 0.5rem;
     }
 
-    form > * {
+    .task-input > * {
         margin-block: 0.5rem;
     }
 
@@ -119,7 +131,7 @@
         gap: 0.5rem;
     }
 
-    form button {
+    .task-add-button {
         padding: 0.5rem 1rem;
         background: #3f51b5;
         color: white;
@@ -129,7 +141,7 @@
         font-weight: bold;
     }
 
-    form label {
+    .task-weight-sel {
         min-width: 60px;
         cursor: pointer;
         color: #3f51b5;
@@ -137,62 +149,64 @@
         text-align: center;
     }
 
-    ul {
+    /* Task List */
+    .task-list {
         list-style-type: none;
     }
 
-    li.task {
+    .task {
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
     }
 
-    li.task > input[type="checkbox"]:checked + .task-text > input[type="text"] {
+    .task-is-complete:checked + .task-description > .task-text {
         text-decoration: line-through;
     }
 
-    li.task > .task-text {
+    .task-description {
         flex-grow: 1;
     }
 
-    .task-text > input[type="text"] {
+    .task-text {
         width: 100%;
     }
 
-    .task-text > .task-create-date {
+    .task-create-date {
         color: #bbb;
     }
 
-    li.task > .weight-light,
-    li.task > .weight-medium,
-    li.task > .weight-heavy,
-    li.task > .weight-due-date {
+    .task > .weight-light,
+    .task > .weight-medium,
+    .task > .weight-heavy,
+    .task > .weight-due-date {
         padding: 4px 1rem;
         border-radius: 1rem;
         font-weight: bold;
     }
 
-    li.task > .weight-light {
+    .task > .weight-light {
         color: #4caf50;
         background: #e8f5e9;
     }
 
-    li.task > .weight-medium {
+    .task > .weight-medium {
         color: #ff9800;
         background: #fff3e0;
     }
 
-    li.task > .weight-heavy {
+    .task > .weight-heavy {
         color: #f44336;
         background: #ffebee;
     }
 
-    li.task > .weight-due-date {
+    .task > .weight-due-date {
         color: #2196f3;
         background: #e3f2fd;
     }
 
-    footer {
+    /* Bottom Navigation */
+    .bottom-nav {
         position: fixed;
         bottom: 0;
         width: 100%;
@@ -205,11 +219,7 @@
         gap: 1rem;
     }
 
-    input[type="radio"] {
-        display: none;
-    }
-
-    footer label {
+    .bottom-nav label {
         min-width: 90px;
         cursor: pointer;
         font-size: 1.2rem;
@@ -218,19 +228,16 @@
         text-align: center;
     }
 
-    input:checked + label {
-        background: #3f51b530;
-    }
-
-    main > ul > li.task {
+    /* Task Filtering based on selected tab */
+    .task-list > .task {
         display: none;
     }
 
-    body:has(#tab-light:checked) > main > ul > li:has(.weight-light),
-    body:has(#tab-medium:checked) > main > ul > li:has(.weight-medium),
-    body:has(#tab-heavy:checked) > main > ul > li:has(.weight-heavy),
-    body:has(#tab-due-date:checked) > main > ul > li:has(.weight-due-date),
-    body:has(#tab-all:checked) > main > ul > li {
+    body:has(#tab-light:checked) .task-list > .task:has(.weight-light),
+    body:has(#tab-medium:checked) .task-list > .task:has(.weight-medium),
+    body:has(#tab-heavy:checked) .task-list > .task:has(.weight-heavy),
+    body:has(#tab-due-date:checked) .task-list > .task:has(.weight-due-date),
+    body:has(#tab-all:checked) .task-list > .task {
         display: flex;
     }
 }
