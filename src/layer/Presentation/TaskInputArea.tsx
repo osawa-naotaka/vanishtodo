@@ -51,11 +51,13 @@ export function TaskInputArea({ onAddTask, defaultDate }: TaskInputProps): JSX.E
                 <label htmlFor="weight-heavy" className="task-weight-sel">
                     重
                 </label>
-                <input type="radio" name="weight" id="weight-due-date" value="duedate" />
-                <label htmlFor="weight-due-date" className="task-weight-sel">
-                    締切
-                </label>
-                <input type="date" name="due-date" id="due-date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <div className="row">
+                    <input type="radio" name="weight" id="weight-due-date" value="duedate" />
+                    <label htmlFor="weight-due-date" className="task-weight-sel">
+                        締切
+                    </label>
+                    <input type="date" name="due-date" id="due-date" value={date} onChange={(e) => setDate(e.target.value)} />
+                </div>
             </div>
         </form>
     );
