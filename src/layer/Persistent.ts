@@ -119,7 +119,7 @@ export class Persistent extends IPersistent {
     private processQueue(): void {
         if (!this.m_is_processing_queue) {
             this.m_is_processing_queue = true;
-            const processQueue = async () => {
+            const proc = async () => {
                 while (this.m_queue.length > 0) {
                     const fn = this.m_queue.shift();
                     if (fn) {
@@ -128,7 +128,7 @@ export class Persistent extends IPersistent {
                 }
                 this.m_is_processing_queue = false;
             };
-            processQueue();
+            proc();
         }
     }
 
