@@ -53,6 +53,11 @@ export const DBContainerMetaSchema = v.object({
     updatedAt: dateSchema, // 更新日時（永続化層で生成）
 });
 
+export const DBContainerSchema = <T>(dataSchema: Schema<T>) => v.object({
+    meta: DBContainerMetaSchema,
+    data: dataSchema,
+});
+
 export type DBContainer<T> = {
     meta: v.InferOutput<typeof DBContainerMetaSchema>;
     data: T;
@@ -159,18 +164,16 @@ export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
 export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSettings;
 
 // タスク一覧取得のレスポンスボディ
-export const apiTasksSchema = v.object({
-    type: v.picklist(["tasks"]),
-    tasks: tasksSchema,
-});
+export const apiTasksSchema = tasksSchema;
+
+export function apiReadAllSchema<T>(schema: Schema<T>) {
+    return v.array(DBContainerSchema(schema));
+}
 
 export type ApiTasks = v.InferOutput<typeof apiTasksSchema>;
 
 // タスク単体取得のレスポンスボディ
-export const apiTaskSchema = v.object({
-    type: v.picklist(["task"]),
-    task: taskSchema,
-});
+export const apiTaskSchema = taskSchema;
 
 export type ApiTask = v.InferOutput<typeof apiTaskSchema>;
 
@@ -200,9 +203,9 @@ export interface ApiUserSettings {
 export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
 export abstract class IPersistent {
-    abstract get tasks(): Task[];
+    abstract get tasks(): Tasks;
     abstract generateItem<T>(data: T): DBContainer<T>;
-    abstract readTasks(onComplete: OnComplete<ApiTasks>): void;
+    abstract readTasks(onComplete: OnComplete<Tasks>): void;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
     abstract createTask(item: Task, onError: OnError): void;
     abstract updateTask(item: Task, onError: OnError): void;

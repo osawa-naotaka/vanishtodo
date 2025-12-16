@@ -18,7 +18,7 @@ export function Home(): JSX.Element {
         setTasks(biz.current.tasks);
         biz.current.init((e) => {
             if (e.status === "success") {
-                setTasks(e.data.tasks);
+                setTasks(e.data);
             } else {
                 console.error(e);
             }

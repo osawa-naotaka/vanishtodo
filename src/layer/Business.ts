@@ -1,4 +1,4 @@
-import type { ApiTasks, IPersistent, OnComplete, OnError, Task, TaskContent, TaskInput } from "../../type/types";
+import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskInput, Tasks } from "../../type/types";
 
 /**
  * ビジネス層インターフェースクラス
@@ -15,7 +15,7 @@ export class Business {
         this.m_persistent = persistent;
     }
 
-    init(onComplete: OnComplete<ApiTasks>): void {
+    init(onComplete: OnComplete<Tasks>): void {
         this.m_persistent.readTasks(onComplete);
     }
 
@@ -91,7 +91,7 @@ export class Business {
         return true;
     }
 
-    get tasks(): Task[] {
+    get tasks(): Tasks {
         return this.m_persistent.tasks;
     }
 }
