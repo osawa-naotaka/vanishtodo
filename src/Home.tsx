@@ -3,6 +3,8 @@ import type { Task, TaskInput } from "../type/types";
 import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
+import { AppBar } from "./layer/Presentation/AppBar";
+import { BottomNav } from "./layer/Presentation/BottomNav";
 import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 import { TaskView } from "./layer/Presentation/TaskView";
 
@@ -47,14 +49,7 @@ export function Home(): JSX.Element {
 
     return (
         <>
-            <header className="app-bar">
-                <div className="responsive">
-                    <h1 className="app-bar-title">VanishToDo</h1>
-                    <button type="button" className="app-bar-menu-button">
-                        <img src="asset/icon/bars.svg" alt="menu" className="icon" />
-                    </button>
-                </div>
-            </header>
+            <AppBar />
             <main className="responsive">
                 <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
                 <ul className="task-list">
@@ -63,20 +58,7 @@ export function Home(): JSX.Element {
                     ))}
                 </ul>
             </main>
-            <footer className="bottom-nav">
-                <div className="responsive">
-                    <input type="radio" name="tab" id="tab-all" />
-                    <label htmlFor="tab-all">すべて</label>
-                    <input type="radio" name="tab" id="tab-light" defaultChecked />
-                    <label htmlFor="tab-light">軽</label>
-                    <input type="radio" name="tab" id="tab-medium" />
-                    <label htmlFor="tab-medium">中</label>
-                    <input type="radio" name="tab" id="tab-heavy" />
-                    <label htmlFor="tab-heavy">重</label>
-                    <input type="radio" name="tab" id="tab-due-date" />
-                    <label htmlFor="tab-due-date">締切</label>
-                </div>
-            </footer>
+            <BottomNav />
         </>
     );
 }

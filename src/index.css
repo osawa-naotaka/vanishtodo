@@ -61,11 +61,6 @@
         display: none;
     }
 
-    /* when radio button is checked, style the corresponding label */
-    input:checked + label {
-        background: #3f51b530;
-    }
-
     /* App Bar */
     .app-bar {
         background: #3f51b5;
@@ -160,16 +155,16 @@
         gap: 1rem;
     }
 
+    .task-text {
+        width: 100%;
+    }
+
     .task-is-complete:checked + .task-description > .task-text {
         text-decoration: line-through;
     }
 
     .task-description {
         flex-grow: 1;
-    }
-
-    .task-text {
-        width: 100%;
     }
 
     .task-create-date {
@@ -239,5 +234,10 @@
     body:has(#tab-due-date:checked) .task-list > .task:has(.weight-due-date),
     body:has(#tab-all:checked) .task-list > .task {
         display: flex;
+    }
+
+    /* when radio button is checked, style the corresponding label */
+    input:checked + label {
+        background: #3f51b530;
     }
 }
