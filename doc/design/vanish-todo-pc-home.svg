@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900">
+  <defs>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.1"/>
+    </filter>
+    <filter id="headerShadow" x="-10%" y="-10%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3F51B5"/>
+      <stop offset="100%" style="stop-color:#5C6BC0"/>
+    </linearGradient>
+    <linearGradient id="sidebarGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FAFAFA"/>
+      <stop offset="100%" style="stop-color:#F5F5F5"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1440" height="900" fill="#F5F5F5"/>
+  
+  <!-- Sidebar -->
+  <rect width="280" height="900" fill="url(#sidebarGradient)"/>
+  <rect x="280" width="1" height="900" fill="#E0E0E0"/>
+  
+  <!-- Sidebar Header -->
+  <g transform="translate(24, 32)">
+    <!-- App Icon -->
+    <circle cx="24" cy="24" r="24" fill="url(#primaryGradient)"/>
+    <text x="24" y="34" font-family="Roboto, sans-serif" font-size="20" font-weight="700" fill="white" text-anchor="middle">V</text>
+    
+    <!-- App Title -->
+    <text x="60" y="36" font-family="Roboto, sans-serif" font-size="20" font-weight="500" fill="#212121">VanishToDo</text>
+  </g>
+  
+  <!-- Sidebar Navigation -->
+  <g transform="translate(0, 100)">
+    <!-- Home (Active) -->
+    <g>
+      <rect width="280" height="56" fill="#E8EAF6"/>
+      <rect x="0" y="0" width="4" height="56" fill="#3F51B5"/>
+      <g transform="translate(28, 16)">
+        <!-- Home Icon -->
+        <path d="M12 3 L2 12 L5 12 L5 22 L11 22 L11 16 L13 16 L13 22 L19 22 L19 12 L22 12 Z" 
+              fill="#3F51B5" stroke="none"/>
+      </g>
+      <text x="68" y="36" font-family="Roboto, sans-serif" font-size="16" font-weight="500" fill="#3F51B5">ホーム</text>
+    </g>
+    
+    <!-- All Tasks -->
+    <g transform="translate(0, 64)">
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(28, 16)">
+        <!-- List Icon -->
+        <rect x="0" y="2" width="24" height="2" rx="1" fill="#757575"/>
+        <rect x="0" y="9" width="24" height="2" rx="1" fill="#757575"/>
+        <rect x="0" y="16" width="24" height="2" rx="1" fill="#757575"/>
+      </g>
+      <text x="68" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">全タスク</text>
+    </g>
+    
+    <!-- Completed Tasks -->
+    <g transform="translate(0, 128)">
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(28, 16)">
+        <!-- Check Circle Icon -->
+        <circle cx="12" cy="12" r="11" fill="none" stroke="#757575" stroke-width="2"/>
+        <path d="M7 12 L10.5 15.5 L17 8.5" stroke="#757575" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </g>
+      <text x="68" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">完了タスク</text>
+    </g>
+    
+    <!-- Deleted Tasks -->
+    <g transform="translate(0, 192)">
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(28, 16)">
+        <!-- Delete Icon -->
+        <path d="M6 6 L6 21 C6 22.1 6.9 23 8 23 L16 23 C17.1 23 18 22.1 18 21 L18 6 M4 6 L20 6 M9 6 L9 4 C9 2.9 9.9 2 11 2 L13 2 C14.1 2 15 2.9 15 4 L15 6" 
+              stroke="#757575" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <line x1="10" y1="11" x2="10" y2="18" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+        <line x1="14" y1="11" x2="14" y2="18" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <text x="68" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">削除タスク</text>
+    </g>
+  </g>
+  
+  <!-- Divider -->
+  <line x1="24" y1="420" x2="256" y2="420" stroke="#E0E0E0" stroke-width="1"/>
+  
+  <!-- Settings Section -->
+  <g transform="translate(0, 436)">
+    <!-- Settings -->
+    <g>
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(28, 16)">
+        <!-- Settings Icon -->
+        <circle cx="12" cy="12" r="10" fill="none" stroke="#757575" stroke-width="2"/>
+        <circle cx="12" cy="12" r="3" fill="#757575"/>
+        <line x1="12" y1="2" x2="12" y2="7" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+        <line x1="12" y1="17" x2="12" y2="22" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+        <line x1="2" y1="12" x2="7" y2="12" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+        <line x1="17" y1="12" x2="22" y2="12" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <text x="68" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">設定</text>
+    </g>
+    
+    <!-- Help -->
+    <g transform="translate(0, 64)">
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(28, 16)">
+        <!-- Help Icon -->
+        <circle cx="12" cy="12" r="11" fill="none" stroke="#757575" stroke-width="2"/>
+        <path d="M9 9 C9 7.3 10.3 6 12 6 C13.7 6 15 7.3 15 9 C15 10 14.5 10.5 13.5 11.5 C12.5 12.5 12 13 12 14" 
+              stroke="#757575" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <circle cx="12" cy="18" r="1" fill="#757575"/>
+      </g>
+      <text x="68" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">ヘルプ</text>
+    </g>
+  </g>
+  
+  <!-- Version Info -->
+  <g transform="translate(24, 860)">
+    <text x="0" y="0" font-family="Roboto, sans-serif" font-size="12" fill="#9E9E9E">Version 1.0.0</text>
+  </g>
+  
+  <!-- Main Content Area -->
+  <g transform="translate(280, 0)">
+    <!-- Top Bar -->
+    <rect width="1160" height="64" fill="white" filter="url(#headerShadow)"/>
+    
+    <!-- Page Title -->
+    <text x="32" y="42" font-family="Roboto, sans-serif" font-size="24" font-weight="400" fill="#212121">ホーム</text>
+    
+    <!-- User Menu (Right Side) -->
+    <g transform="translate(1080, 16)">
+      <circle cx="16" cy="16" r="16" fill="#E8EAF6"/>
+      <text x="16" y="22" font-family="Roboto, sans-serif" font-size="14" font-weight="500" fill="#3F51B5" text-anchor="middle">U</text>
+    </g>
+    
+    <!-- Content Area -->
+    <g transform="translate(32, 96)">
+      <!-- Input Section -->
+      <rect width="1096" height="140" rx="16" fill="white" filter="url(#cardShadow)"/>
+      
+      <!-- Input Field -->
+      <rect x="24" y="24" width="1048" height="56" rx="8" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="1"/>
+      <text x="48" y="58" font-family="Roboto, sans-serif" font-size="18" fill="#9E9E9E">タスクを入力...</text>
+      
+      <!-- Action Buttons -->
+      <g transform="translate(24, 92)">
+        <!-- Add Button -->
+        <rect width="140" height="40" rx="20" fill="#3F51B5"/>
+        <text x="44" y="27" font-family="Roboto, sans-serif" font-size="16" font-weight="500" fill="white">+ 追加</text>
+        
+        <!-- Analyze Button -->
+        <rect x="156" width="160" height="40" rx="20" fill="white" stroke="#3F51B5" stroke-width="2"/>
+        <text x="186" y="27" font-family="Roboto, sans-serif" font-size="16" font-weight="500" fill="#3F51B5">🤖 分析</text>
+      </g>
+      
+      <!-- Task List Header -->
+      <text x="0" y="200" font-family="Roboto, sans-serif" font-size="16" font-weight="500" fill="#757575">タスク一覧</text>
+      
+      <!-- Filter Tabs -->
+      <g transform="translate(0, 216)">
+        <!-- All Tab (Active) -->
+        <g>
+          <rect width="90" height="44" rx="22" fill="#E8EAF6"/>
+          <text x="24" y="29" font-family="Roboto, sans-serif" font-size="16" font-weight="500" fill="#3F51B5">すべて</text>
+        </g>
+        
+        <!-- Heavy Tab -->
+        <g transform="translate(106, 0)">
+          <rect width="70" height="44" rx="22" fill="transparent"/>
+          <text x="26" y="29" font-family="Roboto, sans-serif" font-size="16" fill="#757575">重</text>
+        </g>
+        
+        <!-- Medium Tab -->
+        <g transform="translate(192, 0)">
+          <rect width="70" height="44" rx="22" fill="transparent"/>
+          <text x="26" y="29" font-family="Roboto, sans-serif" font-size="16" fill="#757575">中</text>
+        </g>
+        
+        <!-- Light Tab -->
+        <g transform="translate(278, 0)">
+          <rect width="70" height="44" rx="22" fill="transparent"/>
+          <text x="26" y="29" font-family="Roboto, sans-serif" font-size="16" fill="#757575">軽</text>
+        </g>
+        
+        <!-- Due Date Tab -->
+        <g transform="translate(364, 0)">
+          <rect width="80" height="44" rx="22" fill="transparent"/>
+          <text x="20" y="29" font-family="Roboto, sans-serif" font-size="16" fill="#757575">締切</text>
+        </g>
+      </g>
+      
+      <!-- Task Cards (Grid Layout for PC) -->
+      <!-- Row 1 -->
+      <g transform="translate(0, 280)">
+        <!-- Task Card 1 -->
+        <g>
+          <rect width="532" height="100" rx="12" fill="white" filter="url(#cardShadow)"/>
+          <rect x="20" y="35" width="28" height="28" rx="4" fill="none" stroke="#BDBDBD" stroke-width="2"/>
+          <text x="64" y="44" font-family="Roboto, sans-serif" font-size="18" fill="#212121">メールを確認する</text>
+          <text x="64" y="68" font-family="Roboto, sans-serif" font-size="14" fill="#9E9E9E">10:00作成</text>
+          <rect x="460" y="30" width="56" height="28" rx="14" fill="#E8F5E9"/>
+          <text x="476" y="50" font-family="Roboto, sans-serif" font-size="14" font-weight="500" fill="#4CAF50">軽</text>
+        </g>
+        
+        <!-- Task Card 2 -->
+        <g transform="translate(564, 0)">
+          <rect width="532" height="100" rx="12" fill="white" filter="url(#cardShadow)"/>
+          <rect x="20" y="35" width="28" height="28" rx="4" fill="none" stroke="#BDBDBD" stroke-width="2"/>
+          <text x="64" y="44" font-family="Roboto, sans-serif" font-size="18" fill="#212121">プレゼン資料を作成する</text>
+          <text x="64" y="68" font-family="Roboto, sans-serif" font-size="14" fill="#9E9E9E">昨日作成</text>
+          <rect x="460" y="30" width="56" height="28" rx="14" fill="#FFEBEE"/>
+          <text x="476" y="50" font-family="Roboto, sans-serif" font-size="14" font-weight="500" fill="#F44336">重</text>
+        </g>
+      </g>
+      
+      <!-- Row 2 -->
+      <g transform="translate(0, 396)">
+        <!-- Task Card 3 -->
+        <g>
+          <rect width="532" height="100" rx="12" fill="white" filter="url(#cardShadow)"/>
+          <rect x="20" y="35" width="28" height="28" rx="4" fill="none" stroke="#BDBDBD" stroke-width="2"/>
+          <text x="64" y="44" font-family="Roboto, sans-serif" font-size="18" fill="#212121">買い物リストを作成</text>
+          <text x="64" y="68" font-family="Roboto, sans-serif" font-size="14" fill="#9E9E9E">2時間前作成</text>
+          <rect x="460" y="30" width="56" height="28" rx="14" fill="#FFF3E0"/>
+          <text x="476" y="50" font-family="Roboto, sans-serif" font-size="14" font-weight="500" fill="#FF9800">中</text>
+        </g>
+        
+        <!-- Task Card 4 -->
+        <g transform="translate(564, 0)">
+          <rect width="532" height="100" rx="12" fill="white" filter="url(#cardShadow)"/>
+          <rect x="20" y="35" width="28" height="28" rx="4" fill="none" stroke="#BDBDBD" stroke-width="2"/>
+          <text x="64" y="44" font-family="Roboto, sans-serif" font-size="18" fill="#212121">レポート提出</text>
+          <text x="64" y="68" font-family="Roboto, sans-serif" font-size="14" fill="#9E9E9E">30分前作成</text>
+          <rect x="420" y="30" width="96" height="28" rx="14" fill="#E3F2FD"/>
+          <text x="436" y="50" font-family="Roboto, sans-serif" font-size="14" font-weight="500" fill="#2196F3">12/20締切</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
