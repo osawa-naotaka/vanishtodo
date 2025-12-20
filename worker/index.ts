@@ -3,11 +3,12 @@ import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import * as v from "valibot";
-import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiTasks, ApiVoid, Task } from "../type/types";
+import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task } from "../type/types";
 import { taskSchema, tasks } from "../type/types";
 
 type Bindings = {
     DB: D1Database;
+    AI: Ai;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -80,12 +81,7 @@ app.get("/api/v1/tasks", async (c) => {
         const db = drizzle(c.env.DB);
         const result = await db.select().from(tasks).orderBy(desc(tasks.created_at));
 
-        const taskList = result.map(dbTaskToTask);
-
-        const response: ApiTasks = {
-            type: "tasks",
-            tasks: taskList,
-        };
+        const response = result.map(dbTaskToTask);
 
         return successResponse(response);
     } catch (error: unknown) {

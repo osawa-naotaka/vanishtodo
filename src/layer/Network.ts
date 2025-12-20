@@ -97,6 +97,7 @@ export class Network {
                         code: "INTERNAL_ERROR",
                         message: "サーバーからのレスポンスのデータ構造が想定と違います",
                         details: data_parse.issues.map((issue) => issue.message).join("; "),
+                        input: JSON.stringify(r),
                     },
                 };
             }

@@ -1,45 +1,33 @@
 import * as v from "valibot";
-import type { ApiTasks, ApiVoid, DBContainer, Result, Task, Tasks } from "../../type/types";
-import { apiTasksSchema, IPersistent, tasksSchema } from "../../type/types";
+import type { DBContainer, OnComplete, OnError, Schema, Task, TaskContent, Tasks } from "../../type/types";
+import { apiReadAllSchema, DBContainerSchema, IPersistent, taskContentSchema } from "../../type/types";
 import type { Network } from "./Network";
+
+export type PersistentContentSetting<T> = {
+    name: string;
+    api_base: string;
+    storage_key: string;
+    schema: Schema<T>;
+};
 
 /**
  * 永続化層インターフェースクラス
  */
 export class Persistent extends IPersistent {
-    private m_storage_key = "vanish-todo-storage";
-    private m_tasks: Tasks;
-    private m_network: Network;
+    private readonly m_tasks: PersistentContent<TaskContent>;
 
-    /**
-     * ネットワーク層をDIして永続化層を初期化します
-     *
-     * @param {Network} network - ネットワーク層インターフェース(DI)
-     */
     constructor(network: Network) {
         super();
-        // localStorage.removeItem(this.m_storage_key);
-        const tasks = localStorage.getItem(this.m_storage_key);
-        if (tasks) {
-            const result = v.safeParse(tasksSchema, JSON.parse(tasks));
-            if (result.success) {
-                this.m_tasks = result.output;
-            } else {
-                console.log("Persistent: failed to parse tasks from localStorage. use empty list.");
-                this.m_tasks = [];
-            }
-        } else {
-            this.m_tasks = [];
-        }
-        this.m_network = network;
+        this.m_tasks = new PersistentContent(network, {
+            name: "tasks",
+            api_base: "/tasks",
+            storage_key: "vanish-todo-tasks",
+            schema: taskContentSchema,
+        });
     }
 
-    /**
-     * タスク一覧を取得します
-     * @return {Task[]} タスク一覧
-     */
-    get tasks(): Task[] {
-        return Object.values(this.m_tasks);
+    get tasks(): Tasks {
+        return this.m_tasks.items;
     }
 
     /**
@@ -81,6 +69,57 @@ export class Persistent extends IPersistent {
         };
     }
 
+    createTask(item: Task, onError: OnError): void {
+        this.m_tasks.create(item, onError);
+    }
+
+    readTasks(onComplete: OnComplete<Tasks>): void {
+        this.m_tasks.readAll(onComplete);
+    }
+
+    updateTask(item: Task, onError: OnError): void {
+        this.m_tasks.update(item, onError);
+    }
+}
+
+class PersistentContent<T> {
+    private readonly m_setting: PersistentContentSetting<T>;
+    private m_items: DBContainer<T>[];
+    private readonly m_network: Network;
+    private readonly m_queue: (() => Promise<void>)[] = [];
+    private m_is_processing_queue = false;
+
+    /**
+     * ネットワーク層をDIして永続化層を初期化します
+     *
+     * @param {Network} network - ネットワーク層インターフェース(DI)
+     */
+    constructor(network: Network, setting: PersistentContentSetting<T>) {
+        this.m_setting = setting;
+        // localStorage.removeItem(this.m_storage_key);
+        const items = localStorage.getItem(this.m_setting.storage_key);
+        if (items) {
+            const result = v.safeParse(v.array(DBContainerSchema(this.m_setting.schema)), JSON.parse(items));
+            if (result.success) {
+                this.m_items = result.output;
+            } else {
+                console.log(`Persistent: failed to parse ${this.m_setting.name} from localStorage. use empty list.`);
+                this.m_items = [];
+            }
+        } else {
+            this.m_items = [];
+        }
+        this.m_network = network;
+    }
+
+    /**
+     * タスク一覧を取得します
+     * @return {Task[]} タスク一覧
+     */
+    get items(): DBContainer<T>[] {
+        return Object.values(this.m_items);
+    }
+
     /**
      * サーバーからタスク一覧を取得し、ローカルストレージに保存します
      * 成功した場合は取得したタスク一覧を返します。
@@ -88,25 +127,42 @@ export class Persistent extends IPersistent {
      *
      * @returns {Promise<Result<ApiTasks>>} タスク一覧取得結果
      */
-    async readTasks(): Promise<Result<ApiTasks>> {
-        const result = await this.m_network.getJson("/tasks", apiTasksSchema);
-        if (result.status === "success") {
-            this.m_tasks = result.data.tasks;
-            const str = JSON.stringify(this.m_tasks);
-            localStorage.setItem(this.m_storage_key, str);
-            return {
-                status: "success",
-                data: result.data,
+    readAll(onComplete: OnComplete<DBContainer<T>[]>): void {
+        const entry = async () => {
+            const result = await this.m_network.getJson(this.m_setting.api_base, apiReadAllSchema<T>(this.m_setting.schema));
+            if (result.status === "success") {
+                this.m_items = result.data;
+                const str = JSON.stringify(this.m_items);
+                localStorage.setItem(this.m_setting.storage_key, str);
+                onComplete({
+                    status: "success",
+                    data: result.data,
+                });
+            } else {
+                onComplete({
+                    status: "fatal",
+                    error_info: result.error_info,
+                    data: this.m_items,
+                });
+            }
+        };
+        this.m_queue.push(entry);
+        this.processQueue();
+    }
+
+    private processQueue(): void {
+        if (!this.m_is_processing_queue) {
+            this.m_is_processing_queue = true;
+            const proc = async () => {
+                while (this.m_queue.length > 0) {
+                    const fn = this.m_queue.shift();
+                    if (fn) {
+                        await fn();
+                    }
+                }
+                this.m_is_processing_queue = false;
             };
-        } else {
-            return {
-                status: "fatal",
-                error_info: result.error_info,
-                data: {
-                    type: "tasks",
-                    tasks: this.m_tasks,
-                },
-            };
+            proc();
         }
     }
 
@@ -116,19 +172,25 @@ export class Persistent extends IPersistent {
      * @param {Task} item - 作成するタスク
      * @returns {Promise<Result<ApiVoid>>} タスク作成結果(エラー情報)
      */
-    async createTask(item: Task): Promise<Result<ApiVoid>> {
-        const idx = this.m_tasks.findIndex((x) => x.meta.id === item.meta.id);
+    create(item: DBContainer<T>, onError: OnError): void {
+        const idx = this.m_items.findIndex((x) => x.meta.id === item.meta.id);
         if (idx >= 0) {
-            return {
+            onError({
                 status: "fatal",
                 error_info: {
                     code: "INTERNAL_ERROR",
-                    message: "タスク作成時にIDが重複しました",
+                    message: `${this.m_setting.name}作成時にIDが重複しました`,
                 },
-            };
+            });
         }
-        this.m_tasks.push(item);
-        return this.m_network.postJson("/tasks", item);
+        this.m_items.push(item);
+        this.m_queue.push(async () => {
+            const result = await this.m_network.postJson(this.m_setting.api_base, item);
+            if (result.status !== "success") {
+                onError(result);
+            }
+        });
+        this.processQueue();
     }
 
     /**
@@ -137,18 +199,24 @@ export class Persistent extends IPersistent {
      * @param {Task} item - 更新するタスク
      * @returns {Promise<Result<ApiVoid>>} タスク更新結果(エラー情報)
      */
-    async updateTask(item: Task): Promise<Result<ApiVoid>> {
-        const idx = this.m_tasks.findIndex((x) => x.meta.id === item.meta.id);
+    update(item: DBContainer<T>, onError: OnError): void {
+        const idx = this.m_items.findIndex((x) => x.meta.id === item.meta.id);
         if (idx < 0) {
-            return {
+            onError({
                 status: "fatal",
                 error_info: {
                     code: "INTERNAL_ERROR",
-                    message: "タスク更新時にIDが見つかりません",
+                    message: `${this.m_setting.name}更新時にIDが見つかりません`,
                 },
-            };
+            });
         }
-        this.m_tasks[idx] = item;
-        return this.m_network.putJson(`/tasks/${item.meta.id}`, item);
+        this.m_items[idx] = item;
+        this.m_queue.push(async () => {
+            const result = await this.m_network.putJson(`${this.m_setting.api_base}/${item.meta.id}`, item);
+            if (result.status !== "success") {
+                onError(result);
+            }
+        });
+        this.processQueue();
     }
 }

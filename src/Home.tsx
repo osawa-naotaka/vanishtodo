@@ -3,6 +3,9 @@ import type { Task, TaskInput } from "../type/types";
 import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
+import { AppBar } from "./layer/Presentation/AppBar";
+import { BottomTaskFilter } from "./layer/Presentation/BottomTaskFilter";
+import { Drawer } from "./layer/Presentation/Drawer";
 import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 import { TaskView } from "./layer/Presentation/TaskView";
 
@@ -16,9 +19,11 @@ export function Home(): JSX.Element {
         const p = new Persistent(n);
         biz.current = new Business(p);
         setTasks(biz.current.tasks);
-        biz.current.init().then((v) => {
-            if (v.status === "success") {
-                setTasks(v.data.tasks);
+        biz.current.init((e) => {
+            if (e.status === "success") {
+                setTasks(e.data);
+            } else {
+                console.error(e);
             }
         });
     }, []);
@@ -45,36 +50,17 @@ export function Home(): JSX.Element {
 
     return (
         <>
-            <header>
-                <div className="responsive">
-                    <h1>VanishToDo</h1>
-                    <button type="button">
-                        <img src="asset/icon/bars.svg" alt="menu" className="icon" />
-                    </button>
-                </div>
-            </header>
+            <AppBar />
+            <Drawer />
             <main className="responsive">
                 <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
-                <ul>
+                <ul className="task-list">
                     {tasks.map((task) => (
                         <TaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
                     ))}
                 </ul>
             </main>
-            <footer>
-                <div className="responsive">
-                    <input type="radio" name="tab" id="tab-all" />
-                    <label htmlFor="tab-all">すべて</label>
-                    <input type="radio" name="tab" id="tab-light" defaultChecked />
-                    <label htmlFor="tab-light">軽</label>
-                    <input type="radio" name="tab" id="tab-medium" />
-                    <label htmlFor="tab-medium">中</label>
-                    <input type="radio" name="tab" id="tab-heavy" />
-                    <label htmlFor="tab-heavy">重</label>
-                    <input type="radio" name="tab" id="tab-due-date" />
-                    <label htmlFor="tab-due-date">締切</label>
-                </div>
-            </footer>
+            <BottomTaskFilter />
         </>
     );
 }

@@ -37,13 +37,21 @@
   
   <!-- Header -->
   <rect y="44" width="390" height="56" fill="url(#primaryGradient)" filter="url(#headerShadow)"/>
-  <text x="20" y="80" font-family="Roboto, sans-serif" font-size="20" font-weight="500" fill="white">VanishToDo</text>
   
-  <!-- Menu Icon -->
-  <g transform="translate(346, 60)">
+  <!-- Menu Icon (LEFT SIDE) -->
+  <g transform="translate(16, 60)">
     <rect y="0" width="24" height="3" rx="1.5" fill="white"/>
     <rect y="8" width="24" height="3" rx="1.5" fill="white"/>
     <rect y="16" width="24" height="3" rx="1.5" fill="white"/>
+  </g>
+  
+  <text x="56" y="80" font-family="Roboto, sans-serif" font-size="20" font-weight="500" fill="white">VanishToDo</text>
+  
+  <!-- More Options Icon (RIGHT SIDE) -->
+  <g transform="translate(350, 66)">
+    <circle cx="4" cy="4" r="2.5" fill="white"/>
+    <circle cx="4" cy="12" r="2.5" fill="white"/>
+    <circle cx="4" cy="20" r="2.5" fill="white"/>
   </g>
   
   <!-- Input Section -->
@@ -137,14 +145,6 @@
     <rect x="260" y="24" width="78" height="24" rx="12" fill="#E3F2FD"/>
     <text x="272" y="41" font-family="Roboto, sans-serif" font-size="12" font-weight="500" fill="#2196F3">12/20締切</text>
   </g>
-  
-  <!-- Empty State Hint (if needed) -->
-  <!-- 
-  <g transform="translate(195, 400)" opacity="0.3">
-    <circle cx="0" cy="0" r="40" fill="none" stroke="#9E9E9E" stroke-width="2"/>
-    <text x="0" y="60" font-family="Roboto, sans-serif" font-size="14" fill="#9E9E9E" text-anchor="middle">タスクがありません</text>
-  </g>
-  -->
   
   <!-- Filter Tab Bar -->
   <rect y="756" width="390" height="88" fill="white" filter="url(#headerShadow)"/>

@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" width="390" height="844">
+  <defs>
+    <filter id="drawerShadow" x="-50%" y="-10%" width="200%" height="120%">
+      <feDropShadow dx="2" dy="0" stdDeviation="8" flood-opacity="0.3"/>
+    </filter>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.1"/>
+    </filter>
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3F51B5"/>
+      <stop offset="100%" style="stop-color:#5C6BC0"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background (dimmed) -->
+  <rect width="390" height="844" fill="#000000" opacity="0.5"/>
+  
+  <!-- Drawer Panel -->
+  <rect width="280" height="844" fill="white" filter="url(#drawerShadow)"/>
+  
+  <!-- Drawer Header -->
+  <rect width="280" height="160" fill="url(#primaryGradient)"/>
+  
+  <!-- Profile Area -->
+  <g transform="translate(24, 60)">
+    <!-- Avatar Circle -->
+    <circle cx="32" cy="32" r="32" fill="white" opacity="0.3"/>
+    <circle cx="32" cy="32" r="28" fill="white"/>
+    <text x="32" y="40" font-family="Roboto, sans-serif" font-size="24" font-weight="500" fill="#3F51B5" text-anchor="middle">V</text>
+    
+    <!-- User Name -->
+    <text x="0" y="90" font-family="Roboto, sans-serif" font-size="16" font-weight="500" fill="white">VanishToDo</text>
+    <text x="0" y="110" font-family="Roboto, sans-serif" font-size="14" fill="white" opacity="0.9">タスク管理アプリ</text>
+  </g>
+  
+  <!-- Menu Items -->
+  <g transform="translate(0, 176)">
+    <!-- Home (Active) -->
+    <g>
+      <rect width="280" height="56" fill="#E8EAF6"/>
+      <rect x="0" y="0" width="4" height="56" fill="#3F51B5"/>
+      <g transform="translate(24, 16)">
+        <!-- Home Icon -->
+        <path d="M12 3 L2 12 L5 12 L5 22 L11 22 L11 16 L13 16 L13 22 L19 22 L19 12 L22 12 Z" 
+              fill="#3F51B5" stroke="none"/>
+      </g>
+      <text x="64" y="36" font-family="Roboto, sans-serif" font-size="16" font-weight="500" fill="#3F51B5">ホーム</text>
+    </g>
+    
+    <!-- All Tasks -->
+    <g transform="translate(0, 56)">
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(24, 16)">
+        <!-- List Icon -->
+        <rect x="0" y="2" width="24" height="2" rx="1" fill="#757575"/>
+        <rect x="0" y="9" width="24" height="2" rx="1" fill="#757575"/>
+        <rect x="0" y="16" width="24" height="2" rx="1" fill="#757575"/>
+      </g>
+      <text x="64" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">全タスク</text>
+    </g>
+    
+    <!-- Completed Tasks -->
+    <g transform="translate(0, 112)">
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(24, 16)">
+        <!-- Check Circle Icon -->
+        <circle cx="12" cy="12" r="11" fill="none" stroke="#757575" stroke-width="2"/>
+        <path d="M7 12 L10.5 15.5 L17 8.5" stroke="#757575" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </g>
+      <text x="64" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">完了タスク</text>
+    </g>
+    
+    <!-- Deleted Tasks -->
+    <g transform="translate(0, 168)">
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(24, 16)">
+        <!-- Delete Icon -->
+        <path d="M6 6 L6 21 C6 22.1 6.9 23 8 23 L16 23 C17.1 23 18 22.1 18 21 L18 6 M4 6 L20 6 M9 6 L9 4 C9 2.9 9.9 2 11 2 L13 2 C14.1 2 15 2.9 15 4 L15 6" 
+              stroke="#757575" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <line x1="10" y1="11" x2="10" y2="18" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+        <line x1="14" y1="11" x2="14" y2="18" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <text x="64" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">削除タスク</text>
+    </g>
+  </g>
+  
+  <!-- Divider -->
+  <line x1="24" y1="440" x2="256" y2="440" stroke="#E0E0E0" stroke-width="1"/>
+  
+  <!-- Settings Section -->
+  <g transform="translate(0, 456)">
+    <!-- Settings -->
+    <g>
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(24, 16)">
+        <!-- Settings Icon -->
+        <circle cx="12" cy="12" r="10" fill="none" stroke="#757575" stroke-width="2"/>
+        <circle cx="12" cy="12" r="3" fill="#757575"/>
+        <line x1="12" y1="2" x2="12" y2="7" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+        <line x1="12" y1="17" x2="12" y2="22" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+        <line x1="2" y1="12" x2="7" y2="12" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+        <line x1="17" y1="12" x2="22" y2="12" stroke="#757575" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <text x="64" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">設定</text>
+    </g>
+    
+    <!-- Help -->
+    <g transform="translate(0, 56)">
+      <rect width="280" height="56" fill="transparent"/>
+      <g transform="translate(24, 16)">
+        <!-- Help Icon -->
+        <circle cx="12" cy="12" r="11" fill="none" stroke="#757575" stroke-width="2"/>
+        <path d="M9 9 C9 7.3 10.3 6 12 6 C13.7 6 15 7.3 15 9 C15 10 14.5 10.5 13.5 11.5 C12.5 12.5 12 13 12 14" 
+              stroke="#757575" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <circle cx="12" cy="18" r="1" fill="#757575"/>
+      </g>
+      <text x="64" y="36" font-family="Roboto, sans-serif" font-size="16" fill="#212121">ヘルプ</text>
+    </g>
+  </g>
+  
+  <!-- Version Info -->
+  <g transform="translate(24, 780)">
+    <text x="0" y="0" font-family="Roboto, sans-serif" font-size="12" fill="#9E9E9E">Version 1.0.0</text>
+  </g>
+  
+  <!-- Close Area Indicator (Optional) -->
+  <g transform="translate(280, 0)" opacity="0">
+    <rect width="110" height="844" fill="transparent"/>
+  </g>
+</svg>

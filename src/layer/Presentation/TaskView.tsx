@@ -26,9 +26,16 @@ export function TaskView({ task, current_date, handleEditTask }: TaskViewProps):
 
     return (
         <li key={task.meta.id} className="card task">
-            <input type="checkbox" name="item" id={task.meta.id} checked={task.data.completedAt !== undefined} onChange={() => handleToggleComplete()} />
-            <div className="task-text">
-                <input type="text" defaultValue={task.data.title} onInput={(e) => updateTaskDataField("title", e.currentTarget.value)} />
+            <input
+                type="checkbox"
+                className="task-is-complete"
+                name="item"
+                id={task.meta.id}
+                checked={task.data.completedAt !== undefined}
+                onChange={() => handleToggleComplete()}
+            />
+            <div className="task-description">
+                <input type="text" className="task-text" defaultValue={task.data.title} onInput={(e) => updateTaskDataField("title", e.currentTarget.value)} />
                 <div className="task-create-date">{shortPastDate(task.meta.createdAt, current_date).date}作成</div>
             </div>
             <TaskWeightBadge task={task} current_date={current_date} />
