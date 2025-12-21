@@ -1,44 +1,23 @@
 import type { JSX } from "react";
-import type { Task, TaskContent } from "../../../type/types";
+import type { TaskState } from "../../All";
 import { shortPastDate } from "../../lib/date";
 import { TaskWeightBadge } from "./TaskWeightBadge";
 
 export type TaskViewProps = {
-    task: Task;
+    task: TaskState;
     current_date: string;
-    handleEditTask: (task: Task) => void;
+    handleSelectTask: () => void;
 };
 
-export function TaskView({ task, current_date, handleEditTask }: TaskViewProps): JSX.Element {
-    function updateTaskDataField<K extends keyof TaskContent>(field: K, value: TaskContent[K]): void {
-        const updatedItem = {
-            ...task,
-            data: { ...task.data, [field]: value },
-        };
-        handleEditTask(updatedItem);
-    }
-
-    function handleToggleComplete(): void {
-        const completedAt = task.data.completedAt === undefined ? new Date().toISOString() : undefined;
-        const updatedTask = { ...task, data: { ...task.data, completedAt } };
-        handleEditTask(updatedTask);
-    }
-
+export function TaskView({ task, current_date, handleSelectTask }: TaskViewProps): JSX.Element {
     return (
-        <li key={task.meta.id} className="card task">
-            <input
-                type="checkbox"
-                className="task-is-complete"
-                name="item"
-                id={task.meta.id}
-                checked={task.data.completedAt !== undefined}
-                onChange={() => handleToggleComplete()}
-            />
+        <li key={task.task.meta.id} className={`card task ${task.task.data.completedAt !== undefined ? "task-completed" : ""}`}>
+            <input type="checkbox" className="task-sel" name="item" checked={task.isSelected} onChange={handleSelectTask} id={task.task.meta.id} />
             <div className="task-description">
-                <input type="text" className="task-text" defaultValue={task.data.title} onInput={(e) => updateTaskDataField("title", e.currentTarget.value)} />
-                <div className="task-create-date">{shortPastDate(task.meta.createdAt, current_date).date}作成</div>
+                <div className="task-text">{task.task.data.title}</div>
+                <div className="task-create-date">{shortPastDate(task.task.meta.createdAt, current_date).date}作成</div>
             </div>
-            <TaskWeightBadge task={task} current_date={current_date} />
+            <TaskWeightBadge task={task.task} current_date={current_date} />
         </li>
     );
 }

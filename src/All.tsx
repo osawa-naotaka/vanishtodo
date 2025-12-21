@@ -6,7 +6,7 @@ import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
 import { AppBar } from "./layer/Presentation/AppBar";
 import { Drawer } from "./layer/Presentation/Drawer";
-import { TaskViewReadOnly } from "./layer/Presentation/TaskViewReadOnly";
+import { TaskView } from "./layer/Presentation/TaskView";
 
 export type TaskState = {
     task: Task;
@@ -62,10 +62,10 @@ export function All(): JSX.Element {
         <>
             <AppBar />
             <Drawer />
-            <main className="responsive">
+            <main className="responsive-mobile">
                 <ul className="readonly-task-list">
                     {tasks.map((task) => (
-                        <TaskViewReadOnly key={task.task.meta.id} task={task} current_date={current_date} handleSelectTask={() => handleSelectTask(task)} />
+                        <TaskView key={task.task.meta.id} task={task} current_date={current_date} handleSelectTask={() => handleSelectTask(task)} />
                     ))}
                 </ul>
             </main>

@@ -3,7 +3,7 @@ import type { JSX } from "react";
 export function BottomTaskFilter(): JSX.Element {
     return (
         <footer className="bottom-nav">
-            <div className="responsive">
+            <div className="responsive-mobile">
                 <input type="radio" name="tab" id="tab-all" />
                 <label htmlFor="tab-all">すべて</label>
                 <input type="radio" name="tab" id="tab-light" defaultChecked />

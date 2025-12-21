@@ -51,29 +51,30 @@
         color: #333333;
     }
 
-    .responsive {
-        margin: 0 auto;
-        max-width: 1024px;
-    }
 
     /* all radio button is hidden, use label instead */
     input[type="radio"] {
         display: none;
     }
 
-    main {
-        padding-inline: 1rem;
-    }
-
     /* Moble Styles */
     @media screen and (max-width: 768px) {
+        main {
+            padding-inline: 1rem;
+        }
+
+        .responsive-mobile {
+            margin: 0 auto;
+            max-width: 1024px;
+        }
+
         /* App Bar */
         .app-bar {
             background: #3f51b5;
             padding: 1rem;
         }
 
-        .app-bar .responsive {
+        .app-bar .app-bar-container {
             display: flex;
             align-items: center;
             width: 100%;
@@ -224,6 +225,10 @@
     @media screen and (min-width: 769px) {
         .app-bar {
             display: none;
+        }
+
+        body {
+            display: flex;
         }
     }
 

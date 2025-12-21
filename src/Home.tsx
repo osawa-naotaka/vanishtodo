@@ -7,7 +7,7 @@ import { AppBar } from "./layer/Presentation/AppBar";
 import { BottomTaskFilter } from "./layer/Presentation/BottomTaskFilter";
 import { Drawer } from "./layer/Presentation/Drawer";
 import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
-import { TaskView } from "./layer/Presentation/TaskView";
+import { EditableTaskView } from "./layer/Presentation/EditableTaskView";
 
 export function Home(): JSX.Element {
     const biz = useRef<Business>(null);
@@ -52,11 +52,11 @@ export function Home(): JSX.Element {
         <>
             <AppBar />
             <Drawer />
-            <main className="responsive">
+            <main className="responsive-mobile">
                 <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
                 <ul className="task-list">
                     {tasks.map((task) => (
-                        <TaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
+                        <EditableTaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
                     ))}
                 </ul>
             </main>

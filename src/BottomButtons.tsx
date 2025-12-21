@@ -8,7 +8,7 @@ export type BottomButtonsProps = {
 export function BottomButtons({ countSelected, handleRevertSelected }: BottomButtonsProps): JSX.Element {
     return (
         <footer className="bottom-buttons">
-            <div className="responsive">
+            <div className="responsive-mobile">
                 <div>
                     <span>{countSelected} 件選択中</span>
                 </div>
