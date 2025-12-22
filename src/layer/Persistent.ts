@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { DBContainer, OnComplete, OnError, Schema, TaskContent, Tasks, UserSettingContent, UserSetting } from "../../type/types";
+import type { DBContainer, OnComplete, OnError, Schema, TaskContent, Tasks, UserSetting, UserSettingContent } from "../../type/types";
 import { IPersistent, tasksSchema, userSettingSchema } from "../../type/types";
 import type { Network } from "./Network";
 
@@ -38,35 +38,30 @@ class AsyncQueue {
 }
 
 class LocalStorege<T> {
-    private readonly m_storage_key: string;
-    private readonly m_schema: Schema<T>;
-    private m_item: T;
+    private readonly m_config: PersistentContentConfig<T>;
 
     constructor(config: PersistentContentConfig<T>) {
-        this.m_storage_key = config.storage_key;
-        this.m_schema = config.schema;
-        const item = localStorage.getItem(this.m_storage_key);
-        if (item) {
-            const result = v.safeParse(this.m_schema, JSON.parse(item));
-            if (result.success) {
-                this.m_item = result.output;
-            } else {
-                console.log(`Persistent: failed to parse ${this.m_storage_key} from localStorage. use initial value.`);
-                this.m_item = config.initial_value;
-            }
-        } else {
-            this.m_item = config.initial_value;
-        }
+        this.m_config = config;
     }
 
     get item(): T {
-        return this.m_item;
+        const item = localStorage.getItem(this.m_config.storage_key);
+        if (item) {
+            const result = v.safeParse(this.m_config.schema, JSON.parse(item));
+            if (result.success) {
+                return result.output;
+            } else {
+                console.log(`Persistent: failed to parse ${this.m_config.storage_key} from localStorage. use initial value.`);
+                return this.m_config.initial_value;
+            }
+        } else {
+            return this.m_config.initial_value;
+        }
     }
 
     set item(value: T) {
-        this.m_item = value;
-        const str = JSON.stringify(this.m_item);
-        localStorage.setItem(this.m_storage_key, str);
+        const str = JSON.stringify(value);
+        localStorage.setItem(this.m_config.storage_key, str);
     }
 }
 
@@ -89,7 +84,7 @@ export class Persistent extends IPersistent {
     constructor(network: Network) {
         super();
         this.m_network = network;
-        this.m_tasks_config =  {
+        this.m_tasks_config = {
             name: "tasks",
             api_base: "/tasks",
             storage_key: "vanish-todo-tasks",
@@ -98,7 +93,7 @@ export class Persistent extends IPersistent {
         };
         this.m_user_settings_config = {
             name: "user_settings",
-            api_base: "/settings",
+            api_base: "/setting",
             storage_key: "vanish-todo-user-settings",
             schema: userSettingSchema,
             initial_value: {
@@ -114,9 +109,9 @@ export class Persistent extends IPersistent {
                         heavy: 1,
                         medium: 2,
                         light: 3,
-                    }
-                }
-            }
+                    },
+                },
+            },
         };
         this.m_tasks_storage = new LocalStorege<DBContainer<TaskContent>[]>(this.m_tasks_config);
         this.m_user_settings_storage = new LocalStorege<UserSetting>(this.m_user_settings_config);
@@ -148,88 +143,100 @@ export class Persistent extends IPersistent {
     }
 
     syncTasks(onComplete: OnComplete<Tasks>): void {
-        syncDBandLocalStorage<Tasks>(this.m_queue, this.m_tasks_storage, this.m_network, this.m_tasks_config.api_base, this.m_tasks_config.schema, onComplete);
+        this.syncDBandLocalStorage(this.m_tasks_storage, this.m_tasks_config, onComplete);
     }
 
     createTask(item: DBContainer<TaskContent>, onError: OnError): void {
-        createDBItem<TaskContent>(this.m_queue, this.m_tasks_storage, this.m_network, this.m_tasks_config.api_base, item, onError);
+        this.createDBItem(this.m_tasks_storage, this.m_tasks_config, item, onError);
     }
 
     updateTask(item: DBContainer<TaskContent>, onError: OnError): void {
-        updateDBItemArray<TaskContent>(this.m_queue, this.m_tasks_storage, this.m_network, this.m_tasks_config.api_base, item, onError);
+        this.updateDBItemArray(this.m_tasks_storage, this.m_tasks_config, item, onError);
     }
 
     syncUserSetting(onComplete: OnComplete<UserSetting>): void {
-        syncDBandLocalStorage<UserSetting>(this.m_queue, this.m_user_settings_storage, this.m_network, this.m_user_settings_config.api_base, this.m_user_settings_config.schema, onComplete);
+        this.syncDBandLocalStorage(this.m_user_settings_storage, this.m_user_settings_config, onComplete);
     }
 
     updateUserSetting(item: DBContainer<UserSettingContent>, onError: OnError): void {
-        updateDBItem<UserSettingContent>(this.m_queue, this.m_user_settings_storage, this.m_network, this.m_user_settings_config.api_base, item, onError);
+        this.updateDBItem(this.m_user_settings_storage, this.m_user_settings_config, item, onError);
     }
 
-}
-
-
-function syncDBandLocalStorage<T>(queue: AsyncQueue, local_storage: LocalStorege<T>, network: Network, api_base: string, schema: Schema<T>, onComplete: OnComplete<T>): void {
-    queue.enqueue(async () => {
-        const result = await network.getJson(api_base, schema);
-        if (result.status === "success") {
-            local_storage.item = result.data;
-            onComplete({
-                status: "success",
-                data: result.data,
-            });
-        } else {
-            onComplete({
-                status: "fatal",
-                error_info: result.error_info,
-                data: local_storage.item,
-            });
-        }
-    });
-}
-
-function createDBItem<T>(queue: AsyncQueue, local_storage: LocalStorege<DBContainer<T>[]>, network: Network, api_base: string, item: DBContainer<T>, onError: OnError): void {
-    const arr = local_storage.item;
-    arr.push(item);
-    local_storage.item = arr;
-    queue.enqueue(async () => {
-        const result = await network.postJson(api_base, item);
-        if (result.status !== "success") {
-            onError(result);
-        }
-    });
-}
-
-function updateDBItemArray<T>(queue: AsyncQueue, local_storage: LocalStorege<DBContainer<T>[]>, network: Network, api_base: string, item: DBContainer<T>, onError: OnError): void {
-    const arr = local_storage.item;
-    const idx = arr.findIndex((x) => x.meta.id === item.meta.id);
-    if (idx < 0) {
-        onError({
-            status: "fatal",
-            error_info: {
-                code: "INTERNAL_ERROR",
-                message: `更新時にIDが見つかりません`,
-            },
+    private syncDBandLocalStorage<T>(local_storage: LocalStorege<T>, setting: PersistentContentConfig<T>, onComplete: OnComplete<T>): void {
+        this.m_queue.enqueue(async () => {
+            const result = await this.m_network.getJson(setting.api_base, setting.schema);
+            if (result.status === "success") {
+                local_storage.item = result.data;
+                onComplete({
+                    status: "success",
+                    data: result.data,
+                });
+            } else {
+                onComplete({
+                    status: "fatal",
+                    error_info: result.error_info,
+                    data: local_storage.item,
+                });
+            }
         });
     }
-    arr[idx] = item;
-    local_storage.item = arr;
-    queue.enqueue(async () => {
-        const result = await network.putJson(`${api_base}/${item.meta.id}`, item);
-        if (result.status !== "success") {
-            onError(result);
-        }       
-    });
-}
 
-function updateDBItem<T>(queue: AsyncQueue, local_storage: LocalStorege<DBContainer<T>>, network: Network, api_base: string, item: DBContainer<T>, onError: OnError): void {
-    local_storage.item = item;
-    queue.enqueue(async () => {
-        const result = await network.putJson(api_base, item);
-        if (result.status !== "success") {
-            onError(result);
-        }       
-    });
-}
+    private createDBItem<T>(
+        local_storage: LocalStorege<DBContainer<T>[]>,
+        config: PersistentContentConfig<DBContainer<T>[]>,
+        item: DBContainer<T>,
+        onError: OnError,
+    ): void {
+        const arr = local_storage.item;
+        arr.push(item);
+        local_storage.item = arr;
+        this.m_queue.enqueue(async () => {
+            const result = await this.m_network.postJson(config.api_base, item);
+            if (result.status !== "success") {
+                onError(result);
+            }
+        });
+    }
 
+    private updateDBItemArray<T>(
+        local_storage: LocalStorege<DBContainer<T>[]>,
+        config: PersistentContentConfig<DBContainer<T>[]>,
+        item: DBContainer<T>,
+        onError: OnError,
+    ): void {
+        const arr = local_storage.item;
+        const idx = arr.findIndex((x) => x.meta.id === item.meta.id);
+        if (idx < 0) {
+            onError({
+                status: "fatal",
+                error_info: {
+                    code: "INTERNAL_ERROR",
+                    message: `更新時にIDが見つかりません`,
+                },
+            });
+        }
+        arr[idx] = item;
+        local_storage.item = arr;
+        this.m_queue.enqueue(async () => {
+            const result = await this.m_network.putJson(`${config.api_base}/${item.meta.id}`, item);
+            if (result.status !== "success") {
+                onError(result);
+            }
+        });
+    }
+
+    private updateDBItem<T>(
+        local_storage: LocalStorege<DBContainer<T>>,
+        config: PersistentContentConfig<DBContainer<T>>,
+        item: DBContainer<T>,
+        onError: OnError,
+    ): void {
+        local_storage.item = item;
+        this.m_queue.enqueue(async () => {
+            const result = await this.m_network.putJson(config.api_base, item);
+            if (result.status !== "success") {
+                onError(result);
+            }
+        });
+    }
+}

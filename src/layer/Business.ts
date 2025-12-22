@@ -1,4 +1,4 @@
-import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskInput, Tasks } from "../../type/types";
+import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskInput, Tasks, UserSetting } from "../../type/types";
 
 /**
  * ビジネス層インターフェースクラス
@@ -15,8 +15,9 @@ export class Business {
         this.m_persistent = persistent;
     }
 
-    init(onComplete: OnComplete<Tasks>): void {
-        this.m_persistent.syncTasks(onComplete);
+    init(onCompleteTasks: OnComplete<Tasks>, onCompleteUserSetting: OnComplete<UserSetting>): void {
+        this.m_persistent.syncTasks(onCompleteTasks);
+        this.m_persistent.syncUserSetting(onCompleteUserSetting);
     }
 
     /**
@@ -37,8 +38,6 @@ export class Business {
                 onError(e);
             }
         });
-        console.log("Business: create");
-        console.log(this.m_persistent.tasks);
         return this.m_persistent.tasks;
     }
 

@@ -223,7 +223,7 @@ app.get("/api/v1/setting", async (c) => {
 
         const response = result.map(dbUserToUser);
 
-        return successResponse(response[0]);    // ad-hock
+        return successResponse(response[0]); // ad-hock
     } catch (error: unknown) {
         let details = "";
         if (error instanceof Error) {
