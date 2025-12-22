@@ -16,8 +16,8 @@ export class Business {
     }
 
     init(onCompleteTasks: OnComplete<Tasks>, onCompleteUserSetting: OnComplete<UserSetting>): void {
-        this.m_persistent.syncTasks(onCompleteTasks);
         this.m_persistent.syncUserSetting(onCompleteUserSetting);
+        this.m_persistent.syncTasks(onCompleteTasks);
     }
 
     /**
