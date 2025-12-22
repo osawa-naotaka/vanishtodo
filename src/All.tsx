@@ -59,7 +59,7 @@ export function All(): JSX.Element {
     }
 
     return (
-        <>
+        <div className="top-container-pc">
             <AppBar />
             <Drawer />
             <main className="responsive-mobile">
@@ -70,6 +70,6 @@ export function All(): JSX.Element {
                 </ul>
             </main>
             <BottomButtons countSelected={tasks.filter((task) => task.isSelected).length} handleRevertSelected={handleRevertSelected} />
-        </>
+        </div>
     );
 }
