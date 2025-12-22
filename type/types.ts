@@ -118,6 +118,31 @@ export type TaskInput = v.InferOutput<typeof taskInputSchema>;
 
 
 // -----------------------------------------------------------------------------
+// ユーザー設定型
+// -----------------------------------------------------------------------------
+
+// タスク目標数 0~20
+export const numDailyGoalsTypeSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(20));
+
+// ユーザー設定（サーバー → クライアント）
+export const userSettingContentSchema = v.object({
+    timezone: v.number(),
+    dailyGoals: v.object({
+        heavy: numDailyGoalsTypeSchema, // 重タスク目標数（0-20）
+        medium: numDailyGoalsTypeSchema, // 中タスク目標数（0-20）
+        light: numDailyGoalsTypeSchema, // 軽タスク目標数（0-20）
+    }),
+});
+
+export const userSettingSchema = v.object({
+    meta: DBContainerMetaSchema,
+    data: userSettingContentSchema,
+});
+
+export type UserSetting = v.InferOutput<typeof userSettingSchema>;
+export type UserSettingContent = v.InferOutput<typeof userSettingContentSchema>;
+
+// -----------------------------------------------------------------------------
 // ネットワーク層関連型
 // -----------------------------------------------------------------------------
 
@@ -161,7 +186,7 @@ export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
 
 
 // API呼び出し成功時のレスポンスボディ型
-export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSettings;
+export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSetting;
 
 // タスク一覧取得のレスポンスボディ
 export const apiTasksSchema = tasksSchema;
@@ -191,10 +216,8 @@ export interface ApiAnalyze {
 }
 
 // ユーザー設定のレスポンスボディ
-export interface ApiUserSettings {
-    type: "settings";
-    settings: UserSettings;
-}
+export const apiUserSettingSchema = userSettingSchema;
+export type ApiUserSetting = v.InferOutput<typeof apiUserSettingSchema>;
 
 // -----------------------------------------------------------------------------
 // 永続化層関連型
@@ -204,11 +227,14 @@ export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
 export abstract class IPersistent {
     abstract get tasks(): Tasks;
+    abstract get userSetting(): UserSetting;
     abstract generateItem<T>(data: T): DBContainer<T>;
-    abstract readTasks(onComplete: OnComplete<Tasks>): void;
     abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
+    abstract syncTasks(onComplete: OnComplete<Tasks>): void;
     abstract createTask(item: Task, onError: OnError): void;
     abstract updateTask(item: Task, onError: OnError): void;
+    abstract syncUserSetting(onComplete: OnComplete<UserSetting>): void;
+    abstract updateUserSetting(item: UserSetting, onError: OnError): void;
 }
 
 // -----------------------------------------------------------------------------
@@ -218,24 +244,6 @@ export abstract class IPersistent {
 
 
 
-// -----------------------------------------------------------------------------
-// ユーザー設定型
-// -----------------------------------------------------------------------------
-
-// タスク目標数 0~20
-export const NumDailyGoalsTypeSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(20));
-
-// ユーザー設定（サーバー → クライアント）
-export const UserSettingsContentSchema = v.object({
-    dailyGoals: v.object({
-        timezone: v.number(),
-        heavy: NumDailyGoalsTypeSchema, // 重タスク目標数（0-20）
-        medium: NumDailyGoalsTypeSchema, // 中タスク目標数（0-20）
-        light: NumDailyGoalsTypeSchema, // 軽タスク目標数（0-20）
-    }),
-});
-
-export type UserSettings = DBContainer<v.InferOutput<typeof UserSettingsContentSchema>>;
 
 
 // ========================================
@@ -248,6 +256,7 @@ export const users = sqliteTable("users", {
     daily_goal_heavy: integer("daily_goal_heavy").notNull().default(1),
     daily_goal_medium: integer("daily_goal_medium").notNull().default(2),
     daily_goal_light: integer("daily_goal_light").notNull().default(3),
+    version: integer("version").notNull().default(1),
     created_at: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
     updated_at: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });

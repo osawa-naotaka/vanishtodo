@@ -8,11 +8,13 @@ CREATE TABLE IF NOT EXISTS users (
     daily_goal_heavy INT NOT NULL DEFAULT 1,
     daily_goal_medium INT NOT NULL DEFAULT 2,
     daily_goal_light INT NOT NULL DEFAULT 3,
+    version INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (daily_goal_heavy >= 0 AND daily_goal_heavy <= 20),
     CHECK (daily_goal_medium >= 0 AND daily_goal_medium <= 20),
-    CHECK (daily_goal_light >= 0 AND daily_goal_light <= 20)
+    CHECK (daily_goal_light >= 0 AND daily_goal_light <= 20),
+    CHECK (version >= 1)
 );
 
 -- デフォルトユーザーの挿入

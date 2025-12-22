@@ -16,7 +16,7 @@ export class Business {
     }
 
     init(onComplete: OnComplete<Tasks>): void {
-        this.m_persistent.readTasks(onComplete);
+        this.m_persistent.syncTasks(onComplete);
     }
 
     /**
@@ -37,6 +37,8 @@ export class Business {
                 onError(e);
             }
         });
+        console.log("Business: create");
+        console.log(this.m_persistent.tasks);
         return this.m_persistent.tasks;
     }
 

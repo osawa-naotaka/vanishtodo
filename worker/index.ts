@@ -3,8 +3,8 @@ import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import * as v from "valibot";
-import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task } from "../type/types";
-import { taskSchema, tasks } from "../type/types";
+import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
+import { taskSchema, tasks, users } from "../type/types";
 
 type Bindings = {
     DB: D1Database;
@@ -70,6 +70,25 @@ function taskToDbTask(task: Task): typeof tasks.$inferInsert {
         version: task.meta.version,
         created_at: task.meta.createdAt,
         updated_at: task.meta.updatedAt,
+    };
+}
+
+function dbUserToUser(dbUser: typeof users.$inferSelect): UserSetting {
+    return {
+        meta: {
+            id: dbUser.id,
+            version: dbUser.version,
+            createdAt: dbUser.created_at,
+            updatedAt: dbUser.updated_at,
+        },
+        data: {
+            timezone: dbUser.timezone,
+            dailyGoals: {
+                heavy: dbUser.daily_goal_heavy,
+                medium: dbUser.daily_goal_medium,
+                light: dbUser.daily_goal_light,
+            },
+        },
     };
 }
 
@@ -190,6 +209,30 @@ app.post("/api/v1/tasks", async (c) => {
         return errorResponse(500, {
             code: "INTERNAL_ERROR",
             message: "サーバーエラーが発生しました",
+        });
+    }
+});
+
+// ========================================
+// API-007: ユーザー設定取得
+// ========================================
+app.get("/api/v1/setting", async (c) => {
+    try {
+        const db = drizzle(c.env.DB);
+        const result = await db.select().from(users);
+
+        const response = result.map(dbUserToUser);
+
+        return successResponse(response[0]);    // ad-hock
+    } catch (error: unknown) {
+        let details = "";
+        if (error instanceof Error) {
+            details = error.stack || error.message;
+        }
+        return errorResponse(500, {
+            code: "INTERNAL_ERROR",
+            message: "/api/v1/settingsの取得中にサーバー側のロジック異常が検出されました",
+            details,
         });
     }
 });

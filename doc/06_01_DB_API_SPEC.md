@@ -81,8 +81,8 @@
 | API-004 | PUT | /api/v1/tasks/:id | タスク更新（完了・復帰・論理削除含む） |
 | API-005 | DELETE | /api/v1/tasks/:id | タスク削除（物理削除） |
 | API-006 | POST | /api/v1/tasks/analyze | タスク解析（LLM） |
-| API-007 | GET | /api/v1/settings | ユーザー設定取得 |
-| API-008 | PUT | /api/v1/settings | ユーザー設定更新 |
+| API-007 | GET | /api/v1/setting | ユーザー設定取得 |
+| API-008 | PUT | /api/v1/setting | ユーザー設定更新 |
 
 ## 3 エンドポイント定義
 
@@ -338,7 +338,7 @@
 | 項目 | 内容 |
 |------|------|
 | **エンドポイントID** | API-007 |
-| **エンドポイント** | `/api/v1/settings` |
+| **エンドポイント** | `/api/v1/setting` |
 | **HTTPメソッド** | GET |
 | **概要** | ユーザーの設定を取得する |
 | **対応する要件ID** | FR-2.3 |
@@ -353,30 +353,7 @@
 
 **レスポンス:**
 
-- **成功時（200 OK）**: ApiUserSettings型
-  ```json
-  {
-    "status": "success",
-    "data": {
-      "type": "settings",
-      "settings": {
-        "id": "user-001",
-        "dailyGoals": {
-          "heavy": 1,
-          "medium": 2,
-          "light": 3
-        },
-        "displayLimits": {
-          "heavy": 3,
-          "medium": 5,
-          "light": 5
-        },
-        "createdAt": "2025-11-01T00:00:00Z",
-        "updatedAt": "2025-11-15T10:00:00Z"
-      }
-    }
-  }
-  ```
+- **成功時（200 OK）**: ApiUserSetting型
 
 - **エラー時**:
   - **500 Internal Server Error**: サーバーエラー
@@ -401,7 +378,7 @@
 - **リクエストヘッダー**:
   - `Content-Type: application/json`
 
-- **リクエストボディ**: UserSettingsUpdate型
+- **リクエストボディ**: UserSetting型
   ```json
   {
     "dailyGoals": {
