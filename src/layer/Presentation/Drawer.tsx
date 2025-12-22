@@ -8,17 +8,28 @@ export function Drawer(): JSX.Element {
                 <header className="drawer-title"></header>
                 <menu className="drawer-menu">
                     <li className="drawer-menu-item">
-                        <a href="/">ホーム</a>
+                        <a href="/" className="drawer-menu-item-container">
+                            <img src="asset/icon/house.svg" alt="menu" className="svg-icon" />
+                            ホーム
+                        </a>
                     </li>
                     <li className="drawer-menu-item">
-                        <a href="/all">全タスク</a>
+                        <a href="/all" className="drawer-menu-item-container">
+                            <img src="asset/icon/bars.svg" alt="menu" className="svg-icon" />
+                            全タスク
+                        </a>
                     </li>
                     <li className="drawer-menu-item">
-                        <a href="/completed">完了タスク</a>
+                        <a href="/" className="drawer-menu-item-container">
+                            <img src="asset/icon/circle-check.svg" alt="menu" className="svg-icon" />
+                            完了タスク
+                        </a>
                     </li>
-                    <hr />
                     <li className="drawer-menu-item">
-                        <a href="/settings">設定</a>
+                        <a href="/" className="drawer-menu-item-container">
+                            <img src="asset/icon/gear.svg" alt="menu" className="svg-icon" />
+                            設定
+                        </a>
                     </li>
                 </menu>
             </aside>

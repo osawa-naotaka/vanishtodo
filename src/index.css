@@ -51,6 +51,10 @@
         color: #333333;
     }
 
+    .svg-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
 
     /* all radio button is hidden, use label instead */
     input[type="radio"] {
@@ -87,14 +91,13 @@
             font-weight: bold;
         }
 
-        #menu-toggle {
-            display: none;
-        }
-
         .app-bar-menu-icon {
             width: 1.5rem;
             height: 1.5rem;
             filter: invert(1);
+        }
+        #menu-toggle {
+            display: none;
         }
 
         /* Bottom Navigation */
@@ -219,16 +222,55 @@
             font-weight: bold;
             color: #3f51b5;
         }
+
+        .drawer-menu-item-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
     }
 
     /* Desktop Styles */
     @media screen and (min-width: 769px) {
-        .app-bar {
+        .app-bar,
+        .drawer-backdrop,
+        .bottom-buttons,
+        .bottom-nav {
             display: none;
         }
 
-        body {
+        .top-container-pc {
             display: flex;
+            margin: 0 auto;
+            max-width: 1024px;
+            padding-inline: 1rem;;
+        }
+
+        main {
+            width: 100%;
+        }
+
+        .drawer {
+            width: 300px;
+        }
+
+        .drawer-menu {
+            /* padding: 1rem; */
+            list-style-type: none;
+        }
+
+        .drawer-menu-item {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .drawer-menu-item-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #3f51b5;
+            font-weight: bold;
+            padding: 1rem;
         }
     }
 

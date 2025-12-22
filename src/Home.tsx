@@ -49,7 +49,7 @@ export function Home(): JSX.Element {
     }
 
     return (
-        <>
+        <div className="top-container-pc">
             <AppBar />
             <Drawer />
             <main className="responsive-mobile">
@@ -61,6 +61,6 @@ export function Home(): JSX.Element {
                 </ul>
             </main>
             <BottomTaskFilter />
-        </>
+        </div>
     );
 }
