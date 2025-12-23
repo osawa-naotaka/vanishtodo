@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useRef, useState } from "react";
+import { type JSX, useEffect, useReducer, useState } from "react";
 import type { Task, TaskInput } from "../type/types";
 import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
@@ -9,51 +9,61 @@ import { Drawer } from "./layer/Presentation/Drawer";
 import { EditableTaskView } from "./layer/Presentation/EditableTaskView";
 import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 
+type BizAction = { type: "init" } | { type: "edit"; task: Task } | { type: "create"; task: TaskInput };
+
+function businessReducer([biz]: [Business], action: BizAction): [Business] {
+    switch (action.type) {
+        case "init": {
+            biz.init(
+                (e) => {
+                    if (e.status === "success") {
+                    } else {
+                        console.error(e);
+                    }
+                },
+                (e) => {
+                    if (e.status !== "success") {
+                        console.error(e);
+                    }
+                },
+            );
+            break;
+        }
+        case "edit": {
+            biz.edit(action.task, (e) => {
+                console.error(e);
+            });
+            break;
+        }
+        case "create": {
+            biz.create(action.task, (e) => {
+                console.error(e);
+            });
+            break;
+        }
+        default:
+            break;
+    }
+    return [biz];
+}
+
 export function Home(): JSX.Element {
-    const biz = useRef<Business>(null);
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const [[biz], dispatchBiz] = useReducer(businessReducer, [new Business(new Persistent(new Network("/api/v1")))]);
     const [filter, setFilter] = useState<"all" | "light" | "medium" | "heavy" | "due-date">("light");
     const current_date = new Date().toISOString();
 
-    const filteredTasks = biz.current ? biz.current.filterTasks(current_date, filter, tasks) : [];
+    const filteredTasks = biz.filterTasks(current_date, filter) || [];
 
     useEffect(() => {
-        const n = new Network("/api/v1");
-        const p = new Persistent(n);
-        biz.current = new Business(p);
-        setTasks(biz.current.readTasksAll());
-        biz.current.init(
-            (e) => {
-                if (e.status === "success") {
-                    setTasks(e.data);
-                } else {
-                    console.error(e);
-                }
-            },
-            (e) => {
-                if (e.status !== "success") {
-                    console.error(e);
-                }
-            },
-        );
+        dispatchBiz({ type: "init" });
     }, []);
 
     function handleEditTask(task: Task): void {
-        if (biz.current) {
-            biz.current.edit(task, (e) => {
-                console.error(e);
-            });
-            setTasks(biz.current.readTasksAll());
-        }
+        dispatchBiz({ type: "edit", task });
     }
 
-    function handleAddTask(data: TaskInput): void {
-        if (biz.current) {
-            biz.current.create(data, (e) => {
-                console.error(e);
-            });
-            setTasks(biz.current.readTasksAll());
-        }
+    function handleAddTask(task: TaskInput): void {
+        dispatchBiz({ type: "create", task });
     }
 
     return (

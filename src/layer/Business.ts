@@ -75,19 +75,19 @@ export class Business {
         });
     }
 
-    filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[]): Task[] {
-        if(weight === "all") {
-            return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
+    filterTasks(today: string, weight: TaskWeight | "due-date" | "all"): Task[] {
+        if (weight === "all") {
+            return this.m_persistent.tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
         }
-        if(weight === "due-date") {
-            return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt && task.data.weight === null);
+        if (weight === "due-date") {
+            return this.m_persistent.tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt && task.data.weight === null);
         }
 
-        const weighted_tasks = tasks.filter((task) => task.data.weight === weight);
+        const weighted_tasks = this.m_persistent.tasks.filter((task) => task.data.weight === weight);
         const tasks_candidate = weighted_tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
         const complete_today = weighted_tasks.filter((task) => task.data.completedAt && dayDifference(today, task.data.completedAt) == 0);
         const num_limit = this.getTaskLimitCount(weight, this.m_persistent.userSetting) - complete_today.length;
-        
+
         if (num_limit <= 0) {
             return [];
         }
