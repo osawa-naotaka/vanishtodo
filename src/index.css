@@ -392,14 +392,6 @@
 
     /* Task Filtering based on selected tab */
     .task-list > .task {
-        display: none;
-    }
-
-    body:has(#tab-light:checked) .task-list > .task:has(.weight-light),
-    body:has(#tab-medium:checked) .task-list > .task:has(.weight-medium),
-    body:has(#tab-heavy:checked) .task-list > .task:has(.weight-heavy),
-    body:has(#tab-due-date:checked) .task-list > .task:has(.weight-due-date),
-    body:has(#tab-all:checked) .task-list > .task {
         display: flex;
     }
 
@@ -409,9 +401,3 @@
     }
 }
 
-@layer high {
-    /* hide completed tasks */
-    .task:has(.task-is-complete:checked) {
-        display: none;
-    }
-}

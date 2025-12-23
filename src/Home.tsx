@@ -1,5 +1,5 @@
 import { type JSX, useEffect, useRef, useState } from "react";
-import type { Task, TaskInput, UserSetting } from "../type/types";
+import type { Task, TaskInput } from "../type/types";
 import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
@@ -12,29 +12,16 @@ import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 export function Home(): JSX.Element {
     const biz = useRef<Business>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [user_setting, setUserSetting] = useState<UserSetting>({
-        meta: {
-            id: "",
-            version: 1,
-            createdAt: "",
-            updatedAt: "",
-        },
-        data: {
-            timezone: 9,
-            dailyGoals: {
-                heavy: 1,
-                medium: 2,
-                light: 3,
-            },
-        },
-    });
+    const [filter, setFilter] = useState<"all" | "light" | "medium" | "heavy" | "due-date">("light");
     const current_date = new Date().toISOString();
+
+    const filteredTasks = biz.current ? biz.current.filterTasks(current_date, filter, tasks) : [];
 
     useEffect(() => {
         const n = new Network("/api/v1");
         const p = new Persistent(n);
         biz.current = new Business(p);
-        setTasks(biz.current.readTasksWithLimit());
+        setTasks(biz.current.readTasksAll());
         biz.current.init(
             (e) => {
                 if (e.status === "success") {
@@ -44,9 +31,7 @@ export function Home(): JSX.Element {
                 }
             },
             (e) => {
-                if (e.status === "success") {
-                    setUserSetting(e.data);
-                } else {
+                if (e.status !== "success") {
                     console.error(e);
                 }
             },
@@ -58,7 +43,7 @@ export function Home(): JSX.Element {
             biz.current.edit(task, (e) => {
                 console.error(e);
             });
-            setTasks(biz.current.readTasksWithLimit());
+            setTasks(biz.current.readTasksAll());
         }
     }
 
@@ -67,7 +52,7 @@ export function Home(): JSX.Element {
             biz.current.create(data, (e) => {
                 console.error(e);
             });
-            setTasks(biz.current.readTasksWithLimit());
+            setTasks(biz.current.readTasksAll());
         }
     }
 
@@ -78,12 +63,12 @@ export function Home(): JSX.Element {
             <main className="responsive-mobile">
                 <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
                 <ul className="task-list">
-                    {tasks.map((task) => (
+                    {filteredTasks.map((task) => (
                         <EditableTaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
                     ))}
                 </ul>
             </main>
-            <BottomTaskFilter />
+            <BottomTaskFilter filter={filter} onChange={setFilter} />
         </div>
     );
 }

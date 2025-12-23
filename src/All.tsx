@@ -1,6 +1,6 @@
 import { type JSX, useEffect, useRef, useState } from "react";
-import type { Task, UserSetting } from "../type/types";
-import { BottomButtons } from "./BottomButtons";
+import type { Task } from "../type/types";
+import { BottomButtons } from "./layer/Presentation/BottomButtons";
 import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
@@ -16,22 +16,6 @@ export type TaskState = {
 export function All(): JSX.Element {
     const biz = useRef<Business>(null);
     const [tasks, setTasks] = useState<TaskState[]>([]);
-    const [user_setting, setUserSetting] = useState<UserSetting>({
-        meta: {
-            id: "",
-            version: 1,
-            createdAt: "",
-            updatedAt: "",
-        },
-        data: {
-            timezone: 9,
-            dailyGoals: {
-                heavy: 1,
-                medium: 2,
-                light: 3,
-            },
-        },
-    });
     const current_date = new Date().toISOString();
 
     useEffect(() => {
@@ -48,9 +32,7 @@ export function All(): JSX.Element {
                 }
             },
             (e) => {
-                if (e.status === "success") {
-                    setUserSetting(e.data);
-                } else {
+                if (e.status !== "success") {
                     console.error(e);
                 }
             },
