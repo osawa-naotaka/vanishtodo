@@ -34,7 +34,7 @@ export function Home(): JSX.Element {
         const n = new Network("/api/v1");
         const p = new Persistent(n);
         biz.current = new Business(p);
-        setTasks(biz.current.tasks);
+        setTasks(biz.current.readTasksWithLimit());
         biz.current.init(
             (e) => {
                 if (e.status === "success") {
@@ -55,21 +55,19 @@ export function Home(): JSX.Element {
 
     function handleEditTask(task: Task): void {
         if (biz.current) {
-            setTasks(
-                biz.current.edit(task, (e) => {
-                    console.error(e);
-                }),
-            );
+            biz.current.edit(task, (e) => {
+                console.error(e);
+            });
+            setTasks(biz.current.readTasksWithLimit());
         }
     }
 
     function handleAddTask(data: TaskInput): void {
         if (biz.current) {
-            setTasks(
-                biz.current.create(data, (e) => {
-                    console.error(e);
-                }),
-            );
+            biz.current.create(data, (e) => {
+                console.error(e);
+            });
+            setTasks(biz.current.readTasksWithLimit());
         }
     }
 

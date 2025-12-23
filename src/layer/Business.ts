@@ -26,7 +26,7 @@ export class Business {
      * @param {TaskCreateContent} data 作成するタスクデータ
      * @returns {Task[]} 全タスクリスト
      */
-    create(data: TaskInput, onError: OnError): Task[] {
+    create(data: TaskInput, onError: OnError): void {
         const c: TaskContent = {
             ...data,
             completedAt: undefined,
@@ -38,7 +38,6 @@ export class Business {
                 onError(e);
             }
         });
-        return this.m_persistent.tasks;
     }
 
     /**
@@ -48,7 +47,7 @@ export class Business {
      * @param {Task} item
      * @returns {Task[]} 全タスクリスト
      */
-    complete(item: Task, onError: OnError): Task[] {
+    complete(item: Task, onError: OnError): void {
         const c = this.m_persistent.touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
         this.m_persistent.updateTask(c, (e) => {
@@ -56,7 +55,6 @@ export class Business {
                 onError(e);
             }
         });
-        return this.m_persistent.tasks;
     }
 
     /**
@@ -66,7 +64,7 @@ export class Business {
      * @param {Task} item 編集後のタスク
      * @returns {Task[]} 全タスクリスト
      */
-    edit(item: Task, onError: OnError): Task[] {
+    edit(item: Task, onError: OnError): void {
         const updated = this.m_persistent.touchItem<TaskContent>(item);
         updated.data = item.data;
         this.m_persistent.updateTask(updated, (e) => {
@@ -74,7 +72,18 @@ export class Business {
                 onError(e);
             }
         });
+    }
+
+    readTasksWithLimit(): Task[] {
         return this.m_persistent.tasks;
+    }
+
+    readTasksAll(): Task[] {
+        return this.m_persistent.tasks;
+    }
+
+    readSetting(): UserSetting {
+        return this.m_persistent.userSetting;
     }
 
     /**
@@ -90,9 +99,5 @@ export class Business {
         if ((data.weight === null && data.dueDate === null) || (data.weight !== null && data.dueDate !== null)) return false;
 
         return true;
-    }
-
-    get tasks(): Tasks {
-        return this.m_persistent.tasks;
     }
 }
