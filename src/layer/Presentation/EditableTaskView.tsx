@@ -2,26 +2,27 @@ import type { JSX } from "react";
 import type { Task, TaskContent } from "../../../type/types";
 import { shortPastDate } from "../../lib/date";
 import { TaskWeightBadge } from "./TaskWeightBadge";
+import type { BizAction } from "../../Home";
 
 export type TaskViewProps = {
     task: Task;
     current_date: string;
-    handleEditTask: (task: Task) => void;
+    dispatchBiz: (action: BizAction) => void;
 };
 
-export function EditableTaskView({ task, current_date, handleEditTask }: TaskViewProps): JSX.Element {
+export function EditableTaskView({ task, current_date, dispatchBiz }: TaskViewProps): JSX.Element {
     function updateTaskDataField<K extends keyof TaskContent>(field: K, value: TaskContent[K]): void {
         const updatedItem = {
             ...task,
             data: { ...task.data, [field]: value },
         };
-        handleEditTask(updatedItem);
+        dispatchBiz({ type: "edit", task: updatedItem });
     }
 
     function handleToggleComplete(): void {
         const completedAt = task.data.completedAt === undefined ? new Date().toISOString() : undefined;
         const updatedTask = { ...task, data: { ...task.data, completedAt } };
-        handleEditTask(updatedTask);
+        dispatchBiz({ type: "edit", task: updatedTask });
     }
 
     return (

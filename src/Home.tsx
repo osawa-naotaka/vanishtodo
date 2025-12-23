@@ -9,7 +9,7 @@ import { Drawer } from "./layer/Presentation/Drawer";
 import { EditableTaskView } from "./layer/Presentation/EditableTaskView";
 import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 
-type BizAction = { type: "init" } | { type: "edit"; task: Task } | { type: "create"; task: TaskInput };
+export type BizAction = { type: "init" } | { type: "edit"; task: Task } | { type: "create"; task: TaskInput } | { type: "render"};
 
 function businessReducer([biz]: [Business], action: BizAction): [Business] {
     switch (action.type) {
@@ -17,6 +17,7 @@ function businessReducer([biz]: [Business], action: BizAction): [Business] {
             biz.init(
                 (e) => {
                     if (e.status === "success") {
+                        
                     } else {
                         console.error(e);
                     }
@@ -58,23 +59,15 @@ export function Home(): JSX.Element {
         dispatchBiz({ type: "init" });
     }, []);
 
-    function handleEditTask(task: Task): void {
-        dispatchBiz({ type: "edit", task });
-    }
-
-    function handleAddTask(task: TaskInput): void {
-        dispatchBiz({ type: "create", task });
-    }
-
     return (
         <div className="top-container-pc">
             <AppBar />
             <Drawer />
             <main className="responsive-mobile">
-                <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
+                <TaskInputArea defaultDate={current_date} dispatchBiz={dispatchBiz} />
                 <ul className="task-list">
                     {filteredTasks.map((task) => (
-                        <EditableTaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
+                        <EditableTaskView key={task.meta.id} task={task} current_date={current_date} dispatchBiz={dispatchBiz}/>
                     ))}
                 </ul>
             </main>

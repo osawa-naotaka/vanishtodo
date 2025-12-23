@@ -1,15 +1,15 @@
 import type React from "react";
 import type { JSX } from "react";
 import { useState } from "react";
-import type { TaskInput } from "../../../type/types";
 import { formDateToISOString, ISOStringToFormDate } from "../../lib/date";
+import type { BizAction } from "../../Home";
 
 export type TaskInputProps = {
-    onAddTask: (data: TaskInput) => void;
+    dispatchBiz: (action: BizAction) => void;
     defaultDate: string;
 };
 
-export function TaskInputArea({ onAddTask, defaultDate }: TaskInputProps): JSX.Element {
+export function TaskInputArea({ dispatchBiz, defaultDate }: TaskInputProps): JSX.Element {
     const [title, setTitle] = useState<string>("");
     const [date, setDate] = useState<string>(ISOStringToFormDate(defaultDate));
 
@@ -20,12 +20,12 @@ export function TaskInputArea({ onAddTask, defaultDate }: TaskInputProps): JSX.E
 
         if (title.length > 0 && title.length <= 500) {
             if (selectedWeight === "light" || selectedWeight === "medium" || selectedWeight === "heavy") {
-                onAddTask({ title, weight: selectedWeight });
+                dispatchBiz({ type: "create", task: { title, weight: selectedWeight } });
             } else {
                 const due_date = form_data.get("due-date");
                 if (due_date !== null) {
                     const dueDate = formDateToISOString(due_date.toString());
-                    onAddTask({ title, dueDate });
+                    dispatchBiz({ type: "create", task: { title, dueDate } });
                 }
             }
             setTitle("");
