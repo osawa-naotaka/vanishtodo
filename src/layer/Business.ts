@@ -27,7 +27,7 @@ export class Business {
      * @param {TaskCreateContent} data 作成するタスクデータ
      * @returns {Task[]} 全タスクリスト
      */
-    create(data: TaskInput, onError: OnError): void {
+    create(data: TaskInput, onError: OnError): Task[] {
         const c: TaskContent = {
             ...data,
             completedAt: undefined,
@@ -39,6 +39,7 @@ export class Business {
                 onError(e);
             }
         });
+        return this.m_persistent.tasks;
     }
 
     /**
@@ -48,7 +49,7 @@ export class Business {
      * @param {Task} item
      * @returns {Task[]} 全タスクリスト
      */
-    complete(item: Task, onError: OnError): void {
+    complete(item: Task, onError: OnError): Task[] {
         const c = this.m_persistent.touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
         this.m_persistent.updateTask(c, (e) => {
@@ -56,6 +57,7 @@ export class Business {
                 onError(e);
             }
         });
+        return this.m_persistent.tasks;
     }
 
     /**
@@ -65,7 +67,7 @@ export class Business {
      * @param {Task} item 編集後のタスク
      * @returns {Task[]} 全タスクリスト
      */
-    edit(item: Task, onError: OnError): void {
+    edit(item: Task, onError: OnError): Task[] {
         const updated = this.m_persistent.touchItem<TaskContent>(item);
         updated.data = item.data;
         this.m_persistent.updateTask(updated, (e) => {
@@ -73,21 +75,22 @@ export class Business {
                 onError(e);
             }
         });
+        return this.m_persistent.tasks;
     }
 
-    filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[]): Task[] {
-        if(weight === "all") {
+    filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[], setting: UserSetting): Task[] {
+        if (weight === "all") {
             return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
         }
-        if(weight === "due-date") {
+        if (weight === "due-date") {
             return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt && task.data.weight === null);
         }
 
         const weighted_tasks = tasks.filter((task) => task.data.weight === weight);
         const tasks_candidate = weighted_tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
-        const complete_today = weighted_tasks.filter((task) => task.data.completedAt && dayDifference(today, task.data.completedAt) == 0);
-        const num_limit = this.getTaskLimitCount(weight, this.m_persistent.userSetting) - complete_today.length;
-        
+        const complete_today = weighted_tasks.filter((task) => task.data.completedAt && dayDifference(today, task.data.completedAt) === 0);
+        const num_limit = this.getTaskLimitCount(weight, setting) - complete_today.length;
+
         if (num_limit <= 0) {
             return [];
         }
@@ -95,7 +98,7 @@ export class Business {
         return tasks_candidate.sort((a, b) => dayDifference(a.meta.updatedAt, b.meta.updatedAt)).slice(0, num_limit);
     }
 
-    private getTaskLimitCount(weight: TaskWeight, setting: UserSetting): number {
+    getTaskLimitCount(weight: TaskWeight, setting: UserSetting): number {
         if (weight === "heavy") {
             return setting.data.dailyGoals.heavy;
         }

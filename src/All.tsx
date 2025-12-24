@@ -1,10 +1,10 @@
 import { type JSX, useEffect, useRef, useState } from "react";
 import type { Task } from "../type/types";
-import { BottomButtons } from "./layer/Presentation/BottomButtons";
 import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
 import { AppBar } from "./layer/Presentation/AppBar";
+import { BottomButtons } from "./layer/Presentation/BottomButtons";
 import { Drawer } from "./layer/Presentation/Drawer";
 import { TaskView } from "./layer/Presentation/TaskView";
 
@@ -13,10 +13,13 @@ export type TaskState = {
     isSelected: boolean;
 };
 
-export function All(): JSX.Element {
+export function useTask(): {
+    tasks: TaskState[];
+    handleSelectTask: (task: TaskState) => void;
+    handleRevertSelected: () => void;
+} {
     const biz = useRef<Business>(null);
     const [tasks, setTasks] = useState<TaskState[]>([]);
-    const current_date = new Date().toISOString();
 
     useEffect(() => {
         const n = new Network("/api/v1");
@@ -64,6 +67,13 @@ export function All(): JSX.Element {
             setTasks(biz.current.readTasksAll().map((task) => ({ task, isSelected: false })));
         }
     }
+
+    return { tasks, handleSelectTask, handleRevertSelected };
+}
+
+export function All(): JSX.Element {
+    const { tasks, handleSelectTask, handleRevertSelected } = useTask();
+    const current_date = new Date().toISOString();
 
     return (
         <div className="top-container-pc">
