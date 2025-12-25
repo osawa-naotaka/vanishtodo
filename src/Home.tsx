@@ -1,13 +1,12 @@
+import { Home as HomeIcon } from "@mui/icons-material";
+import { AppBar, Box, Drawer, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
+import CssBaseline from "@mui/material/CssBaseline";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { type JSX, useEffect, useRef, useState } from "react";
 import type { Task, TaskInput } from "../type/types";
 import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
-import { AppBar } from "./layer/Presentation/AppBar";
-import { BottomTaskFilter } from "./layer/Presentation/BottomTaskFilter";
-import { Drawer } from "./layer/Presentation/Drawer";
-import { EditableTaskView } from "./layer/Presentation/EditableTaskView";
-import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
 
 export function useTasks(current_date: string): {
     tasks: Task[];
@@ -66,22 +65,57 @@ export function useTasks(current_date: string): {
     return { tasks, handleAddTask, handleEditTask, filter, setFilter };
 }
 
+const theme = createTheme({
+    palette: {
+        primary: {
+            main: "#3F51B5", // VanishToDoのメインカラー
+            light: "#5C6BC0",
+            dark: "#303F9F",
+        },
+        secondary: {
+            main: "#FF9800", // 中タスクの色
+        },
+    },
+    typography: {
+        fontFamily: 'Roboto, "Noto Sans JP", sans-serif',
+        h5: {
+            fontWeight: 500,
+        },
+    },
+    spacing: 8, // 1単位 = 8px（sx={{mt: 2}} = margin-top: 16px）
+});
+
 export function Home(): JSX.Element {
-    const current_date = new Date().toISOString();
-    const { tasks, handleAddTask, handleEditTask, filter, setFilter } = useTasks(current_date);
     return (
-        <div className="top-container-pc">
-            <AppBar />
-            <Drawer />
-            <main className="responsive-mobile">
-                <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
-                <ul className="task-list">
-                    {tasks.map((task) => (
-                        <EditableTaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
-                    ))}
-                </ul>
-            </main>
-            <BottomTaskFilter filter={filter} onChange={setFilter} />
-        </div>
+        <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <Box sx={{ display: "flex" }}>
+                <Drawer
+                    variant="permanent" // 常に表示
+                    sx={{
+                        display: { xs: "none", md: "block" }, // モバイルでは非表示
+                        width: 280,
+                        "& .MuiDrawer-paper": {
+                            // 内部要素のスタイル
+                            width: 280,
+                            boxSizing: "border-box",
+                        },
+                    }}
+                >
+                    <List>
+                        <ListItem>
+                            <ListItemIcon>
+                                <HomeIcon />
+                            </ListItemIcon>
+                            <ListItemText primary="ホーム" />
+                        </ListItem>
+                    </List>
+                </Drawer>
+
+                <AppBar position="fixed" sx={{ display: { xs: "block", md: "none" } }}></AppBar>
+
+                <Box component="main" sx={{ flexGrow: 1 }}></Box>
+            </Box>
+        </ThemeProvider>
     );
 }
