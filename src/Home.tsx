@@ -1,8 +1,10 @@
-import { Box, Button, FormControl, FormControlLabel, Grid, Paper, Radio, RadioGroup, TextField, Toolbar, Typography } from "@mui/material";
+import { CheckBoxOutlineBlank } from "@mui/icons-material";
+import { Box, Button, FormControl, FormControlLabel, Grid, IconButton, Paper, Radio, RadioGroup, TextField, Toolbar, Tooltip, Typography } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
-import { type JSX, useEffect, useRef, useState } from "react";
+import type { JSX } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as v from "valibot";
 import type { Task, TaskInput } from "../type/types";
 import { Business } from "./layer/Business";
@@ -16,6 +18,7 @@ export function useTasks(): {
     tasks: Task[];
     handleAddTask: (data: TaskInput) => void;
     handleEditTask: (task: Task) => void;
+    handleCompleteTask: (task: Task) => void;
 } {
     const biz = useRef<Business>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -61,7 +64,17 @@ export function useTasks(): {
         }
     }
 
-    return { tasks, handleAddTask, handleEditTask };
+    function handleCompleteTask(task: Task): void {
+        if (biz.current) {
+            setTasks(
+                biz.current.complete(task, (e) => {
+                    console.error(e);
+                }),
+            );
+        }
+    }
+
+    return { tasks, handleAddTask, handleEditTask, handleCompleteTask };
 }
 
 const weightSchema = v.picklist(["light", "medium", "heavy", "due-date"]);
@@ -73,7 +86,7 @@ export function Home(): JSX.Element {
     // const [filter, setFilter] = useState<"all" | "light" | "medium" | "heavy" | "due-date">("light");
     // const filtered_tasks = biz.current ? biz.current.filterTasks(current_date, filter, tasks, biz.current.readSetting()) : [];
 
-    const { tasks, handleAddTask, handleEditTask } = useTasks();
+    const { tasks, handleAddTask, handleEditTask, handleCompleteTask } = useTasks();
     const [taskTitle, setTaskTitle] = useState("");
     const [taskWeight, setTaskWeight] = useState<Weight>("light");
     const [taskDueDate, setTaskDueDate] = useState<Dayjs>();
@@ -94,13 +107,13 @@ export function Home(): JSX.Element {
         <BaseLayout>
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                <Box sx={{ display: "flex", padding: 2 }}>
+                <Paper elevation={2} sx={{ margin: 3, padding: 1, display: "flex", flexDirection: "column", gap: 1 }}>
                     <TextField
                         id="task-input"
                         label="新しいタスクを追加"
                         variant="outlined"
                         fullWidth
-                        sx={{ margin: 1 }}
+                        sx={{ margin: 1, paddingRight: 2 }}
                         value={taskTitle}
                         onChange={(e) => setTaskTitle(e.target.value)}
                         onKeyDown={(e) => {
@@ -109,45 +122,66 @@ export function Home(): JSX.Element {
                             }
                         }}
                     />
-                    <Button variant="contained" sx={{ margin: 1, width: 120 }} onClick={onAddTask}>
-                        <Typography variant="h6">追加</Typography>
-                    </Button>
-                </Box>
-                <FormControl>
-                    <RadioGroup
-                        row
-                        aria-labelledby="task-weight-label"
-                        name="task-weight-group"
-                        value={taskWeight}
-                        onChange={(e) => setTaskWeight(v.parse(weightSchema, e.target.value))}
-                        sx={{ marginLeft: 4, marginTop: 1 }}
-                    >
-                        <FormControlLabel value={"light"} control={<Radio />} label="軽" />
-                        <FormControlLabel value={"medium"} control={<Radio />} label="中" />
-                        <FormControlLabel value={"heavy"} control={<Radio />} label="重" />
-                        <FormControlLabel value={"due-date"} control={<Radio />} label="締切" />
-                    </RadioGroup>
-                </FormControl>
-                <DatePicker label="締切日" sx={{ marginLeft: 2 }} value={taskDueDate} onChange={(e) => setTaskDueDate(dayjs(e))} defaultValue={dayjs()} />
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Button variant="contained" sx={{ margin: 1, width: 120 }} onClick={onAddTask}>
+                            <Typography variant="h6">追加</Typography>
+                        </Button>
+                        <FormControl>
+                            <RadioGroup
+                                row
+                                aria-labelledby="task-weight-label"
+                                name="task-weight-group"
+                                value={taskWeight}
+                                onChange={(e) => setTaskWeight(v.parse(weightSchema, e.target.value))}
+                                sx={{ marginLeft: 4, marginTop: 1 }}
+                            >
+                                <FormControlLabel value={"light"} control={<Radio />} label="軽" />
+                                <FormControlLabel value={"medium"} control={<Radio />} label="中" />
+                                <FormControlLabel value={"heavy"} control={<Radio />} label="重" />
+                                <FormControlLabel value={"due-date"} control={<Radio />} label="締切" />
+                            </RadioGroup>
+                        </FormControl>
+                        <DatePicker
+                            label="締切日"
+                            sx={{ marginLeft: 2 }}
+                            value={taskDueDate}
+                            onChange={(e) => setTaskDueDate(dayjs(e))}
+                            defaultValue={dayjs()}
+                        />
+                    </Box>
+                </Paper>
                 <Grid container sx={{ padding: 2 }}>
                     {tasks.map((task) => (
                         <Grid size={{ xs: 12, lg: 6 }} key={task.meta.id} sx={{ padding: 1 }}>
-                            <Paper sx={{ padding: 2 }} elevation={2}>
-                                <TextField
-                                    variant="standard"
-                                    fullWidth
-                                    value={task.data.title}
-                                    onChange={(e) => {
-                                        const updatedItem = {
-                                            ...task,
-                                            data: { ...task.data, title: e.currentTarget.value },
-                                        };
-                                        handleEditTask(updatedItem);
-                                    }}
-                                />
-                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <div className="task-create-date">{shortPastDate(task.meta.createdAt, current_date).date}作成</div>
-                                    <TaskWeightBadge task={task} current_date={current_date} />
+                            <Paper sx={{ padding: 2, display: "flex" }} elevation={2}>
+                                <Tooltip title="タスクを完了にする">
+                                    <IconButton
+                                        aria-label="complete task"
+                                        sx={{ paddingInline: 2 }}
+                                        onClick={() => {
+                                            handleCompleteTask(task);
+                                        }}
+                                    >
+                                        <CheckBoxOutlineBlank />
+                                    </IconButton>
+                                </Tooltip>
+                                <Box sx={{ flexGrow: 1, marginLeft: 2 }}>
+                                    <TextField
+                                        variant="standard"
+                                        fullWidth
+                                        value={task.data.title}
+                                        onChange={(e) => {
+                                            const updatedItem = {
+                                                ...task,
+                                                data: { ...task.data, title: e.currentTarget.value },
+                                            };
+                                            handleEditTask(updatedItem);
+                                        }}
+                                    />
+                                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <div className="task-create-date">{shortPastDate(task.meta.createdAt, current_date).date}作成</div>
+                                        <TaskWeightBadge task={task} current_date={current_date} />
+                                    </Box>
                                 </Box>
                             </Paper>
                         </Grid>
