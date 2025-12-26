@@ -3,7 +3,7 @@ import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { All } from "./All";
 import { Home } from "./Home";
-import "./index.css";
+import { createTheme, CssBaseline, ThemeProvider } from "@mui/material";
 
 const router = createBrowserRouter([
     {
@@ -21,4 +21,32 @@ if (root === null) {
     throw new Error("Root element not found");
 }
 
-ReactDOM.createRoot(root).render(<RouterProvider router={router} />);
+
+const theme = createTheme({
+    palette: {
+        primary: {
+            main: "#3F51B5", // VanishToDoのメインカラー
+            light: "#5C6BC0",
+            dark: "#303F9F",
+        },
+        secondary: {
+            main: "#FF9800", // 中タスクの色
+        },
+    },
+    typography: {
+        fontFamily: 'Roboto, "Noto Sans JP", sans-serif',
+        h5: {
+            fontWeight: 500,
+        },
+    },
+    spacing: 8, // 1単位 = 8px（sx={{mt: 2}} = margin-top: 16px）
+});
+
+
+ReactDOM.createRoot(root).render(
+    <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <RouterProvider router={router} />
+    </ThemeProvider>
+);
+

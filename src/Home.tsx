@@ -1,7 +1,5 @@
-import { Home as HomeIcon } from "@mui/icons-material";
-import { AppBar, Box, Drawer, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
-import CssBaseline from "@mui/material/CssBaseline";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { Home as HomeIcon, Settings as SettingsIcon, FormatListBulleted, TaskAlt, Delete as DeleteIcon } from "@mui/icons-material";
+import { AppBar, Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, Divider, ListItemText } from "@mui/material";
 import { type JSX, useEffect, useRef, useState } from "react";
 import type { Task, TaskInput } from "../type/types";
 import { Business } from "./layer/Business";
@@ -65,57 +63,70 @@ export function useTasks(current_date: string): {
     return { tasks, handleAddTask, handleEditTask, filter, setFilter };
 }
 
-const theme = createTheme({
-    palette: {
-        primary: {
-            main: "#3F51B5", // VanishToDoのメインカラー
-            light: "#5C6BC0",
-            dark: "#303F9F",
-        },
-        secondary: {
-            main: "#FF9800", // 中タスクの色
-        },
-    },
-    typography: {
-        fontFamily: 'Roboto, "Noto Sans JP", sans-serif',
-        h5: {
-            fontWeight: 500,
-        },
-    },
-    spacing: 8, // 1単位 = 8px（sx={{mt: 2}} = margin-top: 16px）
-});
 
 export function Home(): JSX.Element {
     return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <Box sx={{ display: "flex" }}>
-                <Drawer
-                    variant="permanent" // 常に表示
-                    sx={{
-                        display: { xs: "none", md: "block" }, // モバイルでは非表示
+        <Box sx={{ display: "flex" }}>
+            <Drawer
+                variant="permanent" // 常に表示
+                sx={{
+                    display: { xs: "none", md: "block" }, // モバイルでは非表示
+                    width: 280,
+                    "& .MuiDrawer-paper": {
+                        // 内部要素のスタイル
                         width: 280,
-                        "& .MuiDrawer-paper": {
-                            // 内部要素のスタイル
-                            width: 280,
-                            boxSizing: "border-box",
-                        },
-                    }}
-                >
-                    <List>
-                        <ListItem>
+                        boxSizing: "border-box",
+                    },
+                }}
+            >
+                <List>
+                    <ListItem>
+                        <ListItemButton component="a" href="/">
                             <ListItemIcon>
                                 <HomeIcon />
                             </ListItemIcon>
                             <ListItemText primary="ホーム" />
-                        </ListItem>
-                    </List>
-                </Drawer>
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem>
+                        <ListItemButton component="a" href="/all">
+                            <ListItemIcon>
+                                <FormatListBulleted />
+                            </ListItemIcon>
+                            <ListItemText primary="すべてのタスク" />
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem>
+                        <ListItemButton component="a" href="/completed">
+                            <ListItemIcon>
+                                <TaskAlt />
+                            </ListItemIcon>
+                            <ListItemText primary="完了したタスク" />
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem>
+                        <ListItemButton component="a" href="/deleted">
+                            <ListItemIcon>
+                                <DeleteIcon />
+                            </ListItemIcon>
+                            <ListItemText primary="削除したタスク" />
+                        </ListItemButton>
+                    </ListItem>
+                    <Divider />
+                    <ListItem>
+                        <ListItemButton component="a" href="/settings">
+                            <ListItemIcon>
+                                <SettingsIcon />
+                            </ListItemIcon>
+                            <ListItemText primary="設定" />
+                        </ListItemButton>
+                    </ListItem>
+                </List>
+            </Drawer>
 
-                <AppBar position="fixed" sx={{ display: { xs: "block", md: "none" } }}></AppBar>
+            <AppBar position="fixed" sx={{ display: { xs: "block", md: "none" } }}></AppBar>
 
-                <Box component="main" sx={{ flexGrow: 1 }}></Box>
-            </Box>
-        </ThemeProvider>
+            <Box component="main" sx={{ flexGrow: 1 }}></Box>
+        </Box>
     );
 }
