@@ -1,5 +1,21 @@
 import { CheckBoxOutlineBlank } from "@mui/icons-material";
-import { Box, Button, FormControl, FormControlLabel, Grid, IconButton, Paper, Radio, RadioGroup, TextField, Toolbar, Tooltip, Typography } from "@mui/material";
+import {
+    Box,
+    Button,
+    Chip,
+    FormControl,
+    FormControlLabel,
+    Grid,
+    IconButton,
+    Paper,
+    Radio,
+    RadioGroup,
+    Stack,
+    TextField,
+    Toolbar,
+    Tooltip,
+    Typography,
+} from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
@@ -150,6 +166,12 @@ export function Home(): JSX.Element {
                         />
                     </Box>
                 </Paper>
+                <Stack direction="row" spacing={1} sx={{ marginLeft: 3, marginBottom: 1, fontWeight: "bold" }}>
+                    <Chip label="軽" color="success" />
+                    <Chip label="中" color="warning" variant="outlined" />
+                    <Chip label="重" color="error" />
+                    <Chip label="締切" color="info" />
+                </Stack>
                 <Grid container sx={{ padding: 2 }}>
                     {tasks.map((task) => (
                         <Grid size={{ xs: 12, lg: 6 }} key={task.meta.id} sx={{ padding: 1 }}>
