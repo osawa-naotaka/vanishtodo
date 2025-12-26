@@ -18,6 +18,8 @@
 		"@emotion/styled": "^11.14.1",
 		"@mui/icons-material": "^7.3.6",
 		"@mui/material": "^7.3.6",
+		"@mui/x-date-pickers": "^8.23.0",
+		"dayjs": "^1.11.19",
 		"drizzle-orm": "^0.45.0",
 		"hono": "^4.10.7",
 		"react": "^19.2.1",

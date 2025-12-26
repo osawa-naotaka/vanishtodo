@@ -1,9 +1,11 @@
+import { CssBaseline, createTheme, ThemeProvider } from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { All } from "./All";
 import { Home } from "./Home";
-import { createTheme, CssBaseline, ThemeProvider } from "@mui/material";
 
 const router = createBrowserRouter([
     {
@@ -20,7 +22,6 @@ const root = document.getElementById("root");
 if (root === null) {
     throw new Error("Root element not found");
 }
-
 
 const theme = createTheme({
     palette: {
@@ -42,11 +43,11 @@ const theme = createTheme({
     spacing: 8, // 1単位 = 8px（sx={{mt: 2}} = margin-top: 16px）
 });
 
-
 ReactDOM.createRoot(root).render(
     <ThemeProvider theme={theme}>
         <CssBaseline />
-        <RouterProvider router={router} />
-    </ThemeProvider>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <RouterProvider router={router} />
+        </LocalizationProvider>
+    </ThemeProvider>,
 );
-
