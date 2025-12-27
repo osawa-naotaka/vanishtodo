@@ -7,7 +7,8 @@ import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
 import { BaseLayout } from "./layer/Presentation/BaseLayout";
 import { EditableTaskList } from "./layer/Presentation/EditableTaskList";
-import { useTaskFilter } from "./layer/Presentation/TaskFilter";
+import type { FilterType } from "./layer/Presentation/TaskFilter";
+import { TaskFilter } from "./layer/Presentation/TaskFilter";
 import { TaskInput } from "./layer/Presentation/TaskInput";
 
 export function useTasks(): {
@@ -79,7 +80,7 @@ export function useTasks(): {
 
 export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
-    const { filter, TaskFilter } = useTaskFilter();
+    const [filter, setFilter] = useState<FilterType>("all");
 
     const { tasks, setting, handleAddTask, handleEditTask, handleCompleteTask } = useTasks();
     const filtered_tasks: Tasks = setting ? filterTasks(current_date, filter, tasks, setting) : [];
@@ -89,7 +90,7 @@ export function Home(): JSX.Element {
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
                 <TaskInput handleAddTask={handleAddTask} />
-                <TaskFilter />
+                <TaskFilter filter={filter} setFilter={setFilter} />
                 <EditableTaskList tasks={filtered_tasks} current_date={current_date} handleEditTask={handleEditTask} handleCompleteTask={handleCompleteTask} />
             </Box>
         </BaseLayout>
