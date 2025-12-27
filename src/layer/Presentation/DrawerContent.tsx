@@ -2,11 +2,15 @@ import { Delete, FormatListBulleted, Home, Settings, TaskAlt } from "@mui/icons-
 import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import type { JSX } from "react";
 
-export function DrawerContent(): JSX.Element {
+export type DrawerContentProps = {
+    selected: "home" | "all" | "completed" | "deleted" | "settings";
+};
+
+export function DrawerContent({ selected }: DrawerContentProps): JSX.Element {
     return (
         <List>
             <ListItem>
-                <ListItemButton component="a" href="/" selected>
+                <ListItemButton component="a" href="/" selected={selected === "home"}>
                     <ListItemIcon>
                         <Home />
                     </ListItemIcon>
@@ -14,7 +18,7 @@ export function DrawerContent(): JSX.Element {
                 </ListItemButton>
             </ListItem>
             <ListItem>
-                <ListItemButton component="a" href="/all">
+                <ListItemButton component="a" href="/all" selected={selected === "all"}>
                     <ListItemIcon>
                         <FormatListBulleted />
                     </ListItemIcon>
@@ -22,7 +26,7 @@ export function DrawerContent(): JSX.Element {
                 </ListItemButton>
             </ListItem>
             <ListItem>
-                <ListItemButton component="a" href="/completed">
+                <ListItemButton component="a" href="/completed" selected={selected === "completed"}>
                     <ListItemIcon>
                         <TaskAlt />
                     </ListItemIcon>
@@ -30,7 +34,7 @@ export function DrawerContent(): JSX.Element {
                 </ListItemButton>
             </ListItem>
             <ListItem>
-                <ListItemButton component="a" href="/deleted">
+                <ListItemButton component="a" href="/deleted" selected={selected === "deleted"}>
                     <ListItemIcon>
                         <Delete />
                     </ListItemIcon>
@@ -39,7 +43,7 @@ export function DrawerContent(): JSX.Element {
             </ListItem>
             <Divider />
             <ListItem>
-                <ListItemButton component="a" href="/settings">
+                <ListItemButton component="a" href="/settings" selected={selected === "settings"}>
                     <ListItemIcon>
                         <Settings />
                     </ListItemIcon>

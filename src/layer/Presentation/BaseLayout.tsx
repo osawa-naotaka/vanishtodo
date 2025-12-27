@@ -2,9 +2,9 @@ import { Menu as MenuIcon } from "@mui/icons-material";
 import { AppBar, Box, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
 import type React from "react";
 import { useState } from "react";
-import { DrawerContent } from "./DrawerContent";
+import { DrawerContent, type DrawerContentProps } from "./DrawerContent";
 
-export function BaseLayout({ children }: { children: React.ReactNode }): React.ReactElement {
+export function BaseLayout({ selected, children }: { selected: DrawerContentProps["selected"]; children: React.ReactNode }): React.ReactElement {
     const [open, setOpen] = useState(false);
 
     return (
@@ -40,7 +40,7 @@ export function BaseLayout({ children }: { children: React.ReactNode }): React.R
                     }}
                 >
                     <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                    <DrawerContent />
+                    <DrawerContent selected={selected} />
                 </Drawer>
                 <Drawer
                     variant={"temporary"}
@@ -57,7 +57,7 @@ export function BaseLayout({ children }: { children: React.ReactNode }): React.R
                     }}
                 >
                     <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                    <DrawerContent />
+                    <DrawerContent selected={selected} />
                 </Drawer>
                 {children}
             </Box>

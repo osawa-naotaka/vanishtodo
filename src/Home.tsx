@@ -86,7 +86,7 @@ export function Home(): JSX.Element {
     const filtered_tasks: Tasks = setting ? filterTasks(current_date, filter, tasks, setting) : [];
 
     return (
-        <BaseLayout>
+        <BaseLayout selected="home">
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
                 <TaskInput handleAddTask={handleAddTask} />

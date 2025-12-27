@@ -9,7 +9,7 @@ export function All(): JSX.Element {
     const { tasks } = useTasks();
 
     return (
-        <BaseLayout>
+        <BaseLayout selected="all">
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
                 <TaskList tasks={tasks} current_date={current_date} />
