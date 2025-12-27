@@ -78,36 +78,6 @@ export class Business {
         return this.m_persistent.tasks;
     }
 
-    filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[], setting: UserSetting): Task[] {
-        if (weight === "all") {
-            return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
-        }
-        if (weight === "due-date") {
-            return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt && task.data.weight === null);
-        }
-
-        const weighted_tasks = tasks.filter((task) => task.data.weight === weight);
-        const tasks_candidate = weighted_tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
-        const complete_today = weighted_tasks.filter((task) => task.data.completedAt && dayDifference(today, task.data.completedAt) === 0);
-        const num_limit = this.getTaskLimitCount(weight, setting) - complete_today.length;
-
-        if (num_limit <= 0) {
-            return [];
-        }
-
-        return tasks_candidate.sort((a, b) => dayDifference(a.meta.updatedAt, b.meta.updatedAt)).slice(0, num_limit);
-    }
-
-    getTaskLimitCount(weight: TaskWeight, setting: UserSetting): number {
-        if (weight === "heavy") {
-            return setting.data.dailyGoals.heavy;
-        }
-        if (weight === "medium") {
-            return setting.data.dailyGoals.medium;
-        }
-        return setting.data.dailyGoals.light;
-    }
-
     readTasksAll(): Task[] {
         return this.m_persistent.tasks;
     }
@@ -130,4 +100,34 @@ export class Business {
 
         return true;
     }
+}
+
+export function filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[], setting: UserSetting): Task[] {
+    if (weight === "all") {
+        return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
+    }
+    if (weight === "due-date") {
+        return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt && task.data.weight === undefined);
+    }
+
+    const weighted_tasks = tasks.filter((task) => task.data.weight === weight);
+    const tasks_candidate = weighted_tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
+    const complete_today = weighted_tasks.filter((task) => task.data.completedAt && dayDifference(today, task.data.completedAt) === 0);
+    const num_limit = getTaskLimitCount(weight, setting) - complete_today.length;
+
+    if (num_limit <= 0) {
+        return [];
+    }
+
+    return tasks_candidate.sort((a, b) => dayDifference(a.meta.updatedAt, b.meta.updatedAt)).slice(0, num_limit);
+}
+
+function getTaskLimitCount(weight: TaskWeight, setting: UserSetting): number {
+    if (weight === "heavy") {
+        return setting.data.dailyGoals.heavy;
+    }
+    if (weight === "medium") {
+        return setting.data.dailyGoals.medium;
+    }
+    return setting.data.dailyGoals.light;
 }

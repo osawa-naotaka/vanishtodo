@@ -1,8 +1,9 @@
-import { Box, Chip, Stack, Toolbar } from "@mui/material";
+import { Box, FormControl, FormControlLabel, Radio, RadioGroup, Toolbar } from "@mui/material";
 import type { JSX } from "react";
 import { useEffect, useRef, useState } from "react";
-import type { Task, TaskCreate } from "../type/types";
-import { Business } from "./layer/Business";
+import * as v from "valibot";
+import type { Task, TaskCreate, Tasks, UserSetting } from "../type/types";
+import { Business, filterTasks } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
 import { BaseLayout } from "./layer/Presentation/BaseLayout";
@@ -11,12 +12,14 @@ import { TaskInput } from "./layer/Presentation/TaskInput";
 
 export function useTasks(): {
     tasks: Task[];
+    setting: UserSetting | null;
     handleAddTask: (data: TaskCreate) => void;
     handleEditTask: (task: Task) => void;
     handleCompleteTask: (task: Task) => void;
 } {
     const biz = useRef<Business>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [setting, setSetting] = useState<UserSetting | null>(null);
 
     useEffect(() => {
         const n = new Network("/api/v1");
@@ -32,7 +35,9 @@ export function useTasks(): {
                 }
             },
             (e) => {
-                if (e.status !== "success") {
+                if (e.status === "success") {
+                    setSetting(e.data);
+                } else {
                     console.error(e);
                 }
             },
@@ -69,28 +74,40 @@ export function useTasks(): {
         }
     }
 
-    return { tasks, handleAddTask, handleEditTask, handleCompleteTask };
+    return { tasks, setting, handleAddTask, handleEditTask, handleCompleteTask };
 }
+
+export const filterSchema = v.picklist(["all", "light", "medium", "heavy", "due-date"]);
+export type FilterType = v.InferOutput<typeof filterSchema>;
 
 export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
-    // const [filter, setFilter] = useState<"all" | "light" | "medium" | "heavy" | "due-date">("light");
-    // const filtered_tasks = biz.current ? biz.current.filterTasks(current_date, filter, tasks, biz.current.readSetting()) : [];
+    const [filter, setFilter] = useState<"all" | "light" | "medium" | "heavy" | "due-date">("light");
 
-    const { tasks, handleAddTask, handleEditTask, handleCompleteTask } = useTasks();
+    const { tasks, setting, handleAddTask, handleEditTask, handleCompleteTask } = useTasks();
+    const filtered_tasks: Tasks = setting ? filterTasks(current_date, filter, tasks, setting) : [];
 
     return (
         <BaseLayout>
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
                 <TaskInput handleAddTask={handleAddTask} />
-                <Stack direction="row" spacing={1} sx={{ marginLeft: 3, marginBottom: 1, fontWeight: "bold" }}>
-                    <Chip label="軽" color="success" sx={{ minWidth: 48 }} />
-                    <Chip label="中" color="warning" variant="outlined" sx={{ minWidth: 48 }} />
-                    <Chip label="重" color="error" variant="outlined" sx={{ minWidth: 48 }} />
-                    <Chip label="締切" color="info" variant="outlined" sx={{ minWidth: 48 }} />
-                </Stack>
-                <EditableTaskList tasks={tasks} current_date={current_date} handleEditTask={handleEditTask} handleCompleteTask={handleCompleteTask} />
+                <FormControl sx={{ marginLeft: 3, marginBottom: 1 }}>
+                    <RadioGroup
+                        row
+                        name="task-weight-group"
+                        value={filter}
+                        onChange={(e) => setFilter(v.parse(filterSchema, e.target.value))}
+                        sx={{ marginBlock: 2, marginInline: 1 }}
+                    >
+                        <FormControlLabel value={"all"} control={<Radio />} label="全て" />
+                        <FormControlLabel value={"light"} control={<Radio />} label="軽" />
+                        <FormControlLabel value={"medium"} control={<Radio />} label="中" />
+                        <FormControlLabel value={"heavy"} control={<Radio />} label="重" />
+                        <FormControlLabel value={"due-date"} control={<Radio />} label="締切" />
+                    </RadioGroup>
+                </FormControl>
+                <EditableTaskList tasks={filtered_tasks} current_date={current_date} handleEditTask={handleEditTask} handleCompleteTask={handleCompleteTask} />
             </Box>
         </BaseLayout>
     );

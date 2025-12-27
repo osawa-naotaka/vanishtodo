@@ -3,28 +3,28 @@ import { DatePicker } from "@mui/x-date-pickers";
 import dayjs, { type Dayjs } from "dayjs";
 import { useState } from "react";
 import * as v from "valibot";
+import type { TaskCreate } from "../../../type/types";
 
 export type TaskInputProps = {
-    handleAddTask: (data: { title: string; weight?: "light" | "medium" | "heavy"; dueDate?: string }) => void;
+    handleAddTask: (data: TaskCreate) => void;
 };
 
-const weightSchema = v.picklist(["light", "medium", "heavy", "due-date"]);
+export const taskWeightSchema = v.picklist(["light", "medium", "heavy", "due-date"]);
+export type TaskWeight = v.InferOutput<typeof taskWeightSchema>;
 
 export function TaskInput({ handleAddTask }: TaskInputProps): React.ReactElement {
     const [taskTitle, setTaskTitle] = useState("");
-    const [taskWeight, setTaskWeight] = useState<Weight>("light");
-    const [taskDueDate, setTaskDueDate] = useState<Dayjs>();
-    type Weight = "light" | "medium" | "heavy" | "due-date";
+    const [taskWeight, setTaskWeight] = useState<TaskWeight>("light");
+    const [taskDueDate, setTaskDueDate] = useState<Dayjs>(dayjs());
 
     const onAddTask = () => {
         if (taskTitle.trim()) {
-            if (taskWeight === "due-date" && taskDueDate) {
+            if (taskWeight === "due-date") {
                 handleAddTask({ title: taskTitle, dueDate: taskDueDate.toISOString() });
-                setTaskTitle("");
-            } else if (taskWeight !== "due-date") {
+            } else {
                 handleAddTask({ title: taskTitle, weight: taskWeight });
-                setTaskTitle("");
             }
+            setTaskTitle("");
         }
     };
 
@@ -51,10 +51,9 @@ export function TaskInput({ handleAddTask }: TaskInputProps): React.ReactElement
                 <FormControl>
                     <RadioGroup
                         row
-                        aria-labelledby="task-weight-label"
                         name="task-weight-group"
                         value={taskWeight}
-                        onChange={(e) => setTaskWeight(v.parse(weightSchema, e.target.value))}
+                        onChange={(e) => setTaskWeight(v.parse(taskWeightSchema, e.target.value))}
                         sx={{ marginBlock: 2, marginInline: 1 }}
                     >
                         <FormControlLabel value={"light"} control={<Radio />} label="軽" />
