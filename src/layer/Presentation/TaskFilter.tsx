@@ -15,7 +15,7 @@ export function TaskFilter({ filter, setFilter }: TaskFilterProps): React.ReactE
         <FormControl sx={{ marginLeft: 3, marginBottom: 1 }}>
             <RadioGroup
                 row
-                name="task-weight-group"
+                name="task-filter-group"
                 value={filter}
                 onChange={(e) => setFilter(v.parse(filterSchema, e.target.value))}
                 sx={{ marginBlock: 2, marginInline: 1 }}

@@ -4,12 +4,17 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
+import { All } from "./All";
 import { Home } from "./Home";
 
 const router = createBrowserRouter([
     {
         path: "/",
         Component: Home,
+    },
+    {
+        path: "/all",
+        Component: All,
     },
 ]);
 
