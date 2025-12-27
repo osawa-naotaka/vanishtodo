@@ -1,38 +1,17 @@
-import { CheckBoxOutlineBlank } from "@mui/icons-material";
-import {
-    Box,
-    Button,
-    Chip,
-    FormControl,
-    FormControlLabel,
-    Grid,
-    IconButton,
-    Paper,
-    Radio,
-    RadioGroup,
-    Stack,
-    TextField,
-    Toolbar,
-    Tooltip,
-    Typography,
-} from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
+import { Box, Chip, Stack, Toolbar } from "@mui/material";
 import type { JSX } from "react";
 import { useEffect, useRef, useState } from "react";
-import * as v from "valibot";
-import type { Task, TaskInput } from "../type/types";
+import type { Task, TaskCreate } from "../type/types";
 import { Business } from "./layer/Business";
 import { Network } from "./layer/Network";
 import { Persistent } from "./layer/Persistent";
 import { BaseLayout } from "./layer/Presentation/BaseLayout";
-import { TaskWeightBadge } from "./layer/Presentation/TaskWeightBadge";
-import { shortPastDate } from "./lib/date";
+import { EditableTaskList } from "./layer/Presentation/EditableTaskList";
+import { TaskInput } from "./layer/Presentation/TaskInput";
 
 export function useTasks(): {
     tasks: Task[];
-    handleAddTask: (data: TaskInput) => void;
+    handleAddTask: (data: TaskCreate) => void;
     handleEditTask: (task: Task) => void;
     handleCompleteTask: (task: Task) => void;
 } {
@@ -70,7 +49,7 @@ export function useTasks(): {
         }
     }
 
-    function handleAddTask(data: TaskInput): void {
+    function handleAddTask(data: TaskCreate): void {
         if (biz.current) {
             setTasks(
                 biz.current.create(data, (e) => {
@@ -93,122 +72,25 @@ export function useTasks(): {
     return { tasks, handleAddTask, handleEditTask, handleCompleteTask };
 }
 
-const weightSchema = v.picklist(["light", "medium", "heavy", "due-date"]);
-
-type Weight = v.InferOutput<typeof weightSchema>;
-
 export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
     // const [filter, setFilter] = useState<"all" | "light" | "medium" | "heavy" | "due-date">("light");
     // const filtered_tasks = biz.current ? biz.current.filterTasks(current_date, filter, tasks, biz.current.readSetting()) : [];
 
     const { tasks, handleAddTask, handleEditTask, handleCompleteTask } = useTasks();
-    const [taskTitle, setTaskTitle] = useState("");
-    const [taskWeight, setTaskWeight] = useState<Weight>("light");
-    const [taskDueDate, setTaskDueDate] = useState<Dayjs>();
-
-    const onAddTask = () => {
-        if (taskTitle.trim()) {
-            if (taskWeight === "due-date" && taskDueDate) {
-                handleAddTask({ title: taskTitle, dueDate: taskDueDate.toISOString() });
-                setTaskTitle("");
-            } else if (taskWeight !== "due-date") {
-                handleAddTask({ title: taskTitle, weight: taskWeight });
-                setTaskTitle("");
-            }
-        }
-    };
 
     return (
         <BaseLayout>
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                <Paper elevation={2} sx={{ margin: 3, padding: 1, display: "flex", flexDirection: "column", gap: 1 }}>
-                    <TextField
-                        id="task-input"
-                        label="新しいタスクを追加"
-                        variant="outlined"
-                        fullWidth
-                        sx={{ margin: 1, paddingRight: 2 }}
-                        value={taskTitle}
-                        onChange={(e) => setTaskTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                onAddTask();
-                            }
-                        }}
-                    />
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <Button variant="contained" sx={{ margin: 1, width: 120 }} onClick={onAddTask}>
-                            <Typography variant="h6">追加</Typography>
-                        </Button>
-                        <FormControl>
-                            <RadioGroup
-                                row
-                                aria-labelledby="task-weight-label"
-                                name="task-weight-group"
-                                value={taskWeight}
-                                onChange={(e) => setTaskWeight(v.parse(weightSchema, e.target.value))}
-                                sx={{ marginLeft: 4, marginTop: 1 }}
-                            >
-                                <FormControlLabel value={"light"} control={<Radio />} label="軽" />
-                                <FormControlLabel value={"medium"} control={<Radio />} label="中" />
-                                <FormControlLabel value={"heavy"} control={<Radio />} label="重" />
-                                <FormControlLabel value={"due-date"} control={<Radio />} label="締切" />
-                            </RadioGroup>
-                        </FormControl>
-                        <DatePicker
-                            label="締切日"
-                            sx={{ marginLeft: 2 }}
-                            value={taskDueDate}
-                            onChange={(e) => setTaskDueDate(dayjs(e))}
-                            defaultValue={dayjs()}
-                        />
-                    </Box>
-                </Paper>
+                <TaskInput handleAddTask={handleAddTask} />
                 <Stack direction="row" spacing={1} sx={{ marginLeft: 3, marginBottom: 1, fontWeight: "bold" }}>
-                    <Chip label="軽" color="success" />
-                    <Chip label="中" color="warning" variant="outlined" />
-                    <Chip label="重" color="error" />
-                    <Chip label="締切" color="info" />
+                    <Chip label="軽" color="success" sx={{ minWidth: 48 }} />
+                    <Chip label="中" color="warning" variant="outlined" sx={{ minWidth: 48 }} />
+                    <Chip label="重" color="error" variant="outlined" sx={{ minWidth: 48 }} />
+                    <Chip label="締切" color="info" variant="outlined" sx={{ minWidth: 48 }} />
                 </Stack>
-                <Grid container sx={{ padding: 2 }}>
-                    {tasks.map((task) => (
-                        <Grid size={{ xs: 12, lg: 6 }} key={task.meta.id} sx={{ padding: 1 }}>
-                            <Paper sx={{ padding: 2, display: "flex" }} elevation={2}>
-                                <Tooltip title="タスクを完了にする">
-                                    <IconButton
-                                        aria-label="complete task"
-                                        sx={{ paddingInline: 2 }}
-                                        onClick={() => {
-                                            handleCompleteTask(task);
-                                        }}
-                                    >
-                                        <CheckBoxOutlineBlank />
-                                    </IconButton>
-                                </Tooltip>
-                                <Box sx={{ flexGrow: 1, marginLeft: 2 }}>
-                                    <TextField
-                                        variant="standard"
-                                        fullWidth
-                                        value={task.data.title}
-                                        onChange={(e) => {
-                                            const updatedItem = {
-                                                ...task,
-                                                data: { ...task.data, title: e.currentTarget.value },
-                                            };
-                                            handleEditTask(updatedItem);
-                                        }}
-                                    />
-                                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                        <div className="task-create-date">{shortPastDate(task.meta.createdAt, current_date).date}作成</div>
-                                        <TaskWeightBadge task={task} current_date={current_date} />
-                                    </Box>
-                                </Box>
-                            </Paper>
-                        </Grid>
-                    ))}
-                </Grid>
+                <EditableTaskList tasks={tasks} current_date={current_date} handleEditTask={handleEditTask} handleCompleteTask={handleCompleteTask} />
             </Box>
         </BaseLayout>
     );

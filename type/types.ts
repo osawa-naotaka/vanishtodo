@@ -108,13 +108,13 @@ export type TaskDeleteContent = v.InferOutput<typeof taskDeleteContentSchema>;
 
 
 // LLM解析結果の個別タスク入力
-export const taskInputSchema = v.object({
+export const taskCreateSchema = v.object({
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema)
 });
 
-export type TaskInput = v.InferOutput<typeof taskInputSchema>;
+export type TaskCreate = v.InferOutput<typeof taskCreateSchema>;
 
 
 // -----------------------------------------------------------------------------
@@ -212,7 +212,7 @@ export type ApiVoid = v.InferOutput<typeof apiVoidSchema>;
 // LLM解析のレスポンスボディ
 export interface ApiAnalyze {
     type: "analyze";
-    tasks: TaskInput[]; // 解析結果の複数タスク
+    tasks: TaskCreate[]; // 解析結果の複数タスク
 }
 
 // ユーザー設定のレスポンスボディ

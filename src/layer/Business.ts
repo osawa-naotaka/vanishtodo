@@ -1,4 +1,4 @@
-import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskInput, Tasks, TaskWeight, UserSetting } from "../../type/types";
+import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskCreate, Tasks, TaskWeight, UserSetting } from "../../type/types";
 import { dayDifference } from "../lib/date";
 
 /**
@@ -27,7 +27,7 @@ export class Business {
      * @param {TaskCreateContent} data 作成するタスクデータ
      * @returns {Task[]} 全タスクリスト
      */
-    create(data: TaskInput, onError: OnError): Task[] {
+    create(data: TaskCreate, onError: OnError): Task[] {
         const c: TaskContent = {
             ...data,
             completedAt: undefined,
@@ -124,7 +124,7 @@ export class Business {
      * @param {TaskContent} data バリデート対象
      * @returns {boolean} バリデート結果
      */
-    validateTaskCreateContent(data: TaskInput): boolean {
+    validateTaskCreateContent(data: TaskCreate): boolean {
         if (data.title.length > 500 || data.title.length === 0) return false;
         if ((data.weight === null && data.dueDate === null) || (data.weight !== null && data.dueDate !== null)) return false;
 
