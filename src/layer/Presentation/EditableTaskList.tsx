@@ -7,11 +7,11 @@ import { TaskWeightBadge } from "./TaskWeightBadge";
 type EditableTaskListProps = {
     tasks: Tasks;
     current_date: string;
-    handleEditTask: (task: Task) => void;
-    handleCompleteTask: (task: Task) => void;
+    onEditTask: (task: Task) => void;
+    onCompleteTask: (task: Task) => void;
 };
 
-export function EditableTaskList({ tasks, current_date, handleEditTask, handleCompleteTask }: EditableTaskListProps): React.ReactElement {
+export function EditableTaskList({ tasks, current_date, onEditTask, onCompleteTask }: EditableTaskListProps): React.ReactElement {
     return (
         <Grid container sx={{ padding: 2 }}>
             {tasks.map((task) => (
@@ -22,7 +22,7 @@ export function EditableTaskList({ tasks, current_date, handleEditTask, handleCo
                                 aria-label="complete task"
                                 sx={{ paddingInline: 2 }}
                                 onClick={() => {
-                                    handleCompleteTask(task);
+                                    onCompleteTask(task);
                                 }}
                             >
                                 <CheckBoxOutlineBlank />
@@ -38,7 +38,7 @@ export function EditableTaskList({ tasks, current_date, handleEditTask, handleCo
                                         ...task,
                                         data: { ...task.data, title: e.currentTarget.value },
                                     };
-                                    handleEditTask(updatedItem);
+                                    onEditTask(updatedItem);
                                 }}
                             />
                             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
