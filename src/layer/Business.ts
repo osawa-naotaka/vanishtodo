@@ -1,16 +1,4 @@
-import type {
-    IPersistent,
-    OnComplete,
-    OnError,
-    Task,
-    TaskContent,
-    TaskCreate,
-    Tasks,
-    TaskWeight,
-    UserSetting,
-    UserSettingContent,
-    UserSettings,
-} from "../../type/types";
+import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskCreate, TaskWeight, UserSetting, UserSettingContent } from "../../type/types";
 import { dayDifference } from "../lib/date";
 import { generateItem, touchItem } from "./Persistent";
 import type { SelectableTask } from "./Presentation/CustomeHook";
@@ -30,7 +18,7 @@ export class BizTasks {
         this.m_persistent = persistent;
     }
 
-    init(onCompleteTasks: OnComplete<Tasks>): void {
+    init(onCompleteTasks: OnComplete<Task[]>): void {
         this.m_persistent.sync(onCompleteTasks);
     }
 
@@ -156,11 +144,11 @@ export class BizUserSetting {
         this.m_persistent = persistent;
     }
 
-    init(onCompleteUserSetting: OnComplete<UserSettings>): void {
-        this.m_persistent.sync(onCompleteUserSetting);
+    init(onCompleteUserSettings: OnComplete<UserSetting[]>): void {
+        this.m_persistent.sync(onCompleteUserSettings);
     }
 
-    read(): UserSettings {
+    readAll(): UserSetting[] {
         return this.m_persistent.items;
     }
 }

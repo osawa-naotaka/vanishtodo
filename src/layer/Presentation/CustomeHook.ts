@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { type Task, type TaskCreate, tasksSchema, type UserSetting, userSettingsSchema } from "../../../type/types";
+import type { Task, TaskCreate, UserSetting } from "../../../type/types";
+import { tasksSchema, userSettingsSchema } from "../../../type/types";
 import { BizTasks, BizUserSetting } from "../Business";
 import { Network } from "../Network";
 import { Persistent } from "../Persistent";
@@ -56,7 +57,7 @@ export function useUserSetting(): UseUserSettingHooks {
         };
         const p = new Persistent(n, user_settings_config);
         bizUserSetting.current = new BizUserSetting(p);
-        setSetting(bizUserSetting.current.read());
+        setSetting(bizUserSetting.current.readAll());
         bizUserSetting.current.init((e) => {
             if (e.status === "success") {
                 setSetting(e.data);
