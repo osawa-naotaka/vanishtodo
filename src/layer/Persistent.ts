@@ -1,6 +1,6 @@
 import * as v from "valibot";
-import type { DBContainer, OnComplete, OnError, Schema, TaskContent, Tasks, UserSetting, UserSettingContent } from "../../type/types";
-import { IPersistent, tasksSchema, userSettingSchema } from "../../type/types";
+import type { DBContainer, OnComplete, OnError, Schema } from "../../type/types";
+import { IPersistent } from "../../type/types";
 import type { Network } from "./Network";
 
 export type PersistentContentConfig<T> = {
@@ -65,101 +65,33 @@ class LocalStorege<T> {
     }
 }
 
-export class Persistent extends IPersistent {
-    private readonly m_tasks_config: PersistentContentConfig<DBContainer<TaskContent>[]>;
-    private readonly m_user_settings_config: PersistentContentConfig<DBContainer<UserSettingContent>>;
+export class Persistent<T> extends IPersistent<T> {
+    private readonly m_config: PersistentContentConfig<DBContainer<T>[]>;
     private readonly m_network: Network;
     private readonly m_queue: AsyncQueue = new AsyncQueue();
-    private readonly m_tasks_storage: LocalStorege<DBContainer<TaskContent>[]>;
-    private readonly m_user_settings_storage: LocalStorege<DBContainer<UserSettingContent>>;
+    private readonly m_storage: LocalStorege<DBContainer<T>[]>;
 
-    get tasks(): DBContainer<TaskContent>[] {
-        return this.m_tasks_storage.item;
+    get items(): DBContainer<T>[] {
+        return this.m_storage.item;
     }
 
-    get userSetting(): DBContainer<UserSettingContent> {
-        return this.m_user_settings_storage.item;
-    }
-
-    constructor(network: Network) {
+    constructor(network: Network, config: PersistentContentConfig<DBContainer<T>[]>) {
         super();
         this.m_network = network;
-        this.m_tasks_config = {
-            name: "tasks",
-            api_base: "/tasks",
-            storage_key: "vanish-todo-tasks",
-            schema: tasksSchema,
-            initial_value: [],
-        };
-        this.m_user_settings_config = {
-            name: "user_settings",
-            api_base: "/setting",
-            storage_key: "vanish-todo-user-settings",
-            schema: userSettingSchema,
-            initial_value: {
-                meta: {
-                    id: "",
-                    version: 1,
-                    createdAt: "",
-                    updatedAt: "",
-                },
-                data: {
-                    timezone: 9,
-                    dailyGoals: {
-                        heavy: 1,
-                        medium: 2,
-                        light: 3,
-                    },
-                },
-            },
-        };
-        this.m_tasks_storage = new LocalStorege<DBContainer<TaskContent>[]>(this.m_tasks_config);
-        this.m_user_settings_storage = new LocalStorege<UserSetting>(this.m_user_settings_config);
+        this.m_config = config;
+        this.m_storage = new LocalStorege<DBContainer<T>[]>(this.m_config);
     }
 
-    generateItem<T>(data: T): DBContainer<T> {
-        const date = new Date().toISOString();
-        return {
-            meta: {
-                id: crypto.randomUUID(),
-                version: 1,
-                createdAt: date,
-                updatedAt: date,
-            },
-            data,
-        };
+    sync(onComplete: OnComplete<DBContainer<T>[]>): void {
+        this.syncDBandLocalStorage(this.m_storage, this.m_config, onComplete);
     }
 
-    touchItem<T>(item: DBContainer<T>): DBContainer<T> {
-        return {
-            meta: {
-                id: item.meta.id,
-                version: item.meta.version + 1,
-                createdAt: item.meta.createdAt,
-                updatedAt: new Date().toISOString(),
-            },
-            data: item.data,
-        };
+    create(item: DBContainer<T>, onError: OnError): void {
+        this.createDBItem(this.m_storage, this.m_config, item, onError);
     }
 
-    syncTasks(onComplete: OnComplete<Tasks>): void {
-        this.syncDBandLocalStorage(this.m_tasks_storage, this.m_tasks_config, onComplete);
-    }
-
-    createTask(item: DBContainer<TaskContent>, onError: OnError): void {
-        this.createDBItem(this.m_tasks_storage, this.m_tasks_config, item, onError);
-    }
-
-    updateTask(item: DBContainer<TaskContent>, onError: OnError): void {
-        this.updateDBItemArray(this.m_tasks_storage, this.m_tasks_config, item, onError);
-    }
-
-    syncUserSetting(onComplete: OnComplete<UserSetting>): void {
-        this.syncDBandLocalStorage(this.m_user_settings_storage, this.m_user_settings_config, onComplete);
-    }
-
-    updateUserSetting(item: DBContainer<UserSettingContent>, onError: OnError): void {
-        this.updateDBItem(this.m_user_settings_storage, this.m_user_settings_config, item, onError);
+    update(item: DBContainer<T>, onError: OnError): void {
+        this.updateDBItemArray(this.m_storage, this.m_config, item, onError);
     }
 
     private syncDBandLocalStorage<T>(local_storage: LocalStorege<T>, setting: PersistentContentConfig<T>, onComplete: OnComplete<T>): void {
@@ -224,19 +156,29 @@ export class Persistent extends IPersistent {
             }
         });
     }
+}
 
-    private updateDBItem<T>(
-        local_storage: LocalStorege<DBContainer<T>>,
-        config: PersistentContentConfig<DBContainer<T>>,
-        item: DBContainer<T>,
-        onError: OnError,
-    ): void {
-        local_storage.item = item;
-        this.m_queue.enqueue(async () => {
-            const result = await this.m_network.putJson(config.api_base, item);
-            if (result.status !== "success") {
-                onError(result);
-            }
-        });
-    }
+export function generateItem<T>(data: T): DBContainer<T> {
+    const date = new Date().toISOString();
+    return {
+        meta: {
+            id: crypto.randomUUID(),
+            version: 1,
+            createdAt: date,
+            updatedAt: date,
+        },
+        data,
+    };
+}
+
+export function touchItem<T>(item: DBContainer<T>): DBContainer<T> {
+    return {
+        meta: {
+            id: item.meta.id,
+            version: item.meta.version + 1,
+            createdAt: item.meta.createdAt,
+            updatedAt: new Date().toISOString(),
+        },
+        data: item.data,
+    };
 }

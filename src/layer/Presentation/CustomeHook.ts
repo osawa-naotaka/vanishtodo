@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Task, TaskCreate, UserSetting } from "../../../type/types";
+import { type Task, type TaskCreate, tasksSchema, type UserSetting, userSettingsSchema } from "../../../type/types";
 import { BizTasks, BizUserSetting } from "../Business";
 import { Network } from "../Network";
 import { Persistent } from "../Persistent";
@@ -21,16 +21,40 @@ export type UseTasksHooks = {
 };
 
 export type UseUserSettingHooks = {
-    setting: UserSetting | null;
+    setting: UserSetting[];
 };
 
 export function useUserSetting(): UseUserSettingHooks {
     const bizUserSetting = useRef<BizUserSetting>(null);
-    const [setting, setSetting] = useState<UserSetting | null>(null);
+    const [setting, setSetting] = useState<UserSetting[]>([]);
 
     useEffect(() => {
         const n = new Network("/api/v1");
-        const p = new Persistent(n);
+        const user_settings_config = {
+            name: "user_settings",
+            api_base: "/setting",
+            storage_key: "vanish-todo-user-settings",
+            schema: userSettingsSchema,
+            initial_value: [
+                {
+                    meta: {
+                        id: "",
+                        version: 1,
+                        createdAt: "",
+                        updatedAt: "",
+                    },
+                    data: {
+                        timezone: 9,
+                        dailyGoals: {
+                            heavy: 1,
+                            medium: 2,
+                            light: 3,
+                        },
+                    },
+                },
+            ],
+        };
+        const p = new Persistent(n, user_settings_config);
         bizUserSetting.current = new BizUserSetting(p);
         setSetting(bizUserSetting.current.read());
         bizUserSetting.current.init((e) => {
@@ -51,7 +75,15 @@ export function useTasks(): UseTasksHooks {
 
     useEffect(() => {
         const n = new Network("/api/v1");
-        const p = new Persistent(n);
+        const tasks_config = {
+            name: "tasks",
+            api_base: "/tasks",
+            storage_key: "vanish-todo-tasks",
+            schema: tasksSchema,
+            initial_value: [],
+        };
+
+        const p = new Persistent(n, tasks_config);
         bizTask.current = new BizTasks(p);
         setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
         bizTask.current.init((e) => {

@@ -1,24 +1,37 @@
-import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskCreate, Tasks, TaskWeight, UserSetting } from "../../type/types";
+import type {
+    IPersistent,
+    OnComplete,
+    OnError,
+    Task,
+    TaskContent,
+    TaskCreate,
+    Tasks,
+    TaskWeight,
+    UserSetting,
+    UserSettingContent,
+    UserSettings,
+} from "../../type/types";
 import { dayDifference } from "../lib/date";
+import { generateItem, touchItem } from "./Persistent";
 import type { SelectableTask } from "./Presentation/CustomeHook";
 
 /**
  * ビジネス層インターフェースクラス
  */
 export class BizTasks {
-    private m_persistent: IPersistent;
+    private m_persistent: IPersistent<TaskContent>;
 
     /**
      * 永続化層をDIしてビジネス層を初期化します
      *
      * @param {IPersistent} persistent - 永続化層インターフェース(DI)
      */
-    constructor(persistent: IPersistent) {
+    constructor(persistent: IPersistent<TaskContent>) {
         this.m_persistent = persistent;
     }
 
     init(onCompleteTasks: OnComplete<Tasks>): void {
-        this.m_persistent.syncTasks(onCompleteTasks);
+        this.m_persistent.sync(onCompleteTasks);
     }
 
     /**
@@ -33,13 +46,13 @@ export class BizTasks {
             completedAt: undefined,
             isDeleted: false,
         };
-        const item = this.m_persistent.generateItem(c);
-        this.m_persistent.createTask(item, (e) => {
+        const item = generateItem(c);
+        this.m_persistent.create(item, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.tasks;
+        return this.m_persistent.items;
     }
 
     /**
@@ -50,14 +63,14 @@ export class BizTasks {
      * @returns {Task[]} 全タスクリスト
      */
     complete(item: Task, onError: OnError): Task[] {
-        const c = this.m_persistent.touchItem<TaskContent>(item);
+        const c = touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
-        this.m_persistent.updateTask(c, (e) => {
+        this.m_persistent.update(c, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.tasks;
+        return this.m_persistent.items;
     }
 
     /**
@@ -68,51 +81,51 @@ export class BizTasks {
      * @returns {Task[]} 全タスクリスト
      */
     edit(item: Task, onError: OnError): Task[] {
-        const updated = this.m_persistent.touchItem<TaskContent>(item);
+        const updated = touchItem<TaskContent>(item);
         updated.data = item.data;
-        this.m_persistent.updateTask(updated, (e) => {
+        this.m_persistent.update(updated, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.tasks;
+        return this.m_persistent.items;
     }
 
     del(item: Task, onError: OnError): Task[] {
-        const deleted = this.m_persistent.touchItem<TaskContent>(item);
+        const deleted = touchItem<TaskContent>(item);
         deleted.data.isDeleted = true;
-        this.m_persistent.updateTask(deleted, (e) => {
+        this.m_persistent.update(deleted, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.tasks;
+        return this.m_persistent.items;
     }
 
     restore(item: Task, onError: OnError): Task[] {
-        const restored = this.m_persistent.touchItem<TaskContent>(item);
+        const restored = touchItem<TaskContent>(item);
         restored.data.completedAt = undefined;
-        this.m_persistent.updateTask(restored, (e) => {
+        this.m_persistent.update(restored, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.tasks;
+        return this.m_persistent.items;
     }
 
     undelete(item: Task, onError: OnError): Task[] {
-        const undeleted = this.m_persistent.touchItem<TaskContent>(item);
+        const undeleted = touchItem<TaskContent>(item);
         undeleted.data.isDeleted = false;
-        this.m_persistent.updateTask(undeleted, (e) => {
+        this.m_persistent.update(undeleted, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.tasks;
+        return this.m_persistent.items;
     }
 
     readAll(): Task[] {
-        return this.m_persistent.tasks;
+        return this.m_persistent.items;
     }
 
     /**
@@ -132,23 +145,23 @@ export class BizTasks {
 }
 
 export class BizUserSetting {
-    private m_persistent: IPersistent;
+    private m_persistent: IPersistent<UserSettingContent>;
 
     /**
      * 永続化層をDIしてビジネス層を初期化します
      *
      * @param {IPersistent} persistent - 永続化層インターフェース(DI)
      */
-    constructor(persistent: IPersistent) {
+    constructor(persistent: IPersistent<UserSettingContent>) {
         this.m_persistent = persistent;
     }
 
-    init(onCompleteUserSetting: OnComplete<UserSetting>): void {
-        this.m_persistent.syncUserSetting(onCompleteUserSetting);
+    init(onCompleteUserSetting: OnComplete<UserSettings>): void {
+        this.m_persistent.sync(onCompleteUserSetting);
     }
 
-    read(): UserSetting {
-        return this.m_persistent.userSetting;
+    read(): UserSettings {
+        return this.m_persistent.items;
     }
 }
 

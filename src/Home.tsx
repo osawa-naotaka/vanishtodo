@@ -15,7 +15,7 @@ export function Home(): JSX.Element {
 
     const { tasks, add, edit, complete } = useTasks();
     const { setting } = useUserSetting();
-    const filtered_tasks = setting ? filterTasks(current_date, filter, tasks, setting) : [];
+    const filtered_tasks = filterTasks(current_date, filter, tasks, setting[0]);
 
     return (
         <BaseLayout selected="home">

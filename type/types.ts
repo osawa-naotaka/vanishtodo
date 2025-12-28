@@ -142,6 +142,10 @@ export const userSettingSchema = v.object({
 export type UserSetting = v.InferOutput<typeof userSettingSchema>;
 export type UserSettingContent = v.InferOutput<typeof userSettingContentSchema>;
 
+export const userSettingsSchema = v.array(userSettingSchema);
+
+export type UserSettings = v.InferOutput<typeof userSettingsSchema>;
+
 // -----------------------------------------------------------------------------
 // ネットワーク層関連型
 // -----------------------------------------------------------------------------
@@ -225,16 +229,11 @@ export type ApiUserSetting = v.InferOutput<typeof apiUserSettingSchema>;
 
 export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
-export abstract class IPersistent {
-    abstract get tasks(): Tasks;
-    abstract get userSetting(): UserSetting;
-    abstract generateItem<T>(data: T): DBContainer<T>;
-    abstract touchItem<T>(item: DBContainer<T>): DBContainer<T>;
-    abstract syncTasks(onComplete: OnComplete<Tasks>): void;
-    abstract createTask(item: Task, onError: OnError): void;
-    abstract updateTask(item: Task, onError: OnError): void;
-    abstract syncUserSetting(onComplete: OnComplete<UserSetting>): void;
-    abstract updateUserSetting(item: UserSetting, onError: OnError): void;
+export abstract class IPersistent<T> {
+    abstract get items(): DBContainer<T>[];
+    abstract sync(onComplete: OnComplete<DBContainer<T>[]>): void;
+    abstract create(item: DBContainer<T>, onError: OnError): void;
+    abstract update(item: DBContainer<T>, onError: OnError): void;
 }
 
 // -----------------------------------------------------------------------------
