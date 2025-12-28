@@ -8,14 +8,14 @@ import { TaskList } from "./layer/Presentation/TaskList";
 
 export function Completed(): JSX.Element {
     const current_date = new Date().toISOString();
-    const { tasks, handleSelectTask, handleRestoreTasks, handleDeleteTasks } = useTasks();
+    const { tasks, select, restore, del } = useTasks();
     const filtered_tasks = filterCompletedTasks(tasks);
 
     function handleChange(_event: React.SyntheticEvent, value: string): void {
         if (value === "restore") {
-            handleRestoreTasks(tasks);
+            restore(tasks);
         } else if (value === "delete") {
-            handleDeleteTasks(tasks);
+            del(tasks);
         }
     }
 
@@ -23,7 +23,7 @@ export function Completed(): JSX.Element {
         <BaseLayout selected="completed">
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                <TaskList tasks={filtered_tasks} current_date={current_date} onSelectTask={handleSelectTask} />
+                <TaskList tasks={filtered_tasks} current_date={current_date} onSelectTask={select} />
                 <BottomNavigation showLabels onChange={handleChange}>
                     <BottomNavigationAction label="復帰" value="restore" icon={<Restore />} />
                     <BottomNavigationAction label="削除" value="delete" icon={<Delete />} />

@@ -5,7 +5,7 @@ import type { SelectableTask } from "./Presentation/CustomeHook";
 /**
  * ビジネス層インターフェースクラス
  */
-export class Business {
+export class BizTasks {
     private m_persistent: IPersistent;
 
     /**

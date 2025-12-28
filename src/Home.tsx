@@ -13,16 +13,16 @@ export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
     const [filter, setFilter] = useState<FilterType>("all");
 
-    const { tasks, setting, handleAddTask, handleEditTask, handleCompleteTask } = useTasks();
+    const { tasks, setting, add, edit, complete } = useTasks();
     const filtered_tasks = setting ? filterTasks(current_date, filter, tasks, setting) : [];
 
     return (
         <BaseLayout selected="home">
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                <TaskInput handleAddTask={handleAddTask} />
+                <TaskInput handleAddTask={add} />
                 <TaskFilter filter={filter} setFilter={setFilter} />
-                <EditableTaskList tasks={filtered_tasks} current_date={current_date} onEditTask={handleEditTask} onCompleteTask={handleCompleteTask} />
+                <EditableTaskList tasks={filtered_tasks} current_date={current_date} onEditTask={edit} onCompleteTask={complete} />
             </Box>
         </BaseLayout>
     );

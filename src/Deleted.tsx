@@ -8,18 +8,18 @@ import { TaskList } from "./layer/Presentation/TaskList";
 
 export function Deleted(): JSX.Element {
     const current_date = new Date().toISOString();
-    const { tasks, handleSelectTask, handleUndeleteTasks } = useTasks();
+    const { tasks, select, undelete } = useTasks();
     const filtered_tasks = filterDeletedTasks(tasks);
 
     function handleChange(): void {
-        handleUndeleteTasks(tasks);
+        undelete(tasks);
     }
 
     return (
         <BaseLayout selected="all">
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                <TaskList tasks={filtered_tasks} current_date={current_date} onSelectTask={handleSelectTask} />
+                <TaskList tasks={filtered_tasks} current_date={current_date} onSelectTask={select} />
                 <BottomNavigation showLabels onChange={handleChange}>
                     <BottomNavigationAction label="元に戻す" value="undelete" icon={<RestoreFromTrash />} />
                 </BottomNavigation>
