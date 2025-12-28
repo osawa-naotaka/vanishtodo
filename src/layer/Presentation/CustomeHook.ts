@@ -18,6 +18,7 @@ export type UseTasksHooks = {
     handleSelectTask: (task: SelectableTask, isSelected: boolean) => void;
     handleRestoreTasks: (tasks: SelectableTask[]) => void;
     handleDeleteTasks: (tasks: SelectableTask[]) => void;
+    handleUndeleteTasks: (tasks: SelectableTask[]) => void;
 };
 
 export function useTasks(): UseTasksHooks {
@@ -51,24 +52,20 @@ export function useTasks(): UseTasksHooks {
     function handleEditTask(task: SelectableTask): void {
         if (biz.current) {
             const tasks = biz.current.edit(task.task, (e) => {
-                    console.error(e);
+                console.error(e);
             });
 
-            setTasks(
-                tasks.map((t) => ({ task: t, isSelected: false })),
-            );
+            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
         }
     }
 
     function handleAddTask(data: TaskCreate): void {
         if (biz.current) {
             const tasks = biz.current.create(data, (e) => {
-                    console.error(e);
+                console.error(e);
             });
 
-            setTasks(
-                tasks.map((t) => ({ task: t, isSelected: false })),
-            );
+            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
         }
     }
 
@@ -78,17 +75,15 @@ export function useTasks(): UseTasksHooks {
                 console.error(e);
             });
 
-            setTasks(
-                tasks.map((t) => ({ task: t, isSelected: false })),
-            );
+            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
         }
     }
 
     function handleRestoreTasks(tasks: SelectableTask[]): void {
         if (biz.current) {
-            for(const task of tasks) {
+            for (const task of tasks) {
                 if (task.isSelected) {
-                    biz.current.restore(((task.task)), (e) => {
+                    biz.current.restore(task.task, (e) => {
                         console.error(e);
                     });
                 }
@@ -99,9 +94,9 @@ export function useTasks(): UseTasksHooks {
 
     function handleDeleteTasks(tasks: SelectableTask[]): void {
         if (biz.current) {
-            for(const task of tasks) {
+            for (const task of tasks) {
                 if (task.isSelected) {
-                    biz.current.delete(((task.task)), (e) => {
+                    biz.current.delete(task.task, (e) => {
                         console.error(e);
                     });
                 }
@@ -110,12 +105,22 @@ export function useTasks(): UseTasksHooks {
         }
     }
 
-
-    function handleSelectTask(task: SelectableTask, isSelected: boolean): void {
-        setTasks((prevTasks) =>
-            prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t)),
-        );
+    function handleUndeleteTasks(tasks: SelectableTask[]): void {
+        if (biz.current) {
+            for (const task of tasks) {
+                if (task.isSelected) {
+                    biz.current.undelete(task.task, (e) => {
+                        console.error(e);
+                    });
+                }
+            }
+            setTasks(biz.current.readTasksAll().map((t) => ({ task: t, isSelected: false })));
+        }
     }
 
-    return { tasks, setting, handleAddTask, handleEditTask, handleCompleteTask, handleSelectTask, handleRestoreTasks, handleDeleteTasks };
+    function handleSelectTask(task: SelectableTask, isSelected: boolean): void {
+        setTasks((prevTasks) => prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t)));
+    }
+
+    return { tasks, setting, handleAddTask, handleEditTask, handleCompleteTask, handleSelectTask, handleRestoreTasks, handleDeleteTasks, handleUndeleteTasks };
 }

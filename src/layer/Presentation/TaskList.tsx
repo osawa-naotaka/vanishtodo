@@ -1,7 +1,7 @@
 import { Box, Checkbox, Grid, Paper, Typography } from "@mui/material";
 import { shortPastDate } from "../../lib/date";
-import { TaskWeightBadge } from "./TaskWeightBadge";
 import type { SelectableTask } from "./CustomeHook";
+import { TaskWeightBadge } from "./TaskWeightBadge";
 
 type TaskListProps = {
     tasks: SelectableTask[];
@@ -19,6 +19,10 @@ export function TaskList({ tasks, current_date, onSelectTask }: TaskListProps): 
                         <Box sx={{ flexGrow: 1, marginLeft: 2 }}>
                             {task.task.data.completedAt ? (
                                 <Typography variant="h6" sx={{ textDecoration: "line-through", color: "gray" }}>
+                                    {task.task.data.title}
+                                </Typography>
+                            ) : task.task.data.isDeleted ? (
+                                <Typography variant="h6" sx={{ textDecoration: "line-through", color: "lightgray" }}>
                                     {task.task.data.title}
                                 </Typography>
                             ) : (

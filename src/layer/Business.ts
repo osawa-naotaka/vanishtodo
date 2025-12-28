@@ -101,6 +101,17 @@ export class Business {
         return this.m_persistent.tasks;
     }
 
+    undelete(item: Task, onError: OnError): Task[] {
+        const undeleted = this.m_persistent.touchItem<TaskContent>(item);
+        undeleted.data.isDeleted = false;
+        this.m_persistent.updateTask(undeleted, (e) => {
+            if (e.status !== "success") {
+                onError(e);
+            }
+        });
+        return this.m_persistent.tasks;
+    }
+
     readTasksAll(): Task[] {
         return this.m_persistent.tasks;
     }
@@ -143,6 +154,14 @@ export function filterTasks(today: string, weight: TaskWeight | "due-date" | "al
     }
 
     return tasks_candidate.sort((a, b) => dayDifference(a.task.meta.updatedAt, b.task.meta.updatedAt)).slice(0, num_limit);
+}
+
+export function filterCompletedTasks(tasks: SelectableTask[]): SelectableTask[] {
+    return tasks.filter((task) => task.task.data.completedAt !== undefined && task.task.data.isDeleted === false);
+}
+
+export function filterDeletedTasks(tasks: SelectableTask[]): SelectableTask[] {
+    return tasks.filter((task) => task.task.data.isDeleted === true);
 }
 
 function getTaskLimitCount(weight: TaskWeight, setting: UserSetting): number {
