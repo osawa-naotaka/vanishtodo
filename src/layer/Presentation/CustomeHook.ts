@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Task, TaskCreate, UserSetting } from "../../../type/types";
-import { BizTasks } from "../Business";
+import { BizTasks, BizUserSetting } from "../Business";
 import { Network } from "../Network";
 import { Persistent } from "../Persistent";
 
@@ -11,7 +11,6 @@ export type SelectableTask = {
 
 export type UseTasksHooks = {
     tasks: SelectableTask[];
-    setting: UserSetting | null;
     add: (data: TaskCreate) => void;
     edit: (task: SelectableTask) => void;
     complete: (task: SelectableTask) => void;
@@ -21,37 +20,52 @@ export type UseTasksHooks = {
     undelete: (tasks: SelectableTask[]) => void;
 };
 
-export function useTasks(): UseTasksHooks {
-    const biz = useRef<BizTasks>(null);
-    const [tasks, setTasks] = useState<SelectableTask[]>([]);
+export type UseUserSettingHooks = {
+    setting: UserSetting | null;
+};
+
+export function useUserSetting(): UseUserSettingHooks {
+    const bizUserSetting = useRef<BizUserSetting>(null);
     const [setting, setSetting] = useState<UserSetting | null>(null);
 
     useEffect(() => {
         const n = new Network("/api/v1");
         const p = new Persistent(n);
-        biz.current = new BizTasks(p);
-        setTasks(biz.current.readTasksAll().map((t) => ({ task: t, isSelected: false })));
-        biz.current.init(
-            (e) => {
-                if (e.status === "success") {
-                    setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
-                } else {
-                    console.error(e);
-                }
-            },
-            (e) => {
-                if (e.status === "success") {
-                    setSetting(e.data);
-                } else {
-                    console.error(e);
-                }
-            },
-        );
+        bizUserSetting.current = new BizUserSetting(p);
+        setSetting(bizUserSetting.current.read());
+        bizUserSetting.current.init((e) => {
+            if (e.status === "success") {
+                setSetting(e.data);
+            } else {
+                console.error(e);
+            }
+        });
+    }, []);
+
+    return { setting };
+}
+
+export function useTasks(): UseTasksHooks {
+    const bizTask = useRef<BizTasks>(null);
+    const [tasks, setTasks] = useState<SelectableTask[]>([]);
+
+    useEffect(() => {
+        const n = new Network("/api/v1");
+        const p = new Persistent(n);
+        bizTask.current = new BizTasks(p);
+        setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
+        bizTask.current.init((e) => {
+            if (e.status === "success") {
+                setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
+            } else {
+                console.error(e);
+            }
+        });
     }, []);
 
     function edit(task: SelectableTask): void {
-        if (biz.current) {
-            const tasks = biz.current.edit(task.task, (e) => {
+        if (bizTask.current) {
+            const tasks = bizTask.current.edit(task.task, (e) => {
                 console.error(e);
             });
 
@@ -60,8 +74,8 @@ export function useTasks(): UseTasksHooks {
     }
 
     function add(data: TaskCreate): void {
-        if (biz.current) {
-            const tasks = biz.current.create(data, (e) => {
+        if (bizTask.current) {
+            const tasks = bizTask.current.create(data, (e) => {
                 console.error(e);
             });
 
@@ -70,8 +84,8 @@ export function useTasks(): UseTasksHooks {
     }
 
     function complete(task: SelectableTask): void {
-        if (biz.current) {
-            const tasks = biz.current.complete(task.task, (e) => {
+        if (bizTask.current) {
+            const tasks = bizTask.current.complete(task.task, (e) => {
                 console.error(e);
             });
 
@@ -80,41 +94,41 @@ export function useTasks(): UseTasksHooks {
     }
 
     function restore(tasks: SelectableTask[]): void {
-        if (biz.current) {
+        if (bizTask.current) {
             for (const task of tasks) {
                 if (task.isSelected) {
-                    biz.current.restore(task.task, (e) => {
+                    bizTask.current.restore(task.task, (e) => {
                         console.error(e);
                     });
                 }
             }
-            setTasks(biz.current.readTasksAll().map((t) => ({ task: t, isSelected: false })));
+            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
         }
     }
 
     function del(tasks: SelectableTask[]): void {
-        if (biz.current) {
+        if (bizTask.current) {
             for (const task of tasks) {
                 if (task.isSelected) {
-                    biz.current.delete(task.task, (e) => {
+                    bizTask.current.delete(task.task, (e) => {
                         console.error(e);
                     });
                 }
             }
-            setTasks(biz.current.readTasksAll().map((t) => ({ task: t, isSelected: false })));
+            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
         }
     }
 
     function undelete(tasks: SelectableTask[]): void {
-        if (biz.current) {
+        if (bizTask.current) {
             for (const task of tasks) {
                 if (task.isSelected) {
-                    biz.current.undelete(task.task, (e) => {
+                    bizTask.current.undelete(task.task, (e) => {
                         console.error(e);
                     });
                 }
             }
-            setTasks(biz.current.readTasksAll().map((t) => ({ task: t, isSelected: false })));
+            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
         }
     }
 
@@ -122,5 +136,5 @@ export function useTasks(): UseTasksHooks {
         setTasks((prevTasks) => prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t)));
     }
 
-    return { tasks, setting, add, edit, complete, select, restore, del, undelete };
+    return { tasks, add, edit, complete, select, restore, del, undelete };
 }

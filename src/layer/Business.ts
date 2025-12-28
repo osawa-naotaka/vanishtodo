@@ -17,8 +17,7 @@ export class BizTasks {
         this.m_persistent = persistent;
     }
 
-    init(onCompleteTasks: OnComplete<Tasks>, onCompleteUserSetting: OnComplete<UserSetting>): void {
-        this.m_persistent.syncUserSetting(onCompleteUserSetting);
+    init(onCompleteTasks: OnComplete<Tasks>): void {
         this.m_persistent.syncTasks(onCompleteTasks);
     }
 
@@ -112,12 +111,8 @@ export class BizTasks {
         return this.m_persistent.tasks;
     }
 
-    readTasksAll(): Task[] {
+    readAll(): Task[] {
         return this.m_persistent.tasks;
-    }
-
-    readSetting(): UserSetting {
-        return this.m_persistent.userSetting;
     }
 
     /**
@@ -133,6 +128,27 @@ export class BizTasks {
         if ((data.weight === null && data.dueDate === null) || (data.weight !== null && data.dueDate !== null)) return false;
 
         return true;
+    }
+}
+
+export class BizUserSetting {
+    private m_persistent: IPersistent;
+
+    /**
+     * 永続化層をDIしてビジネス層を初期化します
+     *
+     * @param {IPersistent} persistent - 永続化層インターフェース(DI)
+     */
+    constructor(persistent: IPersistent) {
+        this.m_persistent = persistent;
+    }
+
+    init(onCompleteUserSetting: OnComplete<UserSetting>): void {
+        this.m_persistent.syncUserSetting(onCompleteUserSetting);
+    }
+
+    read(): UserSetting {
+        return this.m_persistent.userSetting;
     }
 }
 
