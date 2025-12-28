@@ -78,7 +78,7 @@ export class BizTasks {
         return this.m_persistent.tasks;
     }
 
-    delete(item: Task, onError: OnError): Task[] {
+    del(item: Task, onError: OnError): Task[] {
         const deleted = this.m_persistent.touchItem<TaskContent>(item);
         deleted.data.isDeleted = true;
         this.m_persistent.updateTask(deleted, (e) => {

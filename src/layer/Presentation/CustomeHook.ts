@@ -110,7 +110,7 @@ export function useTasks(): UseTasksHooks {
         if (bizTask.current) {
             for (const task of tasks) {
                 if (task.isSelected) {
-                    bizTask.current.delete(task.task, (e) => {
+                    bizTask.current.del(task.task, (e) => {
                         console.error(e);
                     });
                 }
