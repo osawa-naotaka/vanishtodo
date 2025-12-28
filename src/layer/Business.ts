@@ -1,5 +1,6 @@
 import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskCreate, Tasks, TaskWeight, UserSetting } from "../../type/types";
 import { dayDifference } from "../lib/date";
+import type { SelectableTask } from "./Presentation/CustomeHook";
 
 /**
  * ビジネス層インターフェースクラス
@@ -78,6 +79,28 @@ export class Business {
         return this.m_persistent.tasks;
     }
 
+    delete(item: Task, onError: OnError): Task[] {
+        const deleted = this.m_persistent.touchItem<TaskContent>(item);
+        deleted.data.isDeleted = true;
+        this.m_persistent.updateTask(deleted, (e) => {
+            if (e.status !== "success") {
+                onError(e);
+            }
+        });
+        return this.m_persistent.tasks;
+    }
+
+    restore(item: Task, onError: OnError): Task[] {
+        const restored = this.m_persistent.touchItem<TaskContent>(item);
+        restored.data.completedAt = undefined;
+        this.m_persistent.updateTask(restored, (e) => {
+            if (e.status !== "success") {
+                onError(e);
+            }
+        });
+        return this.m_persistent.tasks;
+    }
+
     readTasksAll(): Task[] {
         return this.m_persistent.tasks;
     }
@@ -102,24 +125,24 @@ export class Business {
     }
 }
 
-export function filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[], setting: UserSetting): Task[] {
+export function filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: SelectableTask[], setting: UserSetting): SelectableTask[] {
     if (weight === "all") {
-        return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
+        return tasks.filter((task) => !task.task.data.isDeleted && !task.task.data.completedAt);
     }
     if (weight === "due-date") {
-        return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt && task.data.weight === undefined);
+        return tasks.filter((task) => !task.task.data.isDeleted && !task.task.data.completedAt && task.task.data.weight === undefined);
     }
 
-    const weighted_tasks = tasks.filter((task) => task.data.weight === weight);
-    const tasks_candidate = weighted_tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
-    const complete_today = weighted_tasks.filter((task) => task.data.completedAt && dayDifference(today, task.data.completedAt) === 0);
+    const weighted_tasks = tasks.filter((task) => task.task.data.weight === weight);
+    const tasks_candidate = weighted_tasks.filter((task) => !task.task.data.isDeleted && !task.task.data.completedAt);
+    const complete_today = weighted_tasks.filter((task) => task.task.data.completedAt && dayDifference(today, task.task.data.completedAt) === 0);
     const num_limit = getTaskLimitCount(weight, setting) - complete_today.length;
 
     if (num_limit <= 0) {
         return [];
     }
 
-    return tasks_candidate.sort((a, b) => dayDifference(a.meta.updatedAt, b.meta.updatedAt)).slice(0, num_limit);
+    return tasks_candidate.sort((a, b) => dayDifference(a.task.meta.updatedAt, b.task.meta.updatedAt)).slice(0, num_limit);
 }
 
 function getTaskLimitCount(weight: TaskWeight, setting: UserSetting): number {
