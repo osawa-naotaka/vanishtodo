@@ -36,24 +36,7 @@ export function useUserSetting(): UseUserSettingHooks {
             api_base: "/setting",
             storage_key: "vanish-todo-user-settings",
             schema: userSettingsSchema,
-            initial_value: [
-                {
-                    meta: {
-                        id: "",
-                        version: 1,
-                        createdAt: "",
-                        updatedAt: "",
-                    },
-                    data: {
-                        timezone: 9,
-                        dailyGoals: {
-                            heavy: 1,
-                            medium: 2,
-                            light: 3,
-                        },
-                    },
-                },
-            ],
+            initial_value: [],
         };
         const p = new Persistent(n, user_settings_config);
         bizUserSetting.current = new BizUserSetting(p);
