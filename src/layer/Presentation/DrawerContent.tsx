@@ -1,4 +1,4 @@
-import { Delete, Home, Settings, TaskAlt } from "@mui/icons-material";
+import { Delete, FormatListBulleted, Home, Settings, TaskAlt } from "@mui/icons-material";
 import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import type { JSX } from "react";
 import { NavLink } from "react-router";
@@ -12,6 +12,14 @@ export function DrawerContent(): JSX.Element {
                         <Home />
                     </ListItemIcon>
                     <ListItemText primary="ホーム" />
+                </ListItemButton>
+            </ListItem>
+            <ListItem>
+                <ListItemButton component={NavLink} to="/all">
+                    <ListItemIcon>
+                        <FormatListBulleted />
+                    </ListItemIcon>
+                    <ListItemText primary="すべてのタスク" />
                 </ListItemButton>
             </ListItem>
             <ListItem>

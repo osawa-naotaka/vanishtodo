@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- デフォルトユーザーの挿入
 INSERT INTO users (id, timezone, daily_goal_heavy, daily_goal_medium, daily_goal_light, version, created_at, updated_at)
-VALUES ('00000000-0000-0000-0000-000000000001', 9, 1, 2, 3, 1, "1970-01-01T00:00:00.000Z", "1970-01-01T00:00:00.000Z");
+VALUES ('425db40f-202b-40f2-9bcc-afc43fd6a96f', 9, 1, 2, 3, 1, "1970-01-01T00:00:00.000Z", "1970-01-01T00:00:00.000Z");
 
 -- tasksテーブルの作成
 DROP TABLE IF EXISTS tasks;

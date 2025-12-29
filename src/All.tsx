@@ -1,16 +1,17 @@
 import { Delete, Restore } from "@mui/icons-material";
 import { BottomNavigation, BottomNavigationAction, Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
-import { isCompleted } from "./layer/Business";
+import { isDeleted } from "./layer/Business";
 import { useBiz } from "./layer/Presentation/ContextProvider";
 import { TaskList } from "./layer/Presentation/TaskList";
 
-export function Completed(): JSX.Element {
+export function All(): JSX.Element {
     const current_date = new Date().toISOString();
     const {
         tasks: { tasks, restore, del, select },
     } = useBiz();
-    const filtered_tasks = tasks.filter((task) => isCompleted(task.task));
+
+    const filtered_tasks = tasks.filter((t) => !isDeleted(t.task));
 
     function handleChange(_event: React.SyntheticEvent, value: string): void {
         if (value === "restore") {

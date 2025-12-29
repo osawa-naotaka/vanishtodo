@@ -1,6 +1,7 @@
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
+import { All } from "./All";
 import { Completed } from "./Completed";
 import { Deleted } from "./Deleted";
 import { Home } from "./Home";
@@ -14,6 +15,10 @@ const router = createBrowserRouter([
             {
                 path: "/",
                 Component: Home,
+            },
+            {
+                path: "/all",
+                Component: All,
             },
             {
                 path: "/completed",

@@ -1,7 +1,6 @@
 import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskCreate, TaskWeight, UserSetting, UserSettingContent } from "../../type/types";
 import { dayDifference } from "../lib/date";
 import { generateItem, touchItem } from "./Persistent";
-import type { SelectableTask } from "./Presentation/CustomeHook";
 
 /**
  * ビジネス層インターフェースクラス
@@ -115,21 +114,6 @@ export class BizTasks {
     readAll(): Task[] {
         return this.m_persistent.items;
     }
-
-    /**
-     * TaskContent(create時データ構造)のバリデートをします
-     * 1. タイトルは1-500文字であること
-     * 2. 重さか締切日のどちらか一方が設定されている(nullでない)こと
-     *
-     * @param {TaskContent} data バリデート対象
-     * @returns {boolean} バリデート結果
-     */
-    validateTaskCreateContent(data: TaskCreate): boolean {
-        if (data.title.length > 500 || data.title.length === 0) return false;
-        if ((data.weight === null && data.dueDate === null) || (data.weight !== null && data.dueDate !== null)) return false;
-
-        return true;
-    }
 }
 
 export class BizUserSetting {
@@ -153,32 +137,114 @@ export class BizUserSetting {
     }
 }
 
-export function filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: SelectableTask[], setting: UserSetting): SelectableTask[] {
+export function filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[], setting: UserSetting): Task[] {
     if (weight === "all") {
-        return tasks.filter((task) => !task.task.data.isDeleted && !task.task.data.completedAt);
+        return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
     }
     if (weight === "due-date") {
-        return tasks.filter((task) => !task.task.data.isDeleted && !task.task.data.completedAt && task.task.data.weight === undefined);
+        return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt && task.data.weight === undefined);
     }
 
-    const weighted_tasks = tasks.filter((task) => task.task.data.weight === weight);
-    const tasks_candidate = weighted_tasks.filter((task) => !task.task.data.isDeleted && !task.task.data.completedAt);
-    const complete_today = weighted_tasks.filter((task) => task.task.data.completedAt && dayDifference(today, task.task.data.completedAt) === 0);
+    const weighted_tasks = tasks.filter((task) => task.data.weight === weight);
+    const tasks_candidate = weighted_tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
+    const complete_today = weighted_tasks.filter((task) => task.data.completedAt && dayDifference(today, task.data.completedAt) === 0);
     const num_limit = getTaskLimitCount(weight, setting) - complete_today.length;
 
     if (num_limit <= 0) {
         return [];
     }
 
-    return tasks_candidate.sort((a, b) => dayDifference(a.task.meta.updatedAt, b.task.meta.updatedAt)).slice(0, num_limit);
+    return tasks_candidate.sort((a, b) => dayDifference(a.meta.updatedAt, b.meta.updatedAt)).slice(0, num_limit);
 }
 
-export function filterCompletedTasks(tasks: SelectableTask[]): SelectableTask[] {
-    return tasks.filter((task) => task.task.data.completedAt !== undefined && task.task.data.isDeleted === false);
+type LimitOptions = {
+    heavy: number;
+    medium: number;
+    light: number;
+};
+
+export function tasksToday(today: string, opt: LimitOptions, tasks: Task[]): Task[] {
+    const pre = process(sortByUpdatedDate("asc")(tasks), or(isIncomplete, isCompleteToday(today)));
+    const limited = limit(opt)(pre);
+    return process(sortByUpdatedDate("asc")(limited), isIncomplete);
 }
 
-export function filterDeletedTasks(tasks: SelectableTask[]): SelectableTask[] {
-    return tasks.filter((task) => task.task.data.isDeleted === true);
+export function makeFilter(...f: ((task: Task) => boolean)[]): (task: Task) => boolean {
+    return (task: Task) => {
+        for (const fn of f) {
+            if (!fn(task)) {
+                return false;
+            }
+        }
+        return true;
+    };
+}
+
+export function limit(opt: LimitOptions): (tasks: Task[]) => Task[] {
+    return (tasks: Task[]) => {
+        const heavy_tasks = tasks.filter((task) => task.data.weight === "heavy").slice(0, opt.heavy);
+        const medium_tasks = tasks.filter((task) => task.data.weight === "medium").slice(0, opt.medium);
+        const light_tasks = tasks.filter((task) => task.data.weight === "light").slice(0, opt.light);
+        const due_date_tasks = tasks.filter((task) => task.data.weight === undefined);
+        return [...heavy_tasks, ...medium_tasks, ...light_tasks, ...due_date_tasks];
+    };
+}
+
+export function sortByUpdatedDate(opt: "asc" | "desc"): (tasks: Task[]) => Task[] {
+    return (tasks: Task[]) => {
+        return tasks.sort((a, b) => {
+            const da = new Date(a.meta.updatedAt);
+            const db = new Date(b.meta.updatedAt);
+            if (opt === "asc") {
+                return db.getTime() - da.getTime();
+            } else {
+                return da.getTime() - db.getTime();
+            }
+        });
+    };
+}
+
+export function or(...fns: ((task: Task) => boolean)[]): (task: Task) => boolean {
+    return (task: Task) => {
+        for (const fn of fns) {
+            if (fn(task)) {
+                return true;
+            }
+        }
+        return false;
+    };
+}
+
+export function process(tasks: Task[], ...fns: ((task: Task) => boolean)[]): Task[] {
+    if (fns.length === 0) {
+        return tasks;
+    }
+
+    return process(tasks.filter(fns[0]), ...fns.slice(1));
+}
+
+export function hasDueDate(task: Task): boolean {
+    return task.data.weight === undefined;
+}
+
+export function hasWeight(task: Task): boolean {
+    return task.data.weight !== undefined;
+}
+
+export function isIncomplete(task: Task): boolean {
+    return task.data.completedAt === undefined && task.data.isDeleted === false;
+}
+
+export function isCompleteToday(current_date: string): (task: Task) => boolean {
+    return (task: Task) => task.data.completedAt !== undefined && dayDifference(current_date, task.data.completedAt) === 0;
+}
+
+export function isDeleted(task: Task): boolean {
+    return task.data.isDeleted;
+}
+
+export function isCompleted(task: Task): boolean {
+    return task.data.completedAt !== undefined && task.data.isDeleted === false;
 }
 
 function getTaskLimitCount(weight: TaskWeight, setting: UserSetting): number {

@@ -1,7 +1,7 @@
 import { RestoreFromTrash } from "@mui/icons-material";
 import { BottomNavigation, BottomNavigationAction, Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
-import { filterDeletedTasks } from "./layer/Business";
+import { isDeleted } from "./layer/Business";
 import { useBiz } from "./layer/Presentation/ContextProvider";
 import { TaskList } from "./layer/Presentation/TaskList";
 
@@ -10,7 +10,7 @@ export function Deleted(): JSX.Element {
     const {
         tasks: { tasks, select, undelete },
     } = useBiz();
-    const filtered_tasks = filterDeletedTasks(tasks);
+    const filtered_tasks = tasks.filter((task) => isDeleted(task.task));
 
     function handleChange(): void {
         undelete(tasks);
