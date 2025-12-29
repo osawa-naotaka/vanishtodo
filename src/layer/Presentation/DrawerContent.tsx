@@ -3,7 +3,7 @@ import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } f
 import type { JSX } from "react";
 
 export type DrawerContentProps = {
-    selected: "home" | "all" | "completed" | "deleted" | "settings";
+    selected: "home" | "all" | "completed" | "deleted" | "setting";
 };
 
 export function DrawerContent({ selected }: DrawerContentProps): JSX.Element {
@@ -35,7 +35,7 @@ export function DrawerContent({ selected }: DrawerContentProps): JSX.Element {
             </ListItem>
             <Divider />
             <ListItem>
-                <ListItemButton component="a" href="/settings" selected={selected === "settings"}>
+                <ListItemButton component="a" href="/setting" selected={selected === "setting"}>
                     <ListItemIcon>
                         <Settings />
                     </ListItemIcon>

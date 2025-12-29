@@ -7,6 +7,7 @@ import { RouterProvider } from "react-router/dom";
 import { Completed } from "./Completed";
 import { Deleted } from "./Deleted";
 import { Home } from "./Home";
+import { Setting } from "./Setting";
 
 const router = createBrowserRouter([
     {
@@ -20,6 +21,10 @@ const router = createBrowserRouter([
     {
         path: "/deleted",
         Component: Deleted,
+    },
+    {
+        path: "/setting",
+        Component: Setting,
     },
 ]);
 
