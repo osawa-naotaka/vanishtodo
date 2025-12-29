@@ -7,24 +7,30 @@ import { RouterProvider } from "react-router/dom";
 import { Completed } from "./Completed";
 import { Deleted } from "./Deleted";
 import { Home } from "./Home";
+import { AppLayout } from "./layer/Presentation/AppLayout";
 import { Setting } from "./Setting";
 
 const router = createBrowserRouter([
     {
-        path: "/",
-        Component: Home,
-    },
-    {
-        path: "/completed",
-        Component: Completed,
-    },
-    {
-        path: "/deleted",
-        Component: Deleted,
-    },
-    {
-        path: "/setting",
-        Component: Setting,
+        element: <AppLayout />,
+        children: [
+            {
+                path: "/",
+                Component: Home,
+            },
+            {
+                path: "/completed",
+                Component: Completed,
+            },
+            {
+                path: "/deleted",
+                Component: Deleted,
+            },
+            {
+                path: "/setting",
+                Component: Setting,
+            },
+        ],
     },
 ]);
 

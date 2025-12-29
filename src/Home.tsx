@@ -2,7 +2,6 @@ import { Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
 import { useState } from "react";
 import { filterTasks } from "./layer/Business";
-import { BaseLayout } from "./layer/Presentation/BaseLayout";
 import { useTasks, useUserSetting } from "./layer/Presentation/CustomeHook";
 import { EditableTaskList } from "./layer/Presentation/EditableTaskList";
 import type { FilterType } from "./layer/Presentation/TaskFilter";
@@ -18,13 +17,11 @@ export function Home(): JSX.Element {
     const filtered_tasks = filterTasks(current_date, filter, tasks, setting[0]);
 
     return (
-        <BaseLayout selected="home">
-            <Box component="main" sx={{ flexGrow: 1 }}>
-                <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                <TaskInput handleAddTask={add} />
-                <TaskFilter filter={filter} setFilter={setFilter} />
-                <EditableTaskList tasks={filtered_tasks} current_date={current_date} onEditTask={edit} onCompleteTask={complete} />
-            </Box>
-        </BaseLayout>
+        <Box component="main" sx={{ flexGrow: 1 }}>
+            <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
+            <TaskInput handleAddTask={add} />
+            <TaskFilter filter={filter} setFilter={setFilter} />
+            <EditableTaskList tasks={filtered_tasks} current_date={current_date} onEditTask={edit} onCompleteTask={complete} />
+        </Box>
     );
 }

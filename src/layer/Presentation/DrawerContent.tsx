@@ -1,16 +1,13 @@
 import { Delete, Home, Settings, TaskAlt } from "@mui/icons-material";
 import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import type { JSX } from "react";
+import { NavLink } from "react-router";
 
-export type DrawerContentProps = {
-    selected: "home" | "all" | "completed" | "deleted" | "setting";
-};
-
-export function DrawerContent({ selected }: DrawerContentProps): JSX.Element {
+export function DrawerContent(): JSX.Element {
     return (
         <List>
             <ListItem>
-                <ListItemButton component="a" href="/" selected={selected === "home"}>
+                <ListItemButton component={NavLink} to="/">
                     <ListItemIcon>
                         <Home />
                     </ListItemIcon>
@@ -18,7 +15,7 @@ export function DrawerContent({ selected }: DrawerContentProps): JSX.Element {
                 </ListItemButton>
             </ListItem>
             <ListItem>
-                <ListItemButton component="a" href="/completed" selected={selected === "completed"}>
+                <ListItemButton component={NavLink} to="/completed">
                     <ListItemIcon>
                         <TaskAlt />
                     </ListItemIcon>
@@ -26,7 +23,7 @@ export function DrawerContent({ selected }: DrawerContentProps): JSX.Element {
                 </ListItemButton>
             </ListItem>
             <ListItem>
-                <ListItemButton component="a" href="/deleted" selected={selected === "deleted"}>
+                <ListItemButton component={NavLink} to="/deleted">
                     <ListItemIcon>
                         <Delete />
                     </ListItemIcon>
@@ -35,7 +32,7 @@ export function DrawerContent({ selected }: DrawerContentProps): JSX.Element {
             </ListItem>
             <Divider />
             <ListItem>
-                <ListItemButton component="a" href="/setting" selected={selected === "setting"}>
+                <ListItemButton component={NavLink} to="/setting">
                     <ListItemIcon>
                         <Settings />
                     </ListItemIcon>
