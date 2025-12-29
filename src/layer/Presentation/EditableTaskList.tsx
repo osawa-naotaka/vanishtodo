@@ -35,8 +35,11 @@ export function EditableTaskList({ tasks, current_date, onEditTask, onCompleteTa
                                 value={task.task.data.title}
                                 onChange={(e) => {
                                     const updatedItem = {
-                                        ...task,
-                                        data: { ...task.task.data, title: e.currentTarget.value },
+                                        isSelected: task.isSelected,
+                                        task: {
+                                            ...task.task,
+                                            data: { ...task.task.data, title: e.currentTarget.value },
+                                        }
                                     };
                                     onEditTask(updatedItem);
                                 }}
