@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Task, TaskCreate, UserSetting } from "../../../type/types";
 import { tasksSchema, userSettingsSchema } from "../../../type/types";
 import { BizTasks, BizUserSetting } from "../Business";
 import { Network } from "../Network";
 import { Persistent } from "../Persistent";
+
+export type ContextType = {
+    setting: UseUserSettingHooks;
+    tasks: UseTasksHooks;
+};
 
 export type SelectableTask = {
     task: Task;
@@ -25,8 +31,11 @@ export type UseUserSettingHooks = {
     setting: UserSetting[];
 };
 
-export function useUserSetting(): UseUserSettingHooks {
-    const bizUserSetting = useRef<BizUserSetting>(null);
+export const Context = createContext<ContextType | null>(null);
+
+export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
+    const bizTask = useRef<BizTasks>(null);
+    const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [setting, setSetting] = useState<UserSetting[]>([]);
 
     useEffect(() => {
@@ -39,9 +48,9 @@ export function useUserSetting(): UseUserSettingHooks {
             initial_value: [],
         };
         const p = new Persistent(n, user_settings_config);
-        bizUserSetting.current = new BizUserSetting(p);
-        setSetting(bizUserSetting.current.readAll());
-        bizUserSetting.current.init((e) => {
+        const bizUserSetting = new BizUserSetting(p);
+        setSetting(bizUserSetting.readAll());
+        bizUserSetting.init((e) => {
             if (e.status === "success") {
                 setSetting(e.data);
             } else {
@@ -49,13 +58,6 @@ export function useUserSetting(): UseUserSettingHooks {
             }
         });
     }, []);
-
-    return { setting };
-}
-
-export function useTasks(): UseTasksHooks {
-    const bizTask = useRef<BizTasks>(null);
-    const [tasks, setTasks] = useState<SelectableTask[]>([]);
 
     useEffect(() => {
         const n = new Network("/api/v1");
@@ -152,5 +154,15 @@ export function useTasks(): UseTasksHooks {
         setTasks((prevTasks) => prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t)));
     }
 
-    return { tasks, add, edit, complete, select, restore, del, undelete };
+    return (
+        <Context.Provider value={{ setting: { setting }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>{children}</Context.Provider>
+    );
+}
+
+export function useBiz(): ContextType {
+    const context = useContext(Context);
+    if (!context) {
+        throw new Error("ContextProviderが見つかりません。");
+    }
+    return context;
 }

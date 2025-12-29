@@ -2,12 +2,14 @@ import { RestoreFromTrash } from "@mui/icons-material";
 import { BottomNavigation, BottomNavigationAction, Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
 import { filterDeletedTasks } from "./layer/Business";
-import { useTasks } from "./layer/Presentation/CustomeHook";
+import { useBiz } from "./layer/Presentation/ContextProvider";
 import { TaskList } from "./layer/Presentation/TaskList";
 
 export function Deleted(): JSX.Element {
     const current_date = new Date().toISOString();
-    const { tasks, select, undelete } = useTasks();
+    const {
+        tasks: { tasks, select, undelete },
+    } = useBiz();
     const filtered_tasks = filterDeletedTasks(tasks);
 
     function handleChange(): void {

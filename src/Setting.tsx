@@ -1,9 +1,11 @@
 import { Box, Divider, Paper, Slider, Toolbar, Typography } from "@mui/material";
 import type { JSX } from "react";
-import { useUserSetting } from "./layer/Presentation/CustomeHook";
+import { useBiz } from "./layer/Presentation/ContextProvider";
 
 export function Setting(): JSX.Element {
-    const { setting } = useUserSetting();
+    const {
+        setting: { setting },
+    } = useBiz();
 
     const user_setting =
         setting.length > 0
