@@ -16,9 +16,9 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "vanishtodo-db",
-			"database_id": "c557a69d-0472-465c-8459-1bb391f571de",
+			"database_name": "YOUR-DB-NAME",
 			"preview_database_id": "DB",
+			"database_id": "YOUR-DB-ID",
 			"migrations_dir": "./migrations"
 		},
 	],
