@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import * as v from "valibot";
 import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
-import { taskSchema, tasks, users } from "../type/types";
+import { taskSchema, tasks, userSettingSchema, users } from "../type/types";
 
 type Bindings = {
     DB: D1Database;
@@ -89,6 +89,19 @@ function dbUserToUser(dbUser: typeof users.$inferSelect): UserSetting {
                 light: dbUser.daily_goal_light,
             },
         },
+    };
+}
+
+function userToDbUser(user: UserSetting): typeof users.$inferInsert {
+    return {
+        id: user.meta.id,
+        timezone: user.data.timezone,
+        daily_goal_heavy: user.data.dailyGoals.heavy,
+        daily_goal_medium: user.data.dailyGoals.medium,
+        daily_goal_light: user.data.dailyGoals.light,
+        version: user.meta.version,
+        created_at: user.meta.createdAt,
+        updated_at: user.meta.updatedAt,
     };
 }
 
@@ -233,6 +246,65 @@ app.get("/api/v1/setting", async (c) => {
             code: "INTERNAL_ERROR",
             message: "/api/v1/settingsの取得中にサーバー側のロジック異常が検出されました",
             details,
+        });
+    }
+});
+
+// ========================================
+// API-008: ユーザー設定更新
+// ========================================
+app.put("/api/v1/setting/:id", async (c) => {
+    try {
+        const settingId = c.req.param("id");
+        const requestBody = await c.req.json();
+
+        // バリデーション
+        const parseResult = v.safeParse(userSettingSchema, requestBody);
+        if (!parseResult.success) {
+            return errorResponse(400, {
+                code: "VALIDATION_ERROR",
+                message: "入力内容に誤りがあります",
+                details: parseResult.issues.map((issue) => issue.message).join("; "),
+                input: JSON.stringify(requestBody),
+            });
+        }
+
+        const updateData = parseResult.output;
+
+        const db = drizzle(c.env.DB);
+
+        // 既存タスクの取得
+        const existingTask = await db.select().from(users).where(eq(users.id, settingId)).limit(1);
+
+        if (existingTask.length === 0) {
+            return errorResponse(400, {
+                code: "NOT_FOUND",
+                message: "ユーザー設定が見つかりません",
+            });
+        }
+
+        // 楽観的ロックのチェック
+        const force = c.req.query("force") === "true";
+        if (!force && existingTask[0].version + 1 !== updateData.meta.version) {
+            return errorResponse(400, {
+                code: "CONFLICT",
+                message: "ユーザー設定が他で更新されています。ページをリロードしてください。",
+                input: `${existingTask[0].version}|${updateData.meta.version}`,
+            });
+        }
+
+        await db.update(users).set(userToDbUser(updateData)).where(eq(users.id, settingId));
+
+        const response: ApiVoid = {
+            type: "void",
+        };
+
+        return successResponse(response);
+    } catch (error) {
+        console.error("Error updating task:", error);
+        return errorResponse(500, {
+            code: "INTERNAL_ERROR",
+            message: "サーバーエラーが発生しました",
         });
     }
 });

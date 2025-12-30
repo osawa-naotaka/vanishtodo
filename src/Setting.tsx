@@ -4,7 +4,7 @@ import { useBiz } from "./layer/Presentation/ContextProvider";
 
 export function Setting(): JSX.Element {
     const {
-        setting: { setting },
+        setting: { setting, set },
     } = useBiz();
 
     return (
@@ -17,15 +17,36 @@ export function Setting(): JSX.Element {
             <Paper sx={{ margin: 2, padding: 2 }}>
                 <Typography variant="h5">軽いタスク</Typography>
                 <Typography>15分以内で完了するタスク</Typography>
-                <Slider value={setting.dailyGoals.light} min={0} max={10} step={1} marks />
+                <Slider
+                    value={setting.dailyGoals.light}
+                    min={0}
+                    max={10}
+                    step={1}
+                    marks
+                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, light: value as number } })}
+                />
                 <Divider sx={{ marginY: 2 }} />
                 <Typography variant="h5">中タスク</Typography>
                 <Typography>15分〜60分で完了するタスク</Typography>
-                <Slider value={setting.dailyGoals.medium} min={0} max={10} step={1} marks />
+                <Slider
+                    value={setting.dailyGoals.medium}
+                    min={0}
+                    max={10}
+                    step={1}
+                    marks
+                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, medium: value as number } })}
+                />
                 <Divider sx={{ marginY: 2 }} />
                 <Typography variant="h5">重いタスク</Typography>
                 <Typography>60分以上かかるタスク</Typography>
-                <Slider value={setting.dailyGoals.heavy} min={0} max={10} step={1} marks />
+                <Slider
+                    value={setting.dailyGoals.heavy}
+                    min={0}
+                    max={10}
+                    step={1}
+                    marks
+                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, heavy: value as number } })}
+                />
             </Paper>
         </Box>
     );

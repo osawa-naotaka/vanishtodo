@@ -135,6 +135,22 @@ export class BizUserSetting {
     readAll(): UserSetting[] {
         return this.m_persistent.items;
     }
+
+    set(setting: UserSettingContent, onError: OnError): UserSetting[] {
+        if (this.m_persistent.items.length !== 1) {
+            return [];
+        }
+
+        const existing = this.m_persistent.items[0];
+        const updated = touchItem<UserSettingContent>(existing);
+        updated.data = setting;
+        this.m_persistent.update(updated, (e) => {
+            if (e.status !== "success") {
+                onError(e);
+            }
+        });
+        return this.m_persistent.items;
+    }
 }
 
 export function filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[], setting: UserSetting): Task[] {

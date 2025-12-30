@@ -29,14 +29,16 @@ export type UseTasksHooks = {
 
 export type UseUserSettingHooks = {
     setting: UserSettingContent;
+    set: (setting: UserSettingContent) => void;
 };
 
 export const Context = createContext<ContextType | null>(null);
 
 export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
     const bizTask = useRef<BizTasks>(null);
+    const bizUserSetting = useRef<BizUserSetting>(null);
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
-    const [raw_setting, setSetting] = useState<UserSetting[]>([]);
+    const [raw_setting, setRawSetting] = useState<UserSetting[]>([]);
 
     const setting: UserSettingContent =
         raw_setting.length > 0
@@ -60,11 +62,11 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
             initial_value: [],
         };
         const p = new Persistent(n, user_settings_config);
-        const bizUserSetting = new BizUserSetting(p);
-        setSetting(bizUserSetting.readAll());
-        bizUserSetting.init((e) => {
+        bizUserSetting.current = new BizUserSetting(p);
+        setRawSetting(bizUserSetting.current.readAll());
+        bizUserSetting.current.init((e) => {
             if (e.status === "success") {
-                setSetting(e.data);
+                setRawSetting(e.data);
             } else {
                 console.error(e);
             }
@@ -166,8 +168,24 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         setTasks((prevTasks) => prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t)));
     }
 
+    function set(setting: UserSettingContent): void {
+        console.log(setting);
+        if (bizUserSetting.current) {
+            bizUserSetting.current.set(setting, (e) => {
+                console.error(e);
+            });
+            if (raw_setting.length === 0) {
+                return;
+            }
+            raw_setting[0].data = setting;
+            setRawSetting([raw_setting[0]]);
+        }
+    }
+
     return (
-        <Context.Provider value={{ setting: { setting }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>{children}</Context.Provider>
+        <Context.Provider value={{ setting: { setting, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>
+            {children}
+        </Context.Provider>
     );
 }
 
