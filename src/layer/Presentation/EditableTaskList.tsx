@@ -39,7 +39,7 @@ export function EditableTaskList({ tasks, current_date, onEditTask, onCompleteTa
                                         task: {
                                             ...task.task,
                                             data: { ...task.task.data, title: e.currentTarget.value },
-                                        }
+                                        },
                                     };
                                     onEditTask(updatedItem);
                                 }}

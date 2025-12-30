@@ -7,18 +7,6 @@ export function Setting(): JSX.Element {
         setting: { setting },
     } = useBiz();
 
-    const user_setting =
-        setting.length > 0
-            ? setting[0].data
-            : {
-                  timezone: 9,
-                  dailyGoals: {
-                      heavy: 1,
-                      medium: 2,
-                      light: 3,
-                  },
-              };
-
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>
             <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
@@ -29,15 +17,15 @@ export function Setting(): JSX.Element {
             <Paper sx={{ margin: 2, padding: 2 }}>
                 <Typography variant="h5">軽いタスク</Typography>
                 <Typography>15分以内で完了するタスク</Typography>
-                <Slider value={user_setting.dailyGoals.light} min={0} max={20} step={1} marks />
+                <Slider value={setting.dailyGoals.light} min={0} max={10} step={1} marks />
                 <Divider sx={{ marginY: 2 }} />
                 <Typography variant="h5">中タスク</Typography>
                 <Typography>15分〜60分で完了するタスク</Typography>
-                <Slider value={user_setting.dailyGoals.medium} min={0} max={20} step={1} marks />
+                <Slider value={setting.dailyGoals.medium} min={0} max={10} step={1} marks />
                 <Divider sx={{ marginY: 2 }} />
                 <Typography variant="h5">重いタスク</Typography>
                 <Typography>60分以上かかるタスク</Typography>
-                <Slider value={user_setting.dailyGoals.heavy} min={0} max={20} step={1} marks />
+                <Slider value={setting.dailyGoals.heavy} min={0} max={10} step={1} marks />
             </Paper>
         </Box>
     );

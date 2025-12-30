@@ -17,14 +17,11 @@ export function Home(): JSX.Element {
         tasks: { tasks, add, edit, complete },
     } = useBiz();
 
-    const filtered_tasks =
-        setting.length === 0
-            ? []
-            : tasksToday(
-                  current_date,
-                  setting[0].data.dailyGoals,
-                  tasks.map((task) => task.task),
-              ).map((task) => ({ task, isSelected: false }));
+    const filtered_tasks = tasksToday(
+        current_date,
+        setting.dailyGoals,
+        tasks.map((task) => task.task),
+    ).map((task) => ({ task, isSelected: false }));
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>

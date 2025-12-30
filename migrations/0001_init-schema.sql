@@ -11,9 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
     version INT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
-    CHECK (daily_goal_heavy >= 0 AND daily_goal_heavy <= 20),
-    CHECK (daily_goal_medium >= 0 AND daily_goal_medium <= 20),
-    CHECK (daily_goal_light >= 0 AND daily_goal_light <= 20),
+    CHECK (daily_goal_heavy >= 0 AND daily_goal_heavy <= 10),
+    CHECK (daily_goal_medium >= 0 AND daily_goal_medium <= 10),
+    CHECK (daily_goal_light >= 0 AND daily_goal_light <= 10),
     CHECK (version >= 1)
 );
 

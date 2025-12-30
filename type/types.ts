@@ -121,16 +121,16 @@ export type TaskCreate = v.InferOutput<typeof taskCreateSchema>;
 // ユーザー設定型
 // -----------------------------------------------------------------------------
 
-// タスク目標数 0~20
-export const numDailyGoalsTypeSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(20));
+// タスク目標数 0~10
+export const numDailyGoalsTypeSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(10));
 
 // ユーザー設定（サーバー → クライアント）
 export const userSettingContentSchema = v.object({
     timezone: v.number(),
     dailyGoals: v.object({
-        heavy: numDailyGoalsTypeSchema, // 重タスク目標数（0-20）
-        medium: numDailyGoalsTypeSchema, // 中タスク目標数（0-20）
-        light: numDailyGoalsTypeSchema, // 軽タスク目標数（0-20）
+        heavy: numDailyGoalsTypeSchema, // 重タスク目標数（0-10）
+        medium: numDailyGoalsTypeSchema, // 中タスク目標数（0-10）
+        light: numDailyGoalsTypeSchema, // 軽タスク目標数（0-10）
     }),
 });
 

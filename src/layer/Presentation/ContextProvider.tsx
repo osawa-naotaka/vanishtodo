@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import type { Task, TaskCreate, UserSetting } from "../../../type/types";
+import type { Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
 import { tasksSchema, userSettingsSchema } from "../../../type/types";
 import { BizTasks, BizUserSetting } from "../Business";
 import { Network } from "../Network";
@@ -28,7 +28,7 @@ export type UseTasksHooks = {
 };
 
 export type UseUserSettingHooks = {
-    setting: UserSetting[];
+    setting: UserSettingContent;
 };
 
 export const Context = createContext<ContextType | null>(null);
@@ -36,7 +36,19 @@ export const Context = createContext<ContextType | null>(null);
 export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
     const bizTask = useRef<BizTasks>(null);
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
-    const [setting, setSetting] = useState<UserSetting[]>([]);
+    const [raw_setting, setSetting] = useState<UserSetting[]>([]);
+
+    const setting: UserSettingContent =
+        raw_setting.length > 0
+            ? raw_setting[0].data
+            : {
+                  timezone: 9,
+                  dailyGoals: {
+                      heavy: 1,
+                      medium: 2,
+                      light: 3,
+                  },
+              };
 
     useEffect(() => {
         const n = new Network("/api/v1");

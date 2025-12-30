@@ -87,9 +87,9 @@ erDiagram
 
 **制約:**
 - PRIMARY KEY: id
-- CHECK: daily_goal_heavy >= 0 AND daily_goal_heavy <= 20
-- CHECK: daily_goal_medium >= 0 AND daily_goal_medium <= 20
-- CHECK: daily_goal_light >= 0 AND daily_goal_light <= 20
+- CHECK: daily_goal_heavy >= 0 AND daily_goal_heavy <= 10
+- CHECK: daily_goal_medium >= 0 AND daily_goal_medium <= 10
+- CHECK: daily_goal_light >= 0 AND daily_goal_light <= 10
 
 **インデックス:**
 - なし（シングルユーザー、データ量が少ないため不要）

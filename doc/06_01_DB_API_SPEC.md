@@ -401,9 +401,9 @@
   | dailyGoals.medium | number | × | 0-10 | 中タスク目標数 |
   | dailyGoals.light | number | × | 0-10 | 軽タスク目標数 |
   | displayLimits | object | × | - | 表示上限の設定 |
-  | displayLimits.heavy | number | × | 1-20 | 重タスク表示上限 |
-  | displayLimits.medium | number | × | 1-20 | 中タスク表示上限 |
-  | displayLimits.light | number | × | 1-20 | 軽タスク表示上限 |
+  | displayLimits.heavy | number | × | 1-10 | 重タスク表示上限 |
+  | displayLimits.medium | number | × | 1-10 | 中タスク表示上限 |
+  | displayLimits.light | number | × | 1-10 | 軽タスク表示上限 |
 
 **レスポンス:**
 
