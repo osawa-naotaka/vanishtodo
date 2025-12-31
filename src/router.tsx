@@ -5,10 +5,20 @@ import { All } from "./All";
 import { Completed } from "./Completed";
 import { Deleted } from "./Deleted";
 import { Home } from "./Home";
+import { Login } from "./Login";
+import { LoginSent } from "./LoginSent";
 import { AppLayout } from "./layer/Presentation/AppLayout";
 import { Setting } from "./Setting";
 
 const router = createBrowserRouter([
+    {
+        path: "/login",
+        Component: Login,
+    },
+    {
+        path: "/login/sent",
+        Component: LoginSent,
+    },
     {
         element: <AppLayout />,
         children: [
