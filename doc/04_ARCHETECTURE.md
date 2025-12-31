@@ -35,6 +35,7 @@ graph TB
         subgraph "ビジネス層"
             TaskOps[タスク操作<br/>セッティング編集]
             LLMClient[LLMクライアント]
+            LoginProc[ログイン処理]
         end
         
         subgraph "永続化層"
@@ -50,39 +51,47 @@ graph TB
     subgraph "Cloudflare Edge"
 
         subgraph "調停層"
-            Access[Cloudflare Access<br/>Email OTP認証]
+            Access[JWTセッション管理<br/>レート制限]
             Workers[Hono API<br/>REST Endpoints]
         end
 
         subgraph "DB層（Workers API）"
-            Cron[DBクリーンアップ<br/>cron駆動]
-            DB[DBマネージャ<br/>D1読み書き]
-            D1[(Cloudflare D1<br/>SQLite)]
+            DBTask[タスクマネージャ<br/>D1読み書き]
         end
 
         subgraph "AI層（Workers API）"
             AI[Cloudflare AI<br/>LLM処理]
         end
 
-        subgraph "ロギング層（Workers API）"
-            DurableObj[Durable Objects<br/>ログサービス]
+        subgraph "認証層"
+            Magic[マジックリンク生成<br/>認証トークン管理]
         end
 
+        D1[(Cloudflare D1<br/>SQLite)]
+        Cron[DBクリーンアップ<br/>cron駆動]
+
     end
+
+    Resend[(Resend<br/>メール送信)]
     
     UI --> TaskOps
     UI --> LLMClient
+    UI --> LoginProc
     TaskOps --> SyncManager
     LLMClient --> Fetch
+    LoginProc --> Fetch
     SyncManager --> LocalStorage
     SyncManager --> Fetch
     Fetch -.REST API.-> Access
     Access --> Workers
-    Workers --> DB
-    Workers -.ログ.-> DurableObj
+    Workers --> DBTask
     Workers --> AI
+    Access --> Magic
     Cron -.定期実行.-> D1
-    DB --> D1
+    DBTask --> D1
+    Workers --> Magic
+    Magic --> D1
+    Magic --> Resend
 ```
 
 ### 2.2 アーキテクチャスタイル
@@ -98,7 +107,7 @@ graph TB
 | 調停層 | Cloudflare Workers | 認証、REST AP(Hono) |
 | DB層 | Cloudflare Workers | CRUD操作、定期クリーンアップ |
 | AI層 | Cloudflare Workers AI | AI処理 |
-| ロギング層 | Cloudflare Workers | Durable Objectにロギング |
+| 認証層 | Cloudflare Workers | MagicLink&JWT生成・検証、レート制限 |
 
 
 ### 2.3 レイヤード採用理由
@@ -246,12 +255,17 @@ interface QueueEntry {
 
 ### 3.5 調停層
 
+#### 責務
+
+- JWTによるセッション管理
 - HonoによるREST APIルーティング
-- Cloudflare Accessによる認証・認可
+- APIレート制限
+- ~~Cloudflare Accessによる認証・認可~~
 
 調停層はCloudflare Workers上で動くHonoアプリとして実装します。
-ネットワーク層からのリクエストを受け入れ、REST APIエンドポイントごとにDB層とAI層に処理を振り分けます。
-全てのリクエストはロギング層に伝えられ、そこでログに書き出されます。
+ネットワーク層からのリクエストを受け入れ、REST APIエンドポイントごとにDB層とAI層、認証層に処理を振り分けます。
+全てのリクエストはCloudflareの標準設定においてCloudflare Workers Logsに記録されます。
+同時に、Workers内のconsole.log出力もログに記録され、Cloudflare Workersダッシュボードから閲覧できます。
 
 #### 技術スタック
 
@@ -291,7 +305,7 @@ D1へは生のSQLは使わず、Dirzzle ORMを使ったアクセスを行いま�
 
 ### 3.7 AI層
 
-#### 概要
+#### 責務
 
 - LLMへのリクエスト・レスポンス
 - リクエストはタスク内容を書いたmax 500文字
@@ -310,33 +324,21 @@ Cloudflare Workersのバインディングを通じてWorkers AIへのアクセ�
 
 といった形のプロンプトを生成します。
 
-### 3.8 ロギング層
+### 3.8 認証層
 
-#### 概要
+#### 責務
 
-- **実行方式**: Cloudflare Durable Objects
-- **目的**: DB層リクエストの記録、障害対応・性能調査
-- **参照方法**: Cloudflareダッシュボード
+- 認証トークンの生成、Magic Linkの書かれたメールの送出
+- 認証トークン検証、ユーザー作成
+- セッション管理に用いるJWT生成
 
-#### ログ内容
-
-```typescript
-interface LogEntry {
-  timestamp: string;
-  requestId: string;
-  operation: string;
-  endpoint: string;
-  status: 'success' | 'error';
-  statusCode?: number;
-  duration: number;  // ms
-  errorMessage?: string;
-}
-```
-
-#### ログ保持期間
-
-- **保持期間**: 1〜数日（設定可能）
-- **削除方式**: 古いログを自動削除
+認証層はひとつのクラスとして実装されます。
+フロントエンドからのemailアドレスによるログインリクエストを受け、認証トークンを生成します。認証トークンは、emailと有効期限(15分)をセットでD1に保存されます。
+引き続き、トークンを埋め込んだマジックリンクを生成し、Resendを用いてemailアドレスへ送信を行います。
+また、フロントエンドからの認証リクエスト(マジックリンククリックによりリクエストが発生)を受け、D1に保存されたトークンと一致することを確認します。
+トークンは暗号論的に安全な256bitの数値を16進に変換したものを使います。
+一致の確認ができたら、emailに紐づくユーザーIDを含むJWTを生成し、レスポンスとして返します。
+emailに紐づくユーザーIDが存在しない場合はUUIDv4として生成しD1のユーザーテーブルに追加します。
 
 ---
 

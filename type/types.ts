@@ -147,6 +147,16 @@ export const userSettingsSchema = v.array(userSettingSchema);
 export type UserSettings = v.InferOutput<typeof userSettingsSchema>;
 
 // -----------------------------------------------------------------------------
+// 認証関連型
+// -----------------------------------------------------------------------------
+
+export const loginRequestSchema = v.object({
+    email: v.pipe(v.string(), v.email()),
+});
+
+export type LoginRequest = v.InferOutput<typeof loginRequestSchema>;
+
+// -----------------------------------------------------------------------------
 // ネットワーク層関連型
 // -----------------------------------------------------------------------------
 

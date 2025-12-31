@@ -4,11 +4,13 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import * as v from "valibot";
 import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
-import { taskSchema, tasks, userSettingSchema, users } from "../type/types";
+import { loginRequestSchema, taskSchema, tasks, userSettingSchema, users } from "../type/types";
+import { Resend } from "resend";
 
 type Bindings = {
     DB: D1Database;
     AI: Ai;
+    RESENDN_API_KEY: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -294,6 +296,51 @@ app.put("/api/v1/setting/:id", async (c) => {
         }
 
         await db.update(users).set(userToDbUser(updateData)).where(eq(users.id, settingId));
+
+        const response: ApiVoid = {
+            type: "void",
+        };
+
+        return successResponse(response);
+    } catch (error) {
+        console.error("Error updating task:", error);
+        return errorResponse(500, {
+            code: "INTERNAL_ERROR",
+            message: "サーバーエラーが発生しました",
+        });
+    }
+});
+
+// ========================================
+// API-009: magic link送信
+// ========================================
+app.post("/api/v1/login", async (c) => {
+    try {
+        const requestBody = await c.req.json();
+
+        // バリデーション
+        const parseResult = v.safeParse(loginRequestSchema, requestBody);
+        if (!parseResult.success) {
+            return errorResponse(400, {
+                code: "VALIDATION_ERROR",
+                message: "入力内容に誤りがあります",
+                details: parseResult.issues.map((issue) => issue.message).join("; "),
+                input: JSON.stringify(requestBody),
+            });
+        }
+
+        console.log("Magic link requested for email:", parseResult.output.email);
+        /*
+        const resend = new Resend(c.env.RESENDN_API_KEY);
+
+        const { data } = await resend.emails.send({
+            from: 'VanishToDo <vanishtodo@lulliecat.com>',
+            to: [parseResult.output.email],
+            subject: 'login link to VanishToDo',
+            text: 'Click here to login: https://vanishtodo.lulliecat.com/login/magic-link?token=YOUR-TOKEN',
+        });
+        console.log("Magic link email sent:", data);
+        */
 
         const response: ApiVoid = {
             type: "void",
