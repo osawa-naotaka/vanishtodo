@@ -16,15 +16,15 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "vanishtodo-db",
-			"database_id": "c020574a-5623-407b-be0c-cd192bab9545",
-		    "preview_database_id": "DB",
+			"database_name": "YOUR-DB-NAME",
+			"preview_database_id": "DB",
+			"database_id": "YOUR-DB-ID",
 			"migrations_dir": "./migrations"
-		}
+		},
 	],
 	// "ai": {
-    // 	"binding": "AI"
-  	// }
+	// 	"binding": "AI"
+	// }
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

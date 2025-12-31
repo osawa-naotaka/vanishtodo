@@ -1,24 +1,19 @@
-import { Delete, Restore } from "@mui/icons-material";
+import { RestoreFromTrash } from "@mui/icons-material";
 import { BottomNavigation, BottomNavigationAction, Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
 import { isDeleted } from "./layer/Business";
 import { useBiz } from "./layer/Presentation/ContextProvider";
 import { TaskList } from "./layer/Presentation/TaskList";
 
-export function All(): JSX.Element {
+export function Deleted(): JSX.Element {
     const current_date = new Date().toISOString();
     const {
-        tasks: { tasks, restore, del, select },
+        tasks: { tasks, select, undelete },
     } = useBiz();
+    const filtered_tasks = tasks.filter((task) => isDeleted(task.task));
 
-    const filtered_tasks = tasks.filter((t) => !isDeleted(t.task));
-
-    function handleChange(_event: React.SyntheticEvent, value: string): void {
-        if (value === "restore") {
-            restore(tasks);
-        } else if (value === "delete") {
-            del(tasks);
-        }
+    function handleChange(): void {
+        undelete(tasks);
     }
 
     return (
@@ -26,8 +21,7 @@ export function All(): JSX.Element {
             <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
             <TaskList tasks={filtered_tasks} current_date={current_date} onSelectTask={select} />
             <BottomNavigation showLabels onChange={handleChange}>
-                <BottomNavigationAction label="復帰" value="restore" icon={<Restore />} />
-                <BottomNavigationAction label="削除" value="delete" icon={<Delete />} />
+                <BottomNavigationAction label="元に戻す" value="undelete" icon={<RestoreFromTrash />} />
             </BottomNavigation>
         </Box>
     );

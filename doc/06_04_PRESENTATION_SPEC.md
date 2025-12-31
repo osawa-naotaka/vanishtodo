@@ -2162,7 +2162,6 @@ F-019
 2. 「保存」ボタンを押下
 3. フロントエンドでバリデーション:
    - 日次目標: 0-10の範囲
-   - 表示上限: 1-20の範囲
 4. Optimistic Update（即座にUI反映）
 5. API Queueにenqueue
 6. `PUT /api/v1/settings`リクエスト送信

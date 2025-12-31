@@ -1,66 +1,34 @@
-import { type JSX, useEffect, useRef, useState } from "react";
-import type { Task, TaskInput } from "../type/types";
-import { Business } from "./layer/Business";
-import { Network } from "./layer/Network";
-import { Persistent } from "./layer/Persistent";
-import { AppBar } from "./layer/Presentation/AppBar";
-import { BottomTaskFilter } from "./layer/Presentation/BottomTaskFilter";
-import { Drawer } from "./layer/Presentation/Drawer";
-import { TaskInputArea } from "./layer/Presentation/TaskInputArea";
-import { TaskView } from "./layer/Presentation/TaskView";
+import { Box, Toolbar } from "@mui/material";
+import type { JSX } from "react";
+import { useState } from "react";
+import { tasksToday } from "./layer/Business";
+import { useBiz } from "./layer/Presentation/ContextProvider";
+import { EditableTaskList } from "./layer/Presentation/EditableTaskList";
+import type { FilterType } from "./layer/Presentation/TaskFilter";
+import { TaskFilter } from "./layer/Presentation/TaskFilter";
+import { TaskInput } from "./layer/Presentation/TaskInput";
 
 export function Home(): JSX.Element {
-    const biz = useRef<Business>(null);
-    const [tasks, setTasks] = useState<Task[]>([]);
     const current_date = new Date().toISOString();
+    const [filter, setFilter] = useState<FilterType>("all");
 
-    useEffect(() => {
-        const n = new Network("/api/v1");
-        const p = new Persistent(n);
-        biz.current = new Business(p);
-        setTasks(biz.current.tasks);
-        biz.current.init((e) => {
-            if (e.status === "success") {
-                setTasks(e.data);
-            } else {
-                console.error(e);
-            }
-        });
-    }, []);
+    const {
+        setting: { setting },
+        tasks: { tasks, add, edit, complete },
+    } = useBiz();
 
-    function handleEditTask(task: Task): void {
-        if (biz.current) {
-            setTasks(
-                biz.current.edit(task, (e) => {
-                    console.error(e);
-                }),
-            );
-        }
-    }
-
-    function handleAddTask(data: TaskInput): void {
-        if (biz.current) {
-            setTasks(
-                biz.current.create(data, (e) => {
-                    console.error(e);
-                }),
-            );
-        }
-    }
+    const filtered_tasks = tasksToday(
+        current_date,
+        setting.dailyGoals,
+        tasks.map((task) => task.task),
+    ).map((task) => ({ task, isSelected: false }));
 
     return (
-        <>
-            <AppBar />
-            <Drawer />
-            <main className="responsive">
-                <TaskInputArea onAddTask={handleAddTask} defaultDate={current_date} />
-                <ul className="task-list">
-                    {tasks.map((task) => (
-                        <TaskView key={task.meta.id} task={task} current_date={current_date} handleEditTask={handleEditTask} />
-                    ))}
-                </ul>
-            </main>
-            <BottomTaskFilter />
-        </>
+        <Box component="main" sx={{ flexGrow: 1 }}>
+            <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
+            <TaskInput handleAddTask={add} />
+            <TaskFilter filter={filter} setFilter={setFilter} />
+            <EditableTaskList tasks={filtered_tasks} current_date={current_date} onEditTask={edit} onCompleteTask={complete} />
+        </Box>
     );
 }
