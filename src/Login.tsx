@@ -1,4 +1,4 @@
-import { Box, Button, TextField, Toolbar, Typography, Alert } from "@mui/material";
+import { Alert, Box, Button, TextField, Toolbar, Typography } from "@mui/material";
 import type { JSX } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -67,14 +67,7 @@ export function Login(): JSX.Element {
                         autoFocus
                     />
 
-                    <Button
-                        fullWidth
-                        type="submit"
-                        variant="contained"
-                        size="large"
-                        disabled={isSubmitting || !email}
-                        sx={{ mb: 2 }}
-                    >
+                    <Button fullWidth type="submit" variant="contained" size="large" disabled={isSubmitting || !email} sx={{ mb: 2 }}>
                         {isSubmitting ? "送信中..." : "ログインリンクを送信"}
                     </Button>
                 </form>

@@ -1,5 +1,5 @@
-import { Box, Button, Toolbar, Typography } from "@mui/material";
 import { Email as EmailIcon } from "@mui/icons-material";
+import { Box, Button, Toolbar, Typography } from "@mui/material";
 import type { JSX } from "react";
 import { useNavigate } from "react-router";
 
@@ -30,11 +30,7 @@ export function LoginSent(): JSX.Element {
                     メールが届かない場合は、迷惑メールフォルダをご確認ください。
                 </Typography>
 
-                <Button
-                    variant="outlined"
-                    onClick={() => navigate("/login")}
-                    sx={{ mt: 2 }}
-                >
+                <Button variant="outlined" onClick={() => navigate("/login")} sx={{ mt: 2 }}>
                     ログイン画面に戻る
                 </Button>
             </Box>

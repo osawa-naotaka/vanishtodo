@@ -52,13 +52,7 @@ export function AppLayout(): React.ReactElement {
                             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                                 VanishToDo
                             </Typography>
-                            <IconButton
-                                size="large"
-                                edge="end"
-                                color="inherit"
-                                aria-label="account"
-                                onClick={() => navigate("/login")}
-                            >
+                            <IconButton size="large" edge="end" color="inherit" aria-label="account" onClick={() => navigate("/login")}>
                                 <Avatar sx={{ width: 32, height: 32 }} />
                             </IconButton>
                         </Toolbar>

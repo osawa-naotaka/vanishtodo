@@ -73,6 +73,7 @@ export const taskWeightList = ["light", "medium", "heavy"] as const;
 export const taskWeightSchema = v.picklist(taskWeightList);
 
 export const taskContentSchema = v.object({
+    userId: idSchema,
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema),
@@ -109,6 +110,7 @@ export type TaskDeleteContent = v.InferOutput<typeof taskDeleteContentSchema>;
 
 // LLM解析結果の個別タスク入力
 export const taskCreateSchema = v.object({
+    userId: idSchema,
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema)
@@ -127,6 +129,7 @@ export const numDailyGoalsTypeSchema = v.pipe(v.number(), v.minValue(0), v.maxVa
 // ユーザー設定（サーバー → クライアント）
 export const userSettingContentSchema = v.object({
     timezone: v.number(),
+    email: v.pipe(v.string(), v.email()),
     dailyGoals: v.object({
         heavy: numDailyGoalsTypeSchema, // 重タスク目標数（0-10）
         medium: numDailyGoalsTypeSchema, // 中タスク目標数（0-10）
@@ -155,6 +158,12 @@ export const loginRequestSchema = v.object({
 });
 
 export type LoginRequest = v.InferOutput<typeof loginRequestSchema>;
+
+export const loginAuthSchema = v.object({
+    token: v.string(),
+});
+
+export type LoginAuth = v.InferOutput<typeof loginAuthSchema>;
 
 // -----------------------------------------------------------------------------
 // ネットワーク層関連型
@@ -200,7 +209,7 @@ export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
 
 
 // API呼び出し成功時のレスポンスボディ型
-export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSettings;
+export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSettings | ApiAuthSuccess;
 
 // タスク一覧取得のレスポンスボディ
 export const apiTasksSchema = tasksSchema;
@@ -233,6 +242,14 @@ export interface ApiAnalyze {
 export const apiUserSettingsSchema = userSettingsSchema;
 export type ApiUserSettings = v.InferOutput<typeof apiUserSettingsSchema>;
 
+// 認証成功のレスポンスボディ
+export const apiAuthSuccessSchema = v.object({
+    type: v.picklist(["auth-success"]),
+    userId: idSchema,
+});
+
+export type ApiAuthSuccess = v.InferOutput<typeof apiAuthSuccessSchema>;
+
 // -----------------------------------------------------------------------------
 // 永続化層関連型
 // -----------------------------------------------------------------------------
@@ -261,6 +278,7 @@ export abstract class IPersistent<T> {
 
 export const users = sqliteTable("users", {
     id: text("id").primaryKey(),
+    email: text("email").notNull(),
     timezone: integer("timezone").notNull().default(0),
     daily_goal_heavy: integer("daily_goal_heavy").notNull().default(1),
     daily_goal_medium: integer("daily_goal_medium").notNull().default(2),
@@ -272,6 +290,7 @@ export const users = sqliteTable("users", {
 
 export const tasks = sqliteTable("tasks", {
     id: text("id").primaryKey(),
+    user_id: text("user_id").notNull(),
     title: text("title", { length: 500 }).notNull(),
     weight: text("weight", { enum: ["light", "medium", "heavy"] }),
     due_date: text("due_date"),
@@ -280,6 +299,12 @@ export const tasks = sqliteTable("tasks", {
     version: integer("version").notNull().default(1),
     created_at: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
     updated_at: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+export const auth_tokens = sqliteTable("auth_tokens", {
+    token: text("token").primaryKey(),
+    email: text("email").notNull(),
+    created_at: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // -----------------------------------------------------------------------------

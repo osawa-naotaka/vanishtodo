@@ -13,7 +13,7 @@ export function Home(): JSX.Element {
     const [filter, setFilter] = useState<FilterType>("all");
 
     const {
-        setting: { setting },
+        setting: { setting, userId },
         tasks: { tasks, add, edit, complete },
     } = useBiz();
 
@@ -26,7 +26,7 @@ export function Home(): JSX.Element {
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>
             <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-            <TaskInput handleAddTask={add} />
+            <TaskInput handleAddTask={add} userId={userId} />
             <TaskFilter filter={filter} setFilter={setFilter} />
             <EditableTaskList tasks={filtered_tasks} current_date={current_date} onEditTask={edit} onCompleteTask={complete} />
         </Box>

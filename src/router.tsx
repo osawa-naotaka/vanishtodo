@@ -9,6 +9,7 @@ import { Login } from "./Login";
 import { LoginSent } from "./LoginSent";
 import { AppLayout } from "./layer/Presentation/AppLayout";
 import { Setting } from "./Setting";
+import { LoginAuth } from "./LoginAuth";
 
 const router = createBrowserRouter([
     {
@@ -18,6 +19,10 @@ const router = createBrowserRouter([
     {
         path: "/login/sent",
         Component: LoginSent,
+    },
+    {
+        path: "/login/auth",
+        Component: LoginAuth,
     },
     {
         element: <AppLayout />,

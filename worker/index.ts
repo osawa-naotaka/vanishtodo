@@ -2,10 +2,10 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import * as v from "valibot";
-import type { ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
-import { loginRequestSchema, taskSchema, tasks, userSettingSchema, users } from "../type/types";
 import { Resend } from "resend";
+import * as v from "valibot";
+import type { ApiAuthSuccess, ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
+import { auth_tokens, loginAuthSchema, loginRequestSchema, taskSchema, tasks, userSettingSchema, users } from "../type/types";
 
 type Bindings = {
     DB: D1Database;
@@ -53,6 +53,7 @@ function dbTaskToTask(dbTask: typeof tasks.$inferSelect): Task {
         },
         data: {
             title: dbTask.title,
+            userId: dbTask.user_id,
             weight: dbTask.weight || undefined,
             dueDate: dbTask.due_date || undefined,
             completedAt: dbTask.completed_at || undefined,
@@ -64,6 +65,7 @@ function dbTaskToTask(dbTask: typeof tasks.$inferSelect): Task {
 function taskToDbTask(task: Task): typeof tasks.$inferInsert {
     return {
         id: task.meta.id,
+        user_id: task.data.userId,
         title: task.data.title,
         weight: task.data.weight || null,
         due_date: task.data.dueDate || null,
@@ -84,6 +86,7 @@ function dbUserToUser(dbUser: typeof users.$inferSelect): UserSetting {
             updatedAt: dbUser.updated_at,
         },
         data: {
+            email: dbUser.email,
             timezone: dbUser.timezone,
             dailyGoals: {
                 heavy: dbUser.daily_goal_heavy,
@@ -97,6 +100,7 @@ function dbUserToUser(dbUser: typeof users.$inferSelect): UserSetting {
 function userToDbUser(user: UserSetting): typeof users.$inferInsert {
     return {
         id: user.meta.id,
+        email: user.data.email,
         timezone: user.data.timezone,
         daily_goal_heavy: user.data.dailyGoals.heavy,
         daily_goal_medium: user.data.dailyGoals.medium,
@@ -330,6 +334,12 @@ app.post("/api/v1/login", async (c) => {
         }
 
         console.log("Magic link requested for email:", parseResult.output.email);
+        const token = new Uint8Array(32);
+        crypto.getRandomValues(token);
+        const tokenString = Array.from(token)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+        console.log("Magic Link: http://localhost:5173/login/auth?token=" + tokenString);
         /*
         const resend = new Resend(c.env.RESENDN_API_KEY);
 
@@ -342,11 +352,102 @@ app.post("/api/v1/login", async (c) => {
         console.log("Magic link email sent:", data);
         */
 
+        const createData = parseResult.output;
+
+        const db = drizzle(c.env.DB);
+
+        await db.insert(auth_tokens).values({
+            token: tokenString,
+            email: createData.email,
+            created_at: new Date().toISOString(),
+        });
+
         const response: ApiVoid = {
             type: "void",
         };
 
         return successResponse(response);
+    } catch (error) {
+        console.error("Error updating task:", error);
+        return errorResponse(500, {
+            code: "INTERNAL_ERROR",
+            message: "サーバーエラーが発生しました",
+        });
+    }
+});
+
+
+// ========================================
+// API-010: 認証トークン検証
+// ========================================
+app.post("/api/v1/auth", async (c) => {
+    try {
+        const requestBody = await c.req.json();
+
+        // バリデーション
+        const parseResult = v.safeParse(loginAuthSchema, requestBody);
+        if (!parseResult.success) {
+            return errorResponse(400, {
+                code: "VALIDATION_ERROR",
+                message: "入力内容に誤りがあります",
+                details: parseResult.issues.map((issue) => issue.message).join("; "),
+                input: JSON.stringify(requestBody),
+            });
+        }
+
+        const authData = parseResult.output;
+
+        const db = drizzle(c.env.DB);
+        const sent_token = await db.select().from(auth_tokens).where(eq(auth_tokens.token, authData.token));
+
+        if (sent_token.length !== 1) {
+            return errorResponse(500, {
+                code: "AUTH_ERROR",
+                message: "認証に失敗しました",
+            });
+        }
+
+        // トークン使用後は削除
+        await db.delete(auth_tokens).where(eq(auth_tokens.token, authData.token));
+
+        const user = await db.select().from(users).where(eq(users.email, sent_token[0].email));
+
+        if (user.length === 0) {
+            const id = crypto.randomUUID();
+            // ユーザーが存在しない場合、新規作成
+            const new_user: typeof users.$inferInsert = {
+                id,
+                email: sent_token[0].email,
+                timezone: 9,
+                daily_goal_heavy: 1,
+                daily_goal_medium: 2,
+                daily_goal_light: 3,
+                version: 1,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            await db.insert(users).values(new_user);
+
+            const response: ApiAuthSuccess = {
+                type: "auth-success",
+                userId: id,
+            };
+
+            return successResponse(response);
+        } else if (user.length === 1) {
+            const response: ApiAuthSuccess = {
+                type: "auth-success",
+                userId: user[0].id,
+            };
+
+            return successResponse(response);
+        }
+
+        return errorResponse(500, {
+            code: "AUTH_ERROR",
+            message: "認証に失敗しました",
+        });
+
     } catch (error) {
         console.error("Error updating task:", error);
         return errorResponse(500, {

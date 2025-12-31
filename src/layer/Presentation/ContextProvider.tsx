@@ -29,6 +29,7 @@ export type UseTasksHooks = {
 
 export type UseUserSettingHooks = {
     setting: UserSettingContent;
+    userId: string;
     set: (setting: UserSettingContent) => void;
 };
 
@@ -45,12 +46,15 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
             ? raw_setting[0].data
             : {
                   timezone: 9,
+                  email: "default@example.com",
                   dailyGoals: {
                       heavy: 1,
                       medium: 2,
                       light: 3,
                   },
               };
+
+    const userId = raw_setting.length > 0 ? raw_setting[0].meta.id : "default-user-id";
 
     useEffect(() => {
         const n = new Network("/api/v1");
@@ -169,7 +173,6 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function set(setting: UserSettingContent): void {
-        console.log(setting);
         if (bizUserSetting.current) {
             bizUserSetting.current.set(setting, (e) => {
                 console.error(e);
@@ -183,7 +186,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     return (
-        <Context.Provider value={{ setting: { setting, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>
+        <Context.Provider value={{ setting: { setting, userId, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>
             {children}
         </Context.Provider>
     );
