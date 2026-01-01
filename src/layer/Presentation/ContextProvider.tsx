@@ -30,6 +30,7 @@ export type UseTasksHooks = {
 export type UseUserSettingHooks = {
     setting: UserSettingContent;
     userId?: string;
+    setUserId: (userId: string) => void;
     set: (setting: UserSettingContent) => void;
 };
 
@@ -79,6 +80,30 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
 
         if(persistentLoginInfo.current.item.userId) {
             setUserId(persistentLoginInfo.current.item.userId);
+        }
+    }, []);
+
+    useEffect(() => {
+        if(userId) {
+            if(bizUserSetting.current) {
+                bizUserSetting.current.init((e) => {
+                    if (e.status === "success") {
+                        setRawSetting(e.data);
+                    } else {
+                        console.error(e);
+                    }
+                });
+            }
+
+            if(bizTask.current) {
+                bizTask.current.init((e) => {
+                    if (e.status === "success") {
+                        setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
+                    } else {
+                        console.error(e);
+                    }
+                });
+            }
         }
     }, [userId]);
 
@@ -182,7 +207,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     return (
-        <Context.Provider value={{ setting: { setting, userId, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>
+        <Context.Provider value={{ setting: { setting, userId, set, setUserId }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>
             {children}
         </Context.Provider>
     );

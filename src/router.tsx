@@ -10,44 +10,51 @@ import { LoginSent } from "./LoginSent";
 import { AppLayout } from "./layer/Presentation/AppLayout";
 import { Setting } from "./Setting";
 import { LoginAuth } from "./LoginAuth";
+import { LoginLayout } from "./layer/Presentation/LoginLayout";
 
 const router = createBrowserRouter([
     {
-        path: "/login",
-        Component: Login,
-    },
-    {
-        path: "/login/sent",
-        Component: LoginSent,
-    },
-    {
-        path: "/login/auth",
-        Component: LoginAuth,
-    },
-    {
-        element: <AppLayout />,
+        element: <LoginLayout />,
         children: [
             {
-                path: "/",
-                Component: Home,
+                path: "/login",
+                Component: Login
             },
             {
-                path: "/all",
-                Component: All,
+                path: "/login/sent",
+                Component: LoginSent,
             },
             {
-                path: "/completed",
-                Component: Completed,
+                path: "/login/auth",
+                Component: LoginAuth,
             },
             {
-                path: "/deleted",
-                Component: Deleted,
-            },
-            {
-                path: "/setting",
-                Component: Setting,
-            },
+                element: <AppLayout />,
+                children: [
+                    {
+                        path: "/",
+                        Component: Home,
+                    },
+                    {
+                        path: "/all",
+                        Component: All,
+                    },
+                    {
+                        path: "/completed",
+                        Component: Completed,
+                    },
+                    {
+                        path: "/deleted",
+                        Component: Deleted,
+                    },
+                    {
+                        path: "/setting",
+                        Component: Setting,
+                    },
+                ],
+            }
         ],
+
     },
 ]);
 

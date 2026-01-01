@@ -128,6 +128,8 @@ export class Persistent<T> extends IPersistent<T> {
         const arr = local_storage.item;
         arr.push(item);
         local_storage.item = arr;
+        console.log("Creating item:", item);
+        console.log(this.m_login);
         if(this.m_login) {
             this.m_queue.enqueue(async () => {
                 const result = await this.m_network.postJson(config.api_base, item);

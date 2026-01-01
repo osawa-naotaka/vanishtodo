@@ -1,42 +1,16 @@
 import { Menu as MenuIcon } from "@mui/icons-material";
-import { AppBar, Avatar, Box, CssBaseline, createTheme, Drawer, IconButton, ThemeProvider, Toolbar, Typography } from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { AppBar, Avatar, Box, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
 import type React from "react";
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router";
-import { ContextProvider } from "./ContextProvider";
 import { DrawerContent } from "./DrawerContent";
-
-const theme = createTheme({
-    // palette: {
-    //     primary: {
-    //         main: "#3F51B5", // VanishToDoのメインカラー
-    //         light: "#5C6BC0",
-    //         dark: "#303F9F",
-    //     },
-    //     secondary: {
-    //         main: "#FF9800", // 中タスクの色
-    //     },
-    // },
-    // typography: {
-    //     fontFamily: 'Roboto, "Noto Sans JP", sans-serif',
-    //     h5: {
-    //         fontWeight: 500,
-    //     },
-    // },
-    // spacing: 8, // 1単位 = 8px（sx={{mt: 2}} = margin-top: 16px）
-});
 
 export function AppLayout(): React.ReactElement {
     const [open, setOpen] = useState(false);
     const navigate = useNavigate();
 
     return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <ContextProvider>
+        <>
                     <AppBar position="fixed" sx={{ display: { xs: "block", md: "block" }, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
                         <Toolbar>
                             <IconButton
@@ -92,8 +66,6 @@ export function AppLayout(): React.ReactElement {
                         </Drawer>
                         <Outlet />
                     </Box>
-                </ContextProvider>
-            </LocalizationProvider>
-        </ThemeProvider>
+        </>
     );
 }

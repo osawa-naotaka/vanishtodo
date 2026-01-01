@@ -1,9 +1,13 @@
 import { Box, Toolbar } from "@mui/material";
 import { useEffect, type JSX } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import * as v from "valibot";
+import { apiAuthSuccessSchema, apiSuccessResponseSchema } from "../type/types";
+import { useBiz } from "./layer/Presentation/ContextProvider";
 
 export function LoginAuth(): JSX.Element {
     const navigate = useNavigate();
+    const { setting: { setUserId } } = useBiz();
     // const queryParams = new URLSearchParams(window.location.search);
     const [queryParams] = useSearchParams();
     const token = queryParams.get("token");
@@ -23,6 +27,21 @@ export function LoginAuth(): JSX.Element {
 
                 if (response.ok) {
                     // Token is valid, navigate to home
+                    const data = await response.json();
+                    const result = v.safeParse(apiSuccessResponseSchema, data);
+                    if(result.success) {
+                        const result2 = v.safeParse(apiAuthSuccessSchema, result.output.data);
+                        if(!result2.success) {
+                            console.error("Invalid auth success schema:", result2.issues);
+                            navigate("/login");
+                            return;
+                        }
+                        setUserId(result2.output.userId);
+                    } else {
+                        console.error("Invalid auth response schema:", result.issues);
+                        navigate("/login");
+                        return;
+                    }
                     navigate("/");
                 } else {
                     // Token is invalid, navigate to login
