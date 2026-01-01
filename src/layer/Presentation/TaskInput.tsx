@@ -6,7 +6,7 @@ import * as v from "valibot";
 import type { TaskCreate } from "../../../type/types";
 
 export type TaskInputProps = {
-    userId: string;
+    userId: string | undefined;
     handleAddTask: (data: TaskCreate) => void;
 };
 

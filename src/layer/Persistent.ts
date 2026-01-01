@@ -37,7 +37,7 @@ class AsyncQueue {
     }
 }
 
-class LocalStorege<T> {
+export class LocalStorage<T> {
     private readonly m_config: PersistentContentConfig<T>;
 
     constructor(config: PersistentContentConfig<T>) {
@@ -69,7 +69,8 @@ export class Persistent<T> extends IPersistent<T> {
     private readonly m_config: PersistentContentConfig<DBContainer<T>[]>;
     private readonly m_network: Network;
     private readonly m_queue: AsyncQueue = new AsyncQueue();
-    private readonly m_storage: LocalStorege<DBContainer<T>[]>;
+    private readonly m_storage: LocalStorage<DBContainer<T>[]>;
+    private m_login = false;
 
     get items(): DBContainer<T>[] {
         return this.m_storage.item;
@@ -79,11 +80,16 @@ export class Persistent<T> extends IPersistent<T> {
         super();
         this.m_network = network;
         this.m_config = config;
-        this.m_storage = new LocalStorege<DBContainer<T>[]>(this.m_config);
+        this.m_storage = new LocalStorage<DBContainer<T>[]>(this.m_config);
     }
 
     sync(onComplete: OnComplete<DBContainer<T>[]>): void {
+        this.m_login = true;
         this.syncDBandLocalStorage(this.m_storage, this.m_config, onComplete);
+    }
+
+    disconnect(): void {
+        this.m_login = false;
     }
 
     create(item: DBContainer<T>, onError: OnError): void {
@@ -94,7 +100,7 @@ export class Persistent<T> extends IPersistent<T> {
         this.updateDBItemArray(this.m_storage, this.m_config, item, onError);
     }
 
-    private syncDBandLocalStorage<T>(local_storage: LocalStorege<T>, setting: PersistentContentConfig<T>, onComplete: OnComplete<T>): void {
+    private syncDBandLocalStorage<T>(local_storage: LocalStorage<T>, setting: PersistentContentConfig<T>, onComplete: OnComplete<T>): void {
         this.m_queue.enqueue(async () => {
             const result = await this.m_network.getJson(setting.api_base, setting.schema);
             if (result.status === "success") {
@@ -114,7 +120,7 @@ export class Persistent<T> extends IPersistent<T> {
     }
 
     private createDBItem<T>(
-        local_storage: LocalStorege<DBContainer<T>[]>,
+        local_storage: LocalStorage<DBContainer<T>[]>,
         config: PersistentContentConfig<DBContainer<T>[]>,
         item: DBContainer<T>,
         onError: OnError,
@@ -122,16 +128,18 @@ export class Persistent<T> extends IPersistent<T> {
         const arr = local_storage.item;
         arr.push(item);
         local_storage.item = arr;
-        this.m_queue.enqueue(async () => {
-            const result = await this.m_network.postJson(config.api_base, item);
-            if (result.status !== "success") {
-                onError(result);
-            }
-        });
+        if(this.m_login) {
+            this.m_queue.enqueue(async () => {
+                const result = await this.m_network.postJson(config.api_base, item);
+                if (result.status !== "success") {
+                    onError(result);
+                }
+            });
+        }
     }
 
     private updateDBItemArray<T>(
-        local_storage: LocalStorege<DBContainer<T>[]>,
+        local_storage: LocalStorage<DBContainer<T>[]>,
         config: PersistentContentConfig<DBContainer<T>[]>,
         item: DBContainer<T>,
         onError: OnError,
@@ -149,12 +157,14 @@ export class Persistent<T> extends IPersistent<T> {
         }
         arr[idx] = item;
         local_storage.item = arr;
-        this.m_queue.enqueue(async () => {
-            const result = await this.m_network.putJson(`${config.api_base}/${item.meta.id}`, item);
-            if (result.status !== "success") {
-                onError(result);
-            }
-        });
+        if(this.m_login) {
+            this.m_queue.enqueue(async () => {
+                const result = await this.m_network.putJson(`${config.api_base}/${item.meta.id}`, item);
+                if (result.status !== "success") {
+                    onError(result);
+                }
+            });
+        }
     }
 }
 

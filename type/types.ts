@@ -73,7 +73,7 @@ export const taskWeightList = ["light", "medium", "heavy"] as const;
 export const taskWeightSchema = v.picklist(taskWeightList);
 
 export const taskContentSchema = v.object({
-    userId: idSchema,
+    userId: v.optional(idSchema),
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema),
@@ -110,7 +110,7 @@ export type TaskDeleteContent = v.InferOutput<typeof taskDeleteContentSchema>;
 
 // LLM解析結果の個別タスク入力
 export const taskCreateSchema = v.object({
-    userId: idSchema,
+    userId: v.optional(idSchema),
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema)
@@ -164,6 +164,18 @@ export const loginAuthSchema = v.object({
 });
 
 export type LoginAuth = v.InferOutput<typeof loginAuthSchema>;
+
+export const loginInfoContentSchema = v.object({
+    userId: v.optional(idSchema),
+});
+
+export const loginInfoSchema = v.object({
+    meta: DBContainerMetaSchema,
+    data: loginInfoContentSchema,
+});
+
+export type LoginInfoContent = v.InferOutput<typeof loginInfoContentSchema>;
+export type LoginInfo = v.InferOutput<typeof loginInfoSchema>;
 
 // -----------------------------------------------------------------------------
 // ネットワーク層関連型
