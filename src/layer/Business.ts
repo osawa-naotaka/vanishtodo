@@ -139,7 +139,7 @@ export class Business {
             }
         });
         return this.m_per_setting.items;
-
+    }
 }
 
 type LimitOptions = {
