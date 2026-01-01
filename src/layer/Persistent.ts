@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import type { Container, OnComplete, OnError, Schema } from "../../type/types";
-import { IPersistent } from "../../type/types";
+import { apiVoidSchema, IPersistent } from "../../type/types";
 import type { Network } from "./Network";
 
 export type PersistentContentConfig<T> = {
@@ -128,11 +128,9 @@ export class Persistent<T> extends IPersistent<T> {
         const arr = local_storage.item;
         arr.push(item);
         local_storage.item = arr;
-        console.log("Creating item:", item);
-        console.log(this.m_login);
         if (this.m_login) {
             this.m_queue.enqueue(async () => {
-                const result = await this.m_network.postJson(config.api_base, item);
+                const result = await this.m_network.postJson(config.api_base, item, apiVoidSchema);
                 if (result.status !== "success") {
                     onError(result);
                 }

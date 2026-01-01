@@ -13,8 +13,9 @@ export function Home(): JSX.Element {
     const [filter, setFilter] = useState<FilterType>("all");
 
     const {
-        setting: { setting, userId },
+        setting: { setting },
         tasks: { tasks, add, edit, complete },
+        auth: { userId },
     } = useBiz();
 
     const filtered_tasks = tasksToday(

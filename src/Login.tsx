@@ -2,26 +2,22 @@ import { Alert, Box, Button, TextField, Toolbar, Typography } from "@mui/materia
 import type { JSX } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { useBiz } from "./layer/Presentation/ContextProvider";
 
 export function Login(): JSX.Element {
+    const { auth: { login } } = useBiz();
     const [email, setEmail] = useState<string>("");
     const [error, setError] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         setIsSubmitting(true);
 
         try {
-            await fetch("/api/v1/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email }),
-            });
+            login(email);
 
             // レスポンスの成功・失敗に関わらず送信完了ページに遷移
             navigate("/login/sent");

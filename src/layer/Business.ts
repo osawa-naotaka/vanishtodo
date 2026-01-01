@@ -1,5 +1,6 @@
-import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskCreate, UserSetting, UserSettingContent } from "../../type/types";
+import { type Result, type IPersistent, type OnComplete, type OnError, type Task, type TaskContent, type TaskCreate, type UserSetting, type UserSettingContent, type ApiVoid, apiVoidSchema, type ApiAuthSuccess, apiAuthSuccessSchema } from "../../type/types";
 import { dayDifference } from "../lib/date";
+import type { Network } from "./Network";
 import { generateItem, touchItem } from "./Persistent";
 
 /**
@@ -8,15 +9,25 @@ import { generateItem, touchItem } from "./Persistent";
 export class Business {
     private m_per_task: IPersistent<TaskContent>;
     private m_per_setting: IPersistent<UserSettingContent>;
+    private m_network: Network;
 
     /**
      * 永続化層をDIしてビジネス層を初期化します
      *
      * @param {IPersistent} persistent - 永続化層インターフェース(DI)
      */
-    constructor(persistent: IPersistent<TaskContent>, persistent_setting: IPersistent<UserSettingContent>) {
+    constructor(persistent: IPersistent<TaskContent>, persistent_setting: IPersistent<UserSettingContent>, network: Network) {
         this.m_per_task = persistent;
         this.m_per_setting = persistent_setting;
+        this.m_network = network;
+    }
+
+    requestLogin(email: string): Promise<Result<ApiVoid>> {
+        return this.m_network.postJson("/login", { email }, apiVoidSchema);
+    }
+
+    authenticate(token: string): Promise<Result<ApiAuthSuccess>> {
+        return this.m_network.postJson("/auth", { token }, apiAuthSuccessSchema);
     }
 
     syncTask(onCompleteTasks: OnComplete<Task[]>): void {

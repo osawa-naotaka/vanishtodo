@@ -9,6 +9,7 @@ import { LocalStorage, Persistent } from "../Persistent";
 export type ContextType = {
     setting: UseUserSettingHooks;
     tasks: UseTasksHooks;
+    auth: UseAuthHooks;
 };
 
 export type SelectableTask = {
@@ -29,10 +30,14 @@ export type UseTasksHooks = {
 
 export type UseUserSettingHooks = {
     setting: UserSettingContent;
-    userId?: string;
-    setUserId: (userId: string) => void;
     set: (setting: UserSettingContent) => void;
 };
+
+export type UseAuthHooks = {
+    userId?: string;
+    login: (email: string) => void;
+    auth: (token: string) => Promise<string>;
+}
 
 export const Context = createContext<ContextType | null>(null);
 
@@ -72,7 +77,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         };
 
         const tp = new Persistent(n, tasks_config);
-        biz.current = new Business(tp, up);
+        biz.current = new Business(tp, up, n);
         setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         setRawSetting(biz.current.userSettings);
 
@@ -92,6 +97,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
                     }
                 });
 
+                console.log("userId changed, syncing tasks:", userId);
                 biz.current.syncTask((e) => {
                     if (e.status === "success") {
                         setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
@@ -202,8 +208,32 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         }
     }
 
+    function login(email: string): void {
+        if (biz.current) {
+            biz.current.requestLogin(email);
+        }
+    }
+
+    async function auth(token: string): Promise<string> {
+        if (biz.current) {
+            const result = await biz.current.authenticate(token);
+            if (result.status === "success") {
+                setUserId(result.data.userId);
+                if (persistentLoginInfo.current) {
+                    persistentLoginInfo.current.item = { userId: result.data.userId };
+                }
+                return result.data.userId;
+            } else {
+                console.error(result);
+                throw new Error("Authentication failed");
+            }
+        } else {
+            throw new Error("Business layer not initialized");
+        }
+    }
+
     return (
-        <Context.Provider value={{ setting: { setting, userId, set, setUserId }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>
+        <Context.Provider value={{ setting: { setting, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select }, auth: { login, auth } }}>
             {children}
         </Context.Provider>
     );

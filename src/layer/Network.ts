@@ -35,7 +35,7 @@ export class Network {
      * @param {object} body - リクエストボディ
      * @returns {Promise<Response>} レスポンスのPromise
      */
-    postJson(path: string, body: object): Promise<Result<ApiVoid>> {
+    postJson<T>(path: string, body: object, schema: Schema<T>): Promise<Result<T>> {
         const promise = fetch(`${this.baseUrl}${path}`, {
             method: "POST",
             headers: {
@@ -43,7 +43,7 @@ export class Network {
             },
             body: JSON.stringify(body),
         });
-        return this.processResponse(promise, apiVoidSchema);
+        return this.processResponse(promise, schema);
     }
 
     /**
