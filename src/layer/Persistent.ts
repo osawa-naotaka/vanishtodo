@@ -130,7 +130,7 @@ export class Persistent<T> extends IPersistent<T> {
         local_storage.item = arr;
         console.log("Creating item:", item);
         console.log(this.m_login);
-        if(this.m_login) {
+        if (this.m_login) {
             this.m_queue.enqueue(async () => {
                 const result = await this.m_network.postJson(config.api_base, item);
                 if (result.status !== "success") {
@@ -159,7 +159,7 @@ export class Persistent<T> extends IPersistent<T> {
         }
         arr[idx] = item;
         local_storage.item = arr;
-        if(this.m_login) {
+        if (this.m_login) {
             this.m_queue.enqueue(async () => {
                 const result = await this.m_network.putJson(`${config.api_base}/${item.meta.id}`, item);
                 if (result.status !== "success") {

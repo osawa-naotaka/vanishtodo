@@ -1,24 +1,26 @@
-import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskCreate, TaskWeight, UserSetting, UserSettingContent } from "../../type/types";
+import type { IPersistent, OnComplete, OnError, Task, TaskContent, TaskCreate, UserSetting, UserSettingContent } from "../../type/types";
 import { dayDifference } from "../lib/date";
 import { generateItem, touchItem } from "./Persistent";
 
 /**
  * ビジネス層インターフェースクラス
  */
-export class BizTasks {
-    private m_persistent: IPersistent<TaskContent>;
+export class Business {
+    private m_per_task: IPersistent<TaskContent>;
+    private m_per_setting: IPersistent<UserSettingContent>;
 
     /**
      * 永続化層をDIしてビジネス層を初期化します
      *
      * @param {IPersistent} persistent - 永続化層インターフェース(DI)
      */
-    constructor(persistent: IPersistent<TaskContent>) {
-        this.m_persistent = persistent;
+    constructor(persistent: IPersistent<TaskContent>, persistent_setting: IPersistent<UserSettingContent>) {
+        this.m_per_task = persistent;
+        this.m_per_setting = persistent_setting;
     }
 
-    init(onCompleteTasks: OnComplete<Task[]>): void {
-        this.m_persistent.sync(onCompleteTasks);
+    syncTask(onCompleteTasks: OnComplete<Task[]>): void {
+        this.m_per_task.sync(onCompleteTasks);
     }
 
     /**
@@ -34,12 +36,12 @@ export class BizTasks {
             isDeleted: false,
         };
         const item = generateItem(c);
-        this.m_persistent.create(item, (e) => {
+        this.m_per_task.create(item, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.items;
+        return this.m_per_task.items;
     }
 
     /**
@@ -52,12 +54,12 @@ export class BizTasks {
     complete(item: Task, onError: OnError): Task[] {
         const c = touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
-        this.m_persistent.update(c, (e) => {
+        this.m_per_task.update(c, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.items;
+        return this.m_per_task.items;
     }
 
     /**
@@ -70,107 +72,74 @@ export class BizTasks {
     edit(item: Task, onError: OnError): Task[] {
         const updated = touchItem<TaskContent>(item);
         updated.data = item.data;
-        this.m_persistent.update(updated, (e) => {
+        this.m_per_task.update(updated, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.items;
+        return this.m_per_task.items;
     }
 
     del(item: Task, onError: OnError): Task[] {
         const deleted = touchItem<TaskContent>(item);
         deleted.data.isDeleted = true;
-        this.m_persistent.update(deleted, (e) => {
+        this.m_per_task.update(deleted, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.items;
+        return this.m_per_task.items;
     }
 
     restore(item: Task, onError: OnError): Task[] {
         const restored = touchItem<TaskContent>(item);
         restored.data.completedAt = undefined;
-        this.m_persistent.update(restored, (e) => {
+        this.m_per_task.update(restored, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.items;
+        return this.m_per_task.items;
     }
 
     undelete(item: Task, onError: OnError): Task[] {
         const undeleted = touchItem<TaskContent>(item);
         undeleted.data.isDeleted = false;
-        this.m_persistent.update(undeleted, (e) => {
+        this.m_per_task.update(undeleted, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.items;
+        return this.m_per_task.items;
     }
 
-    readAll(): Task[] {
-        return this.m_persistent.items;
-    }
-}
-
-export class BizUserSetting {
-    private m_persistent: IPersistent<UserSettingContent>;
-
-    /**
-     * 永続化層をDIしてビジネス層を初期化します
-     *
-     * @param {IPersistent} persistent - 永続化層インターフェース(DI)
-     */
-    constructor(persistent: IPersistent<UserSettingContent>) {
-        this.m_persistent = persistent;
+    get tasks(): Task[] {
+        return this.m_per_task.items;
     }
 
-    init(onCompleteUserSettings: OnComplete<UserSetting[]>): void {
-        this.m_persistent.sync(onCompleteUserSettings);
+    get userSettings(): UserSetting[] {
+        return this.m_per_setting.items;
     }
 
-    readAll(): UserSetting[] {
-        return this.m_persistent.items;
+    syncUserSetting(onCompleteUserSettings: OnComplete<UserSetting[]>): void {
+        this.m_per_setting.sync(onCompleteUserSettings);
     }
 
     set(setting: UserSettingContent, onError: OnError): UserSetting[] {
-        if (this.m_persistent.items.length !== 1) {
+        if (this.m_per_setting.items.length !== 1) {
             return [];
         }
 
-        const existing = this.m_persistent.items[0];
+        const existing = this.m_per_setting.items[0];
         const updated = touchItem<UserSettingContent>(existing);
         updated.data = setting;
-        this.m_persistent.update(updated, (e) => {
+        this.m_per_setting.update(updated, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_persistent.items;
+        return this.m_per_setting.items;
     }
-}
-
-export function filterTasks(today: string, weight: TaskWeight | "due-date" | "all", tasks: Task[], setting: UserSetting): Task[] {
-    if (weight === "all") {
-        return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
-    }
-    if (weight === "due-date") {
-        return tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt && task.data.weight === undefined);
-    }
-
-    const weighted_tasks = tasks.filter((task) => task.data.weight === weight);
-    const tasks_candidate = weighted_tasks.filter((task) => !task.data.isDeleted && !task.data.completedAt);
-    const complete_today = weighted_tasks.filter((task) => task.data.completedAt && dayDifference(today, task.data.completedAt) === 0);
-    const num_limit = getTaskLimitCount(weight, setting) - complete_today.length;
-
-    if (num_limit <= 0) {
-        return [];
-    }
-
-    return tasks_candidate.sort((a, b) => dayDifference(a.meta.updatedAt, b.meta.updatedAt)).slice(0, num_limit);
 }
 
 type LimitOptions = {
@@ -261,14 +230,4 @@ export function isDeleted(task: Task): boolean {
 
 export function isCompleted(task: Task): boolean {
     return task.data.completedAt !== undefined && task.data.isDeleted === false;
-}
-
-function getTaskLimitCount(weight: TaskWeight, setting: UserSetting): number {
-    if (weight === "heavy") {
-        return setting.data.dailyGoals.heavy;
-    }
-    if (weight === "medium") {
-        return setting.data.dailyGoals.medium;
-    }
-    return setting.data.dailyGoals.light;
 }

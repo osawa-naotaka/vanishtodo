@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { LoginInfoContent, Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
 import { loginInfoContentSchema, tasksSchema, userSettingsSchema } from "../../../type/types";
-import { BizTasks, BizUserSetting } from "../Business";
+import { Business } from "../Business";
 import { Network } from "../Network";
 import { LocalStorage, Persistent } from "../Persistent";
 
@@ -37,8 +37,7 @@ export type UseUserSettingHooks = {
 export const Context = createContext<ContextType | null>(null);
 
 export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
-    const bizTask = useRef<BizTasks>(null);
-    const bizUserSetting = useRef<BizUserSetting>(null);
+    const biz = useRef<Business>(null);
     const persistentLoginInfo = useRef<LocalStorage<LoginInfoContent>>(null);
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [raw_setting, setRawSetting] = useState<UserSetting[]>([]);
@@ -63,8 +62,6 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
             initial_value: [],
         };
         const up = new Persistent(n, user_settings_config);
-        bizUserSetting.current = new BizUserSetting(up);
-        setRawSetting(bizUserSetting.current.readAll());
 
         const tasks_config = {
             name: "tasks",
@@ -75,28 +72,27 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         };
 
         const tp = new Persistent(n, tasks_config);
-        bizTask.current = new BizTasks(tp);
-        setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
+        biz.current = new Business(tp, up);
+        setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
+        setRawSetting(biz.current.userSettings);
 
-        if(persistentLoginInfo.current.item.userId) {
+        if (persistentLoginInfo.current.item.userId) {
             setUserId(persistentLoginInfo.current.item.userId);
         }
     }, []);
 
     useEffect(() => {
-        if(userId) {
-            if(bizUserSetting.current) {
-                bizUserSetting.current.init((e) => {
+        if (userId) {
+            if (biz.current) {
+                biz.current.syncUserSetting((e) => {
                     if (e.status === "success") {
                         setRawSetting(e.data);
                     } else {
                         console.error(e);
                     }
                 });
-            }
 
-            if(bizTask.current) {
-                bizTask.current.init((e) => {
+                biz.current.syncTask((e) => {
                     if (e.status === "success") {
                         setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
                     } else {
@@ -121,8 +117,8 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
               };
 
     function edit(task: SelectableTask): void {
-        if (bizTask.current) {
-            const tasks = bizTask.current.edit(task.task, (e) => {
+        if (biz.current) {
+            const tasks = biz.current.edit(task.task, (e) => {
                 console.error(e);
             });
 
@@ -131,8 +127,8 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function add(data: TaskCreate): void {
-        if (bizTask.current) {
-            const tasks = bizTask.current.create(data, (e) => {
+        if (biz.current) {
+            const tasks = biz.current.create(data, (e) => {
                 console.error(e);
             });
 
@@ -141,8 +137,8 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function complete(task: SelectableTask): void {
-        if (bizTask.current) {
-            const tasks = bizTask.current.complete(task.task, (e) => {
+        if (biz.current) {
+            const tasks = biz.current.complete(task.task, (e) => {
                 console.error(e);
             });
 
@@ -151,41 +147,41 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function restore(tasks: SelectableTask[]): void {
-        if (bizTask.current) {
+        if (biz.current) {
             for (const task of tasks) {
                 if (task.isSelected) {
-                    bizTask.current.restore(task.task, (e) => {
+                    biz.current.restore(task.task, (e) => {
                         console.error(e);
                     });
                 }
             }
-            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
+            setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         }
     }
 
     function del(tasks: SelectableTask[]): void {
-        if (bizTask.current) {
+        if (biz.current) {
             for (const task of tasks) {
                 if (task.isSelected) {
-                    bizTask.current.del(task.task, (e) => {
+                    biz.current.del(task.task, (e) => {
                         console.error(e);
                     });
                 }
             }
-            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
+            setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         }
     }
 
     function undelete(tasks: SelectableTask[]): void {
-        if (bizTask.current) {
+        if (biz.current) {
             for (const task of tasks) {
                 if (task.isSelected) {
-                    bizTask.current.undelete(task.task, (e) => {
+                    biz.current.undelete(task.task, (e) => {
                         console.error(e);
                     });
                 }
             }
-            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
+            setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         }
     }
 
@@ -194,8 +190,8 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function set(setting: UserSettingContent): void {
-        if (bizUserSetting.current) {
-            bizUserSetting.current.set(setting, (e) => {
+        if (biz.current) {
+            biz.current.set(setting, (e) => {
                 console.error(e);
             });
             if (raw_setting.length === 0) {

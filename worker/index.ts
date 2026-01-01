@@ -376,7 +376,6 @@ app.post("/api/v1/login", async (c) => {
     }
 });
 
-
 // ========================================
 // API-010: 認証トークン検証
 // ========================================
@@ -447,7 +446,6 @@ app.post("/api/v1/auth", async (c) => {
             code: "AUTH_ERROR",
             message: "認証に失敗しました",
         });
-
     } catch (error) {
         console.error("Error updating task:", error);
         return errorResponse(500, {

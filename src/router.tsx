@@ -6,11 +6,11 @@ import { Completed } from "./Completed";
 import { Deleted } from "./Deleted";
 import { Home } from "./Home";
 import { Login } from "./Login";
+import { LoginAuth } from "./LoginAuth";
 import { LoginSent } from "./LoginSent";
 import { AppLayout } from "./layer/Presentation/AppLayout";
-import { Setting } from "./Setting";
-import { LoginAuth } from "./LoginAuth";
 import { LoginLayout } from "./layer/Presentation/LoginLayout";
+import { Setting } from "./Setting";
 
 const router = createBrowserRouter([
     {
@@ -18,7 +18,7 @@ const router = createBrowserRouter([
         children: [
             {
                 path: "/login",
-                Component: Login
+                Component: Login,
             },
             {
                 path: "/login/sent",
@@ -52,9 +52,8 @@ const router = createBrowserRouter([
                         Component: Setting,
                     },
                 ],
-            }
+            },
         ],
-
     },
 ]);
 
