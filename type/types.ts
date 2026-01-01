@@ -46,20 +46,20 @@ export const idSchema = v.pipe(v.string(), v.uuid()); // タスクID（UUIDv4、
 export const dateSchema = v.pipe(v.string(), v.isoTimestamp());
 export const versionSchema = v.pipe(v.number(), v.toMinValue(0)); // 楽観的ロック用バージョン番号
 
-export const DBContainerMetaSchema = v.object({
+export const ContainerMetaSchema = v.object({
     id: idSchema,
     version: versionSchema, // 楽観的ロック用バージョン番号(永続化層で生成、DB層で検証)
     createdAt: dateSchema, // 作成日時 (永続化層で生成)
     updatedAt: dateSchema, // 更新日時（永続化層で生成）
 });
 
-export const DBContainerSchema = <T>(dataSchema: Schema<T>) => v.object({
-    meta: DBContainerMetaSchema,
+export const ContainerSchema = <T>(dataSchema: Schema<T>) => v.object({
+    meta: ContainerMetaSchema,
     data: dataSchema,
 });
 
-export type DBContainer<T> = {
-    meta: v.InferOutput<typeof DBContainerMetaSchema>;
+export type Container<T> = {
+    meta: v.InferOutput<typeof ContainerMetaSchema>;
     data: T;
 };
 
@@ -85,7 +85,7 @@ export type TaskWeight = v.InferOutput<typeof taskWeightSchema>;
 export type TaskContent = v.InferOutput<typeof taskContentSchema>;
 
 export const taskSchema = v.object({
-    meta: DBContainerMetaSchema,
+    meta: ContainerMetaSchema,
     data: taskContentSchema,
 });
 
@@ -138,7 +138,7 @@ export const userSettingContentSchema = v.object({
 });
 
 export const userSettingSchema = v.object({
-    meta: DBContainerMetaSchema,
+    meta: ContainerMetaSchema,
     data: userSettingContentSchema,
 });
 
@@ -170,7 +170,7 @@ export const loginInfoContentSchema = v.object({
 });
 
 export const loginInfoSchema = v.object({
-    meta: DBContainerMetaSchema,
+    meta: ContainerMetaSchema,
     data: loginInfoContentSchema,
 });
 
@@ -227,7 +227,7 @@ export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUse
 export const apiTasksSchema = tasksSchema;
 
 export function apiReadAllSchema<T>(schema: Schema<T>) {
-    return v.array(DBContainerSchema(schema));
+    return v.array(ContainerSchema(schema));
 }
 
 export type ApiTasks = v.InferOutput<typeof apiTasksSchema>;
@@ -269,10 +269,10 @@ export type ApiAuthSuccess = v.InferOutput<typeof apiAuthSuccessSchema>;
 export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
 export abstract class IPersistent<T> {
-    abstract get items(): DBContainer<T>[];
-    abstract sync(onComplete: OnComplete<DBContainer<T>[]>): void;
-    abstract create(item: DBContainer<T>, onError: OnError): void;
-    abstract update(item: DBContainer<T>, onError: OnError): void;
+    abstract get items(): Container<T>[];
+    abstract sync(onComplete: OnComplete<Container<T>[]>): void;
+    abstract create(item: Container<T>, onError: OnError): void;
+    abstract update(item: Container<T>, onError: OnError): void;
 }
 
 // -----------------------------------------------------------------------------

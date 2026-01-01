@@ -49,7 +49,7 @@ export function LoginAuth(): JSX.Element {
                     // Token is invalid, navigate to login
                     navigate("/login");
                 }
-            } catch (error) {
+            } catch (_error) {
                 // In case of error, navigate to login
                 navigate("/login");
             }

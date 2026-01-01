@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { DBContainer, OnComplete, OnError, Schema } from "../../type/types";
+import type { Container, OnComplete, OnError, Schema } from "../../type/types";
 import { IPersistent } from "../../type/types";
 import type { Network } from "./Network";
 
@@ -66,24 +66,24 @@ export class LocalStorage<T> {
 }
 
 export class Persistent<T> extends IPersistent<T> {
-    private readonly m_config: PersistentContentConfig<DBContainer<T>[]>;
+    private readonly m_config: PersistentContentConfig<Container<T>[]>;
     private readonly m_network: Network;
     private readonly m_queue: AsyncQueue = new AsyncQueue();
-    private readonly m_storage: LocalStorage<DBContainer<T>[]>;
+    private readonly m_storage: LocalStorage<Container<T>[]>;
     private m_login = false;
 
-    get items(): DBContainer<T>[] {
+    get items(): Container<T>[] {
         return this.m_storage.item;
     }
 
-    constructor(network: Network, config: PersistentContentConfig<DBContainer<T>[]>) {
+    constructor(network: Network, config: PersistentContentConfig<Container<T>[]>) {
         super();
         this.m_network = network;
         this.m_config = config;
-        this.m_storage = new LocalStorage<DBContainer<T>[]>(this.m_config);
+        this.m_storage = new LocalStorage<Container<T>[]>(this.m_config);
     }
 
-    sync(onComplete: OnComplete<DBContainer<T>[]>): void {
+    sync(onComplete: OnComplete<Container<T>[]>): void {
         this.m_login = true;
         this.syncDBandLocalStorage(this.m_storage, this.m_config, onComplete);
     }
@@ -92,11 +92,11 @@ export class Persistent<T> extends IPersistent<T> {
         this.m_login = false;
     }
 
-    create(item: DBContainer<T>, onError: OnError): void {
+    create(item: Container<T>, onError: OnError): void {
         this.createDBItem(this.m_storage, this.m_config, item, onError);
     }
 
-    update(item: DBContainer<T>, onError: OnError): void {
+    update(item: Container<T>, onError: OnError): void {
         this.updateDBItemArray(this.m_storage, this.m_config, item, onError);
     }
 
@@ -120,9 +120,9 @@ export class Persistent<T> extends IPersistent<T> {
     }
 
     private createDBItem<T>(
-        local_storage: LocalStorage<DBContainer<T>[]>,
-        config: PersistentContentConfig<DBContainer<T>[]>,
-        item: DBContainer<T>,
+        local_storage: LocalStorage<Container<T>[]>,
+        config: PersistentContentConfig<Container<T>[]>,
+        item: Container<T>,
         onError: OnError,
     ): void {
         const arr = local_storage.item;
@@ -141,9 +141,9 @@ export class Persistent<T> extends IPersistent<T> {
     }
 
     private updateDBItemArray<T>(
-        local_storage: LocalStorage<DBContainer<T>[]>,
-        config: PersistentContentConfig<DBContainer<T>[]>,
-        item: DBContainer<T>,
+        local_storage: LocalStorage<Container<T>[]>,
+        config: PersistentContentConfig<Container<T>[]>,
+        item: Container<T>,
         onError: OnError,
     ): void {
         const arr = local_storage.item;
@@ -170,7 +170,7 @@ export class Persistent<T> extends IPersistent<T> {
     }
 }
 
-export function generateItem<T>(data: T): DBContainer<T> {
+export function generateItem<T>(data: T): Container<T> {
     const date = new Date().toISOString();
     return {
         meta: {
@@ -183,7 +183,7 @@ export function generateItem<T>(data: T): DBContainer<T> {
     };
 }
 
-export function touchItem<T>(item: DBContainer<T>): DBContainer<T> {
+export function touchItem<T>(item: Container<T>): Container<T> {
     return {
         meta: {
             id: item.meta.id,

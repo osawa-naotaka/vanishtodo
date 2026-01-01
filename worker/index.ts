@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { Resend } from "resend";
+// import { Resend } from "resend";
 import * as v from "valibot";
 import type { ApiAuthSuccess, ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
 import { auth_tokens, loginAuthSchema, loginRequestSchema, taskSchema, tasks, userSettingSchema, users } from "../type/types";
@@ -339,7 +339,7 @@ app.post("/api/v1/login", async (c) => {
         const tokenString = Array.from(token)
             .map((b) => b.toString(16).padStart(2, "0"))
             .join("");
-        console.log("Magic Link: http://localhost:5173/login/auth?token=" + tokenString);
+        console.log(`Magic Link: http://localhost:5173/login/auth?token=${tokenString}`);
         /*
         const resend = new Resend(c.env.RESENDN_API_KEY);
 

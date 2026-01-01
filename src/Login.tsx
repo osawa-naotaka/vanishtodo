@@ -25,7 +25,7 @@ export function Login(): JSX.Element {
 
             // レスポンスの成功・失敗に関わらず送信完了ページに遷移
             navigate("/login/sent");
-        } catch (err) {
+        } catch (_err) {
             // ネットワークエラーなどの場合も送信完了ページに遷移
             navigate("/login/sent");
         } finally {
