@@ -37,47 +37,48 @@ export type UseAuthHooks = {
     userId?: string;
     login: (email: string) => void;
     auth: (token: string) => Promise<string>;
-}
+};
 
 export const Context = createContext<ContextType | null>(null);
 
 export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
-    const biz = useRef<Business>(null);
-    const persistentLoginInfo = useRef<LocalStorage<LoginInfoContent>>(null);
-    const [tasks, setTasks] = useState<SelectableTask[]>([]);
-    const [raw_setting, setRawSetting] = useState<UserSetting[]>([]);
-    const [userId, setUserId] = useState<string | undefined>(undefined);
-
-    useEffect(() => {
-        persistentLoginInfo.current = new LocalStorage<LoginInfoContent>({
+    const persistentLoginInfo = useRef<LocalStorage<LoginInfoContent>>(
+        new LocalStorage<LoginInfoContent>({
             name: "login_info",
             api_base: "",
             storage_key: "vanish-todo-login-info",
             schema: loginInfoContentSchema,
             initial_value: {},
-        });
+        }),
+    );
 
-        const n = new Network("/api/v1");
+    const n = new Network("/api/v1");
 
-        const user_settings_config = {
-            name: "user_settings",
-            api_base: "/setting",
-            storage_key: "vanish-todo-user-settings",
-            schema: userSettingsSchema,
-            initial_value: [],
-        };
-        const up = new Persistent(n, user_settings_config);
+    const user_settings_config = {
+        name: "user_settings",
+        api_base: "/setting",
+        storage_key: "vanish-todo-user-settings",
+        schema: userSettingsSchema,
+        initial_value: [],
+    };
+    const up = new Persistent(n, user_settings_config);
 
-        const tasks_config = {
-            name: "tasks",
-            api_base: "/tasks",
-            storage_key: "vanish-todo-tasks",
-            schema: tasksSchema,
-            initial_value: [],
-        };
+    const tasks_config = {
+        name: "tasks",
+        api_base: "/tasks",
+        storage_key: "vanish-todo-tasks",
+        schema: tasksSchema,
+        initial_value: [],
+    };
 
-        const tp = new Persistent(n, tasks_config);
-        biz.current = new Business(tp, up, n);
+    const tp = new Persistent(n, tasks_config);
+
+    const biz = useRef<Business>(new Business(tp, up, n));
+    const [tasks, setTasks] = useState<SelectableTask[]>([]);
+    const [raw_setting, setRawSetting] = useState<UserSetting[]>([]);
+    const [userId, setUserId] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
         setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         setRawSetting(biz.current.userSettings);
 
@@ -88,24 +89,21 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
 
     useEffect(() => {
         if (userId) {
-            if (biz.current) {
-                biz.current.syncUserSetting((e) => {
-                    if (e.status === "success") {
-                        setRawSetting(e.data);
-                    } else {
-                        console.error(e);
-                    }
-                });
+            biz.current.syncUserSetting((e) => {
+                if (e.status === "success") {
+                    setRawSetting(e.data);
+                } else {
+                    console.error(e);
+                }
+            });
 
-                console.log("userId changed, syncing tasks:", userId);
-                biz.current.syncTask((e) => {
-                    if (e.status === "success") {
-                        setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
-                    } else {
-                        console.error(e);
-                    }
-                });
-            }
+            biz.current.syncTask((e) => {
+                if (e.status === "success") {
+                    setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
+                } else {
+                    console.error(e);
+                }
+            });
         }
     }, [userId]);
 
@@ -123,72 +121,60 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
               };
 
     function edit(task: SelectableTask): void {
-        if (biz.current) {
-            const tasks = biz.current.edit(task.task, (e) => {
-                console.error(e);
-            });
+        const tasks = biz.current.edit(task.task, (e) => {
+            console.error(e);
+        });
 
-            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
-        }
+        setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function add(data: TaskCreate): void {
-        if (biz.current) {
-            const tasks = biz.current.create(data, (e) => {
-                console.error(e);
-            });
+        const tasks = biz.current.create(data, (e) => {
+            console.error(e);
+        });
 
-            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
-        }
+        setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function complete(task: SelectableTask): void {
-        if (biz.current) {
-            const tasks = biz.current.complete(task.task, (e) => {
-                console.error(e);
-            });
+        const tasks = biz.current.complete(task.task, (e) => {
+            console.error(e);
+        });
 
-            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
-        }
+        setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function restore(tasks: SelectableTask[]): void {
-        if (biz.current) {
-            for (const task of tasks) {
-                if (task.isSelected) {
-                    biz.current.restore(task.task, (e) => {
-                        console.error(e);
-                    });
-                }
+        for (const task of tasks) {
+            if (task.isSelected) {
+                biz.current.restore(task.task, (e) => {
+                    console.error(e);
+                });
             }
-            setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         }
+        setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function del(tasks: SelectableTask[]): void {
-        if (biz.current) {
-            for (const task of tasks) {
-                if (task.isSelected) {
-                    biz.current.del(task.task, (e) => {
-                        console.error(e);
-                    });
-                }
+        for (const task of tasks) {
+            if (task.isSelected) {
+                biz.current.del(task.task, (e) => {
+                    console.error(e);
+                });
             }
-            setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         }
+        setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function undelete(tasks: SelectableTask[]): void {
-        if (biz.current) {
-            for (const task of tasks) {
-                if (task.isSelected) {
-                    biz.current.undelete(task.task, (e) => {
-                        console.error(e);
-                    });
-                }
+        for (const task of tasks) {
+            if (task.isSelected) {
+                biz.current.undelete(task.task, (e) => {
+                    console.error(e);
+                });
             }
-            setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         }
+        setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function select(task: SelectableTask, isSelected: boolean): void {
@@ -196,44 +182,38 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function set(setting: UserSettingContent): void {
-        if (biz.current) {
-            biz.current.set(setting, (e) => {
-                console.error(e);
-            });
-            if (raw_setting.length === 0) {
-                return;
-            }
-            raw_setting[0].data = setting;
-            setRawSetting([raw_setting[0]]);
+        biz.current.set(setting, (e) => {
+            console.error(e);
+        });
+        if (raw_setting.length === 0) {
+            return;
         }
+        raw_setting[0].data = setting;
+        setRawSetting([raw_setting[0]]);
     }
 
     function login(email: string): void {
-        if (biz.current) {
-            biz.current.requestLogin(email);
-        }
+        biz.current.requestLogin(email);
     }
 
     async function auth(token: string): Promise<string> {
-        if (biz.current) {
-            const result = await biz.current.authenticate(token);
-            if (result.status === "success") {
-                setUserId(result.data.userId);
-                if (persistentLoginInfo.current) {
-                    persistentLoginInfo.current.item = { userId: result.data.userId };
-                }
-                return result.data.userId;
-            } else {
-                console.error(result);
-                throw new Error("Authentication failed");
+        const result = await biz.current.authenticate(token);
+        if (result.status === "success") {
+            setUserId(result.data.userId);
+            if (persistentLoginInfo.current) {
+                persistentLoginInfo.current.item = { userId: result.data.userId };
             }
+            return result.data.userId;
         } else {
-            throw new Error("Business layer not initialized");
+            console.error(result);
+            throw new Error("Authentication failed");
         }
     }
 
     return (
-        <Context.Provider value={{ setting: { setting, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select }, auth: { login, auth } }}>
+        <Context.Provider
+            value={{ setting: { setting, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select }, auth: { login, auth, userId } }}
+        >
             {children}
         </Context.Provider>
     );

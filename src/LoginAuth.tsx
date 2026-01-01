@@ -5,7 +5,9 @@ import { useBiz } from "./layer/Presentation/ContextProvider";
 
 export function LoginAuth(): JSX.Element {
     const navigate = useNavigate();
-    const { auth: { auth } } = useBiz();
+    const {
+        auth: { auth },
+    } = useBiz();
     const [queryParams] = useSearchParams();
     const token = queryParams.get("token");
 
@@ -13,7 +15,7 @@ export function LoginAuth(): JSX.Element {
     // For simplicity, we will just navigate to the home page after "verification".
     useEffect(() => {
         async function verifyToken() {
-            if(token) {
+            if (token) {
                 await auth(token);
                 navigate("/");
             }

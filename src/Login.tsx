@@ -5,7 +5,9 @@ import { useNavigate } from "react-router";
 import { useBiz } from "./layer/Presentation/ContextProvider";
 
 export function Login(): JSX.Element {
-    const { auth: { login } } = useBiz();
+    const {
+        auth: { login },
+    } = useBiz();
     const [email, setEmail] = useState<string>("");
     const [error, setError] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);

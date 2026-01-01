@@ -1,4 +1,17 @@
-import { type Result, type IPersistent, type OnComplete, type OnError, type Task, type TaskContent, type TaskCreate, type UserSetting, type UserSettingContent, type ApiVoid, apiVoidSchema, type ApiAuthSuccess, apiAuthSuccessSchema } from "../../type/types";
+import type {
+    ApiAuthSuccess,
+    ApiVoid,
+    IPersistent,
+    OnComplete,
+    OnError,
+    Result,
+    Task,
+    TaskContent,
+    TaskCreate,
+    UserSetting,
+    UserSettingContent,
+} from "../../type/types";
+import { apiAuthSuccessSchema, apiVoidSchema } from "../../type/types";
 import { dayDifference } from "../lib/date";
 import type { Network } from "./Network";
 import { generateItem, touchItem } from "./Persistent";
