@@ -68,7 +68,7 @@ export class LocalStorage<T> {
 export class Persistent<T> extends IPersistent<T> {
     private readonly m_config: PersistentContentConfig<Container<T>[]>;
     private readonly m_network: Network;
-    private readonly m_queue: AsyncQueue = new AsyncQueue();
+    private readonly m_queue: AsyncQueue;
     private readonly m_storage: LocalStorage<Container<T>[]>;
     private m_login = false;
 
@@ -81,6 +81,7 @@ export class Persistent<T> extends IPersistent<T> {
         this.m_network = network;
         this.m_config = config;
         this.m_storage = new LocalStorage<Container<T>[]>(this.m_config);
+        this.m_queue = new AsyncQueue();
     }
 
     sync(onComplete: OnComplete<Container<T>[]>): void {

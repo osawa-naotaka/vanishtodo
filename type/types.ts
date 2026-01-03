@@ -15,7 +15,7 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 // -----------------------------------------------------------------------------
 
 export type ResultStatus = "success" | ResultErrorStatus;
-export type ResultErrorStatus = "abort" | "recoverable" | "conflict" | "fatal";
+export type ResultErrorStatus = "abort" | "recoverable" | "conflict" | "login-required" | "fatal";
 
 export type Result<T> = ResultSuccess<T> | ResultFail<T>;
 
