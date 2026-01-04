@@ -1,6 +1,6 @@
 import { Box, Checkbox, Grid, Paper, Typography } from "@mui/material";
 import { shortPastDate } from "../../lib/date";
-import type { SelectableTask } from "./ContextProvider";
+import type { SelectableTask } from "../Broker";
 import { TaskWeightBadge } from "./TaskWeightBadge";
 
 type TaskListProps = {

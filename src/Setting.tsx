@@ -1,11 +1,9 @@
 import { Box, Divider, Paper, Slider, Toolbar, Typography } from "@mui/material";
 import type { JSX } from "react";
-import { useBiz } from "./layer/Presentation/ContextProvider";
+import { useBroker } from "./layer/Broker";
 
 export function Setting(): JSX.Element {
-    const {
-        setting: { setting, set },
-    } = useBiz();
+    const { broker, userSetting } = useBroker();
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>
@@ -18,34 +16,79 @@ export function Setting(): JSX.Element {
                 <Typography variant="h5">軽いタスク</Typography>
                 <Typography>15分以内で完了するタスク</Typography>
                 <Slider
-                    value={setting.dailyGoals.light}
+                    value={userSetting.data.dailyGoals.light}
                     min={0}
                     max={10}
                     step={1}
                     marks
-                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, light: value as number } })}
+                    onChange={(_e, value) =>
+                        broker.publish("edit-user-setting", {
+                            userSetting: {
+                                meta: userSetting.meta,
+                                data: {
+                                    email: userSetting.data.email,
+                                    timezone: userSetting.data.timezone,
+                                    dailyGoals: {
+                                        light: value as number,
+                                        medium: userSetting.data.dailyGoals.medium,
+                                        heavy: userSetting.data.dailyGoals.heavy,
+                                    },
+                                },
+                            },
+                        })
+                    }
                 />
                 <Divider sx={{ marginY: 2 }} />
                 <Typography variant="h5">中タスク</Typography>
                 <Typography>15分〜60分で完了するタスク</Typography>
                 <Slider
-                    value={setting.dailyGoals.medium}
+                    value={userSetting.data.dailyGoals.medium}
                     min={0}
                     max={10}
                     step={1}
                     marks
-                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, medium: value as number } })}
+                    onChange={(_e, value) =>
+                        broker.publish("edit-user-setting", {
+                            userSetting: {
+                                meta: userSetting.meta,
+                                data: {
+                                    email: userSetting.data.email,
+                                    timezone: userSetting.data.timezone,
+                                    dailyGoals: {
+                                        light: userSetting.data.dailyGoals.light,
+                                        medium: value as number,
+                                        heavy: userSetting.data.dailyGoals.heavy,
+                                    },
+                                },
+                            },
+                        })
+                    }
                 />
                 <Divider sx={{ marginY: 2 }} />
                 <Typography variant="h5">重いタスク</Typography>
                 <Typography>60分以上かかるタスク</Typography>
                 <Slider
-                    value={setting.dailyGoals.heavy}
+                    value={userSetting.data.dailyGoals.heavy}
                     min={0}
                     max={10}
                     step={1}
                     marks
-                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, heavy: value as number } })}
+                    onChange={(_e, value) =>
+                        broker.publish("edit-user-setting", {
+                            userSetting: {
+                                meta: userSetting.meta,
+                                data: {
+                                    email: userSetting.data.email,
+                                    timezone: userSetting.data.timezone,
+                                    dailyGoals: {
+                                        light: userSetting.data.dailyGoals.light,
+                                        medium: userSetting.data.dailyGoals.medium,
+                                        heavy: value as number,
+                                    },
+                                },
+                            },
+                        })
+                    }
                 />
             </Paper>
         </Box>

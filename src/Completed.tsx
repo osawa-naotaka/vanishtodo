@@ -1,10 +1,10 @@
 import { Delete, Restore } from "@mui/icons-material";
 import { BottomNavigation, BottomNavigationAction, Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
-import { TaskList } from "./layer/Presentation/TaskList";
+import type { SelectableTask } from "./layer/Broker";
 import { useBroker } from "./layer/Broker";
-import type { SelectableTask } from "./layer/Presentation/ContextProvider";
 import { generateLimitter } from "./layer/Business";
+import { TaskList } from "./layer/Presentation/TaskList";
 
 export function Completed(): JSX.Element {
     const current_date = new Date().toISOString();
@@ -15,13 +15,13 @@ export function Completed(): JSX.Element {
 
     function handleChange(_event: React.SyntheticEvent, value: string): void {
         if (value === "restore") {
-            for(const item of tasks) {
+            for (const item of tasks) {
                 if (item.isSelected) {
                     broker.publish("uncomplete-task", { task: item.task });
                 }
             }
         } else if (value === "delete") {
-            for(const item of tasks) {
+            for (const item of tasks) {
                 if (item.isSelected) {
                     broker.publish("delete-task", { task: item.task });
                 }

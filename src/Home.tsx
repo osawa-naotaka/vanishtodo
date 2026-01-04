@@ -1,10 +1,10 @@
 import { Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { TaskCreate } from "../type/types";
+import type { SelectableTask } from "./layer/Broker";
 import { useBroker } from "./layer/Broker";
 import { generateLimitter } from "./layer/Business";
-import type { SelectableTask } from "./layer/Presentation/ContextProvider";
 import { EditableTaskList } from "./layer/Presentation/EditableTaskList";
 import type { FilterType } from "./layer/Presentation/TaskFilter";
 import { TaskFilter } from "./layer/Presentation/TaskFilter";
@@ -14,19 +14,14 @@ export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
     const [filter, setFilter] = useState<FilterType>("all");
 
-    const { broker, tasks } = useBroker();
+    const { broker, userSetting, tasks } = useBroker();
 
     const { tasksToday } = generateLimitter<SelectableTask>((t) => t.task);
     const filtered_tasks = tasksToday(
         current_date,
-        { heavy: 5, medium: 5, light: 5 },
-        tasks.filter(({ task }) => filter === "all" || (filter === "due-date" && task.data.weight === undefined) || task.data.weight === filter)
+        userSetting.data.dailyGoals,
+        tasks.filter(({ task }) => filter === "all" || (filter === "due-date" && task.data.weight === undefined) || task.data.weight === filter),
     );
-
-    useEffect(() => {
-        broker.publish("read-task-list", {});
-        broker.publish("sync-tasks-from-db", {});
-    }, []);
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>

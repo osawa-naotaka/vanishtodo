@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { createContext, useContext, useState } from "react";
-import { type ApiErrorInfo, apiVoidSchema, type Container, type OnError, type Task, type TaskContent, type TaskCreate, tasksSchema } from "../../type/types";
-import { generateItem, LocalStorage, type PersistentContentConfig, touchItem } from "./Persistent";
+import { createContext, useContext, useEffect, useState } from "react";
+import type { ApiErrorInfo, Container, OnError, Task, TaskContent, TaskCreate, UserSetting, UserSettingContent } from "../../type/types";
+import { apiVoidSchema, tasksSchema, userSettingsSchema } from "../../type/types";
 import { Network } from "./Network";
-import type { SelectableTask } from "./Presentation/ContextProvider";
+import type { PersistentContentConfig } from "./Persistent";
+import { generateItem, LocalStorage, touchItem } from "./Persistent";
 
 // -----------------------------------------------------------------------------
 // イベント型
@@ -11,19 +12,24 @@ import type { SelectableTask } from "./Presentation/ContextProvider";
 
 export type EvTopicLabel = keyof EvTopicPacketMap;
 
+export type EvNoArgPacket = Record<string, never>;
+
 export type EvTopicPacketMap = {
     "create-task": { task: TaskCreate };
-    "read-task-list": Record<string, never>;
+    "read-tasks-from-local-storage": EvNoArgPacket;
+    "read-user-settings-from-local-storage": EvNoArgPacket;
     "edit-task": { task: Task };
+    "edit-user-setting": { userSetting: UserSetting };
     "complete-task": { task: Task };
     "uncomplete-task": { task: Task };
     "delete-task": { task: Task };
     "undelete-task": { task: Task };
-    "update-task-list": { tasks: Task[] };
-    "create-task-to-db": { task: Task };
-    "update-task-to-db": { task: Task };
+    "update-tasks-state": { tasks: Task[] };
+    "create-task-on-db": { task: Task };
+    "update-task-on-db": { task: Task };
     "notify-error": { error_info: ApiErrorInfo };
-    "sync-tasks-from-db": Record<string, never>;
+    "sync-tasks-from-db": EvNoArgPacket;
+    "update-user-settings-state": { settings: UserSetting[] };
 };
 
 // -----------------------------------------------------------------------------
@@ -52,6 +58,9 @@ export class EventBroker {
     }
 }
 
+// -----------------------------------------------------------------------------
+// 永続化層（簡易版）
+// -----------------------------------------------------------------------------
 export class Persistent<T> {
     private readonly m_storage: LocalStorage<Container<T>[]>;
 
@@ -105,102 +114,179 @@ export class Persistent<T> {
 export type ContextType = {
     broker: EventBroker;
     tasks: SelectableTask[];
+    userSetting: UserSetting;
     updateIsSelected: (task: SelectableTask, isSelected: boolean) => void;
+};
+
+export type SelectableTask = {
+    task: Task;
+    isSelected: boolean;
 };
 
 export const BrokerContext = createContext<ContextType | null>(null);
 
+const userSettingsInitialValue: UserSetting = {
+    meta: {
+        id: "a6e2b2b4-2314-448d-8af3-0b37d845770e",
+        version: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    },
+    data: {
+        email: "anonymous@lulliecat.com",
+        timezone: 9,
+        dailyGoals: {
+            heavy: 1,
+            medium: 2,
+            light: 3,
+        },
+    },
+};
+
 export function BrokerContextProvider({ children }: { children: ReactNode }): ReactNode {
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
+    const [userSetting, setUserSetting] = useState<UserSetting>(userSettingsInitialValue);
     const broker = new EventBroker();
-    const config = {
+    const network = new Network("/api/v1");
+
+    const task_config = {
         name: "tasks",
         storage_key: "vanish-todo-tasks",
         api_base: "/tasks",
         schema: tasksSchema,
         initial_value: [],
     };
-    const p = new Persistent<TaskContent>(config);
-    const n = new Network("/api/v1");
+    const per_tasks = new Persistent<TaskContent>(task_config);
 
+    const setting_config: PersistentContentConfig<Container<UserSettingContent>[]> = {
+        name: "user_settings",
+        storage_key: "vanish-todo-user-settings",
+        api_base: "/setting",
+        schema: userSettingsSchema,
+        initial_value: [userSettingsInitialValue],
+    };
+    const per_settings = new Persistent<UserSettingContent>(setting_config);
 
     broker.subscribe("create-task", (broker, packet) => {
         const c: TaskContent = {
             ...packet.task,
             completedAt: undefined,
             isDeleted: false,
-            userId: "b549d9cf-562d-4a32-b46e-3b0cf79ce13f"
+            userId: "b549d9cf-562d-4a32-b46e-3b0cf79ce13f",
         };
         const item = generateItem(c);
-        p.create(item);
+        per_tasks.create(item);
 
-        broker.publish("update-task-list", { tasks: p.items });
-        broker.publish("create-task-to-db", { task: item });
+        broker.publish("update-tasks-state", { tasks: per_tasks.items });
+        broker.publish("create-task-on-db", { task: item });
     });
 
-    broker.subscribe("read-task-list", (broker) => {
-        broker.publish("update-task-list", { tasks: p.items });
+    broker.subscribe("read-tasks-from-local-storage", (broker) => {
+        broker.publish("update-tasks-state", { tasks: per_tasks.items });
+    });
+
+    broker.subscribe("read-user-settings-from-local-storage", (broker) => {
+        broker.publish("update-user-settings-state", { settings: per_settings.items });
+    });
+
+    broker.subscribe("edit-user-setting", (broker, packet) => {
+        const updated = touchItem(packet.userSetting);
+        per_settings.update(updated, (e) => {
+            if (e.status !== "success") {
+                broker.publish("notify-error", { error_info: e.error_info });
+            }
+        });
+        broker.publish("update-user-settings-state", { settings: per_settings.items });
     });
 
     function editTask(updateFn: (item: Task) => Task): (broker: EventBroker, packet: { task: Task }) => void {
         return (broker, packet) => {
             const item = touchItem(packet.task);
             const updated = updateFn(item);
-            p.update(updated, (e) => {
+            per_tasks.update(updated, (e) => {
                 if (e.status !== "success") {
                     broker.publish("notify-error", { error_info: e.error_info });
                 }
             });
-            broker.publish("update-task-list", { tasks: p.items });
-            broker.publish("update-task-to-db", { task: updated });
-        }
-    }  
+            broker.publish("update-tasks-state", { tasks: per_tasks.items });
+            broker.publish("update-task-on-db", { task: updated });
+        };
+    }
 
-    broker.subscribe("edit-task", editTask((item) => item));
+    broker.subscribe(
+        "edit-task",
+        editTask((item) => item),
+    );
 
-    broker.subscribe("complete-task", editTask((item) => {
-        item.data.completedAt = item.meta.updatedAt;
-        return item;
-    }));
+    broker.subscribe(
+        "complete-task",
+        editTask((item) => {
+            item.data.completedAt = item.meta.updatedAt;
+            return item;
+        }),
+    );
 
-    broker.subscribe("uncomplete-task", editTask((item) => {
-        item.data.completedAt = undefined;
-        return item;
-    }));
+    broker.subscribe(
+        "uncomplete-task",
+        editTask((item) => {
+            item.data.completedAt = undefined;
+            return item;
+        }),
+    );
 
-    broker.subscribe("delete-task", editTask((item) => {
-        item.data.isDeleted = true;
-        return item;
-    }));
+    broker.subscribe(
+        "delete-task",
+        editTask((item) => {
+            item.data.isDeleted = true;
+            return item;
+        }),
+    );
 
-    broker.subscribe("undelete-task", editTask((item) => {
-        item.data.isDeleted = false;
-        return item;
-    }));
+    broker.subscribe(
+        "undelete-task",
+        editTask((item) => {
+            item.data.isDeleted = false;
+            return item;
+        }),
+    );
 
-    broker.subscribe("update-task-list", (_broker, packet) => {
+    broker.subscribe("update-tasks-state", (_broker, packet) => {
         setTasks(packet.tasks.map((t) => ({ task: t, isSelected: false })));
     });
 
-    broker.subscribe("create-task-to-db", async (broker, packet) => {
-        const result = await n.postJson(config.api_base, packet.task, apiVoidSchema);
+    broker.subscribe("update-user-settings-state", (_broker, packet) => {
+        if (packet.settings.length === 1) {
+            setUserSetting(packet.settings[0]);
+        } else {
+            broker.publish("notify-error", {
+                error_info: {
+                    code: "INTERNAL_ERROR",
+                    message: `ユーザー設定が存在しないか、複数存在します。標準値を使います。`,
+                },
+            });
+            setUserSetting(userSettingsInitialValue);
+        }
+    });
+
+    broker.subscribe("create-task-on-db", async (broker, packet) => {
+        const result = await network.postJson(task_config.api_base, packet.task, apiVoidSchema);
         if (result.status !== "success") {
             broker.publish("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("update-task-to-db", async (broker, packet) => {
-        const result = await n.putJson(`${config.api_base}/${packet.task.meta.id}`, packet.task);
+    broker.subscribe("update-task-on-db", async (broker, packet) => {
+        const result = await network.putJson(`${task_config.api_base}/${packet.task.meta.id}`, packet.task);
         if (result.status !== "success") {
             broker.publish("notify-error", { error_info: result.error_info });
         }
     });
 
     broker.subscribe("sync-tasks-from-db", async (broker) => {
-        const result = await n.getJson(config.api_base, tasksSchema);
+        const result = await network.getJson(task_config.api_base, tasksSchema);
         if (result.status === "success") {
-            p.items = result.data;
-            broker.publish("update-task-list", { tasks: result.data });
+            per_tasks.items = result.data;
+            broker.publish("update-tasks-state", { tasks: result.data });
         } else {
             broker.publish("notify-error", { error_info: result.error_info });
         }
@@ -211,12 +297,16 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     function updateIsSelected(task: SelectableTask, isSelected: boolean): void {
-        setTasks((prevTasks) =>
-            prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t))
-        );
+        setTasks((prevTasks) => prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t)));
     }
 
-    return <BrokerContext.Provider value={{ broker, tasks, updateIsSelected }}>{children}</BrokerContext.Provider>;
+    useEffect(() => {
+        broker.publish("read-user-settings-from-local-storage", {});
+        broker.publish("read-tasks-from-local-storage", {});
+        broker.publish("sync-tasks-from-db", {});
+    }, []);
+
+    return <BrokerContext.Provider value={{ broker, tasks, userSetting, updateIsSelected }}>{children}</BrokerContext.Provider>;
 }
 
 export function useBroker(): ContextType {

@@ -1,7 +1,7 @@
 import { CheckBoxOutlineBlank } from "@mui/icons-material";
 import { Box, Grid, IconButton, Paper, TextField, Tooltip } from "@mui/material";
 import { shortPastDate } from "../../lib/date";
-import type { SelectableTask } from "./ContextProvider";
+import type { SelectableTask } from "../Broker";
 import { TaskWeightBadge } from "./TaskWeightBadge";
 
 type EditableTaskListProps = {

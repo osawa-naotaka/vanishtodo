@@ -9,6 +9,13 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 // 基本型
 // -----------------------------------------------------------------------------
 
+export type RecursivePartial<T> = {
+  [P in keyof T]?: T[P] extends (infer U)[]
+    ? RecursivePartial<U>[]
+    : T[P] extends object
+    ? RecursivePartial<T[P]>
+    : T[P];
+};
 
 // -----------------------------------------------------------------------------
 // リザルト・エラー型
