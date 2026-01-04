@@ -9,12 +9,12 @@ import { Login } from "./Login";
 import { LoginAuth } from "./LoginAuth";
 import { LoginSent } from "./LoginSent";
 import { AppLayout } from "./layer/Presentation/AppLayout";
-import { LoginLayout } from "./layer/Presentation/LoginLayout";
+import { BaseLayout } from "./layer/Presentation/BaseLayout";
 import { Setting } from "./Setting";
 
 const router = createBrowserRouter([
     {
-        element: <LoginLayout />,
+        element: <BaseLayout />,
         children: [
             {
                 path: "/login",
