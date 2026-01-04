@@ -1,7 +1,7 @@
 import { Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
-import type { Task, TaskCreate } from "../type/types";
+import type { TaskCreate } from "../type/types";
 import { useBroker } from "./layer/Broker";
 import { tasksToday } from "./layer/Business";
 import type { SelectableTask } from "./layer/Presentation/ContextProvider";
@@ -13,14 +13,8 @@ import { TaskInput } from "./layer/Presentation/TaskInput";
 export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
     const [filter, setFilter] = useState<FilterType>("all");
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const { broker } = useBroker();
 
-    useEffect(() => {
-        broker.subscribe("update-task-list", (_broker, packet) => {
-            setTasks(packet.tasks);
-        });
-    }, []);
+    const { broker, tasks } = useBroker();
 
     const filtered_tasks = tasksToday(
         current_date,
@@ -30,6 +24,7 @@ export function Home(): JSX.Element {
 
     useEffect(() => {
         broker.publish("read-task-list", {});
+        broker.publish("sync-tasks-from-db", {});
     }, []);
 
     return (
