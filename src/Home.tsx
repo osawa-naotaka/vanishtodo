@@ -3,7 +3,7 @@ import type { JSX } from "react";
 import { useEffect, useState } from "react";
 import type { TaskCreate } from "../type/types";
 import { useBroker } from "./layer/Broker";
-import { tasksToday } from "./layer/Business";
+import { generateLimitter } from "./layer/Business";
 import type { SelectableTask } from "./layer/Presentation/ContextProvider";
 import { EditableTaskList } from "./layer/Presentation/EditableTaskList";
 import type { FilterType } from "./layer/Presentation/TaskFilter";
@@ -16,11 +16,12 @@ export function Home(): JSX.Element {
 
     const { broker, tasks } = useBroker();
 
+    const { tasksToday } = generateLimitter<SelectableTask>((t) => t.task);
     const filtered_tasks = tasksToday(
         current_date,
         { heavy: 5, medium: 5, light: 5 },
-        tasks.filter((task) => filter === "all" || (filter === "due-date" && task.data.weight === undefined) || task.data.weight === filter),
-    ).map((task) => ({ task, isSelected: false }));
+        tasks.filter(({ task }) => filter === "all" || (filter === "due-date" && task.data.weight === undefined) || task.data.weight === filter)
+    );
 
     useEffect(() => {
         broker.publish("read-task-list", {});

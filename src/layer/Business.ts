@@ -172,100 +172,109 @@ type LimitOptions = {
     light: number;
 };
 
-export function tasksToday(today: string, opt: LimitOptions, tasks: Task[]): Task[] {
-    const pre = process(sortByCreatedDate("asc")(tasks), or(isIncomplete, isCompleteToday(today)));
-    const limited = limit(opt)(pre);
-    return process(sortByCreatedDate("asc")(limited), isIncomplete);
-}
 
-export function makeFilter(...f: ((task: Task) => boolean)[]): (task: Task) => boolean {
-    return (task: Task) => {
-        for (const fn of f) {
-            if (!fn(task)) {
-                return false;
-            }
-        }
-        return true;
-    };
-}
 
-export function limit(opt: LimitOptions): (tasks: Task[]) => Task[] {
-    return (tasks: Task[]) => {
-        const heavy_tasks = tasks.filter((task) => task.data.weight === "heavy").slice(0, opt.heavy);
-        const medium_tasks = tasks.filter((task) => task.data.weight === "medium").slice(0, opt.medium);
-        const light_tasks = tasks.filter((task) => task.data.weight === "light").slice(0, opt.light);
-        const due_date_tasks = tasks.filter((task) => task.data.weight === undefined);
-        return [...heavy_tasks, ...medium_tasks, ...light_tasks, ...due_date_tasks];
-    };
-}
-
-export function sortByUpdatedDate(opt: "asc" | "desc"): (tasks: Task[]) => Task[] {
-    return (tasks: Task[]) => {
-        return tasks.sort((a, b) => {
-            const da = new Date(a.meta.updatedAt);
-            const db = new Date(b.meta.updatedAt);
-            if (opt === "asc") {
-                return db.getTime() - da.getTime();
-            } else {
-                return da.getTime() - db.getTime();
-            }
-        });
-    };
-}
-
-export function sortByCreatedDate(opt: "asc" | "desc"): (tasks: Task[]) => Task[] {
-    return (tasks: Task[]) => {
-        return tasks.sort((a, b) => {
-            const da = new Date(a.meta.createdAt);
-            const db = new Date(b.meta.createdAt);
-            if (opt === "asc") {
-                return db.getTime() - da.getTime();
-            } else {
-                return da.getTime() - db.getTime();
-            }
-        });
-    };
-}
-
-export function or(...fns: ((task: Task) => boolean)[]): (task: Task) => boolean {
-    return (task: Task) => {
-        for (const fn of fns) {
-            if (fn(task)) {
-                return true;
-            }
-        }
-        return false;
-    };
-}
-
-export function process(tasks: Task[], ...fns: ((task: Task) => boolean)[]): Task[] {
-    if (fns.length === 0) {
-        return tasks;
+export function generateLimitter<T>(ext: (t: T) => Task) {
+    function tasksToday(today: string, opt: LimitOptions, tasks: T[]): T[] {
+        const pre = process(sortByCreatedDate("asc")(tasks), or(isIncomplete, isCompleteToday(today)));
+        const limited = limit(opt)(pre);
+        return process(sortByCreatedDate("asc")(limited), isIncomplete);
     }
 
-    return process(tasks.filter(fns[0]), ...fns.slice(1));
-}
+    function makeFilter(...f: ((task: T) => boolean)[]): (task: T) => boolean {
+        return (task: T) => {
+            for (const fn of f) {
+                if (!fn(task)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+    }
 
-export function hasDueDate(task: Task): boolean {
-    return task.data.weight === undefined;
-}
+    function limit(opt: LimitOptions): (tasks: T[]) => T[] {
+        return (tasks: T[]) => {
+            const heavy_tasks = tasks.filter((task) => ext(task).data.weight === "heavy").slice(0, opt.heavy);
+            const medium_tasks = tasks.filter((task) => ext(task).data.weight === "medium").slice(0, opt.medium);
+            const light_tasks = tasks.filter((task) => ext(task).data.weight === "light").slice(0, opt.light);
+            const due_date_tasks = tasks.filter((task) => ext(task).data.weight === undefined);
+            return [...heavy_tasks, ...medium_tasks, ...light_tasks, ...due_date_tasks];
+        };
+    }
 
-export function hasWeight(task: Task): boolean {
-    return task.data.weight !== undefined;
-}
+    function sortByUpdatedDate(opt: "asc" | "desc"): (tasks: T[]) => T[] {
+        return (tasks: T[]) => {
+            return tasks.sort((a, b) => {
+                const da = new Date(ext(a).meta.updatedAt);
+                const db = new Date(ext(b).meta.updatedAt);
+                if (opt === "asc") {
+                    return db.getTime() - da.getTime();
+                } else {
+                    return da.getTime() - db.getTime();
+                }
+            });
+        };
+    }
 
-export function isIncomplete(task: Task): boolean {
-    return task.data.completedAt === undefined && task.data.isDeleted === false;
-}
+    function sortByCreatedDate(opt: "asc" | "desc"): (tasks: T[]) => T[] {
+        return (tasks: T[]) => {
+            return tasks.sort((a, b) => {
+                const da = new Date(ext(a).meta.createdAt);
+                const db = new Date(ext(b).meta.createdAt);
+                if (opt === "asc") {
+                    return db.getTime() - da.getTime();
+                } else {
+                    return da.getTime() - db.getTime();
+                }
+            });
+        };
+    }
 
-export function isCompleteToday(current_date: string): (task: Task) => boolean {
-    return (task: Task) => task.data.completedAt !== undefined && dayDifference(current_date, task.data.completedAt) === 0;
-}
+    function or(...fns: ((task: T) => boolean)[]): (task: T) => boolean {
+        return (task: T) => {
+            for (const fn of fns) {
+                if (fn(task)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+    }
 
-export function isDeleted(task: Task): boolean {
-    return task.data.isDeleted;
-}
+    function process(tasks: T[], ...fns: ((task: T) => boolean)[]): T[] {
+        if (fns.length === 0) {
+            return tasks;
+        }
 
-export function isCompleted(task: Task): boolean {
-    return task.data.completedAt !== undefined && task.data.isDeleted === false;
+        return process(tasks.filter(fns[0]), ...fns.slice(1));
+    }
+
+    function hasDueDate(task: T): boolean {
+        return ext(task).data.weight === undefined;
+    }
+
+    function hasWeight(task: T): boolean {
+        return ext(task).data.weight !== undefined;
+    }
+
+    function isIncomplete(task: T): boolean {
+        return ext(task).data.completedAt === undefined && ext(task).data.isDeleted === false;
+    }
+
+    function isCompleteToday(current_date: string): (task: T) => boolean {
+        return (task: T) => {
+            const completedAt = ext(task).data.completedAt;
+            return completedAt !== undefined && dayDifference(current_date, completedAt) === 0;
+        }
+    }
+
+    function isDeleted(task: T): boolean {
+        return ext(task).data.isDeleted;
+    }
+
+    function isCompleted(task: T): boolean {
+        return ext(task).data.completedAt !== undefined && ext(task).data.isDeleted === false;
+    }
+
+    return { tasksToday, isDeleted, isCompleted };
 }

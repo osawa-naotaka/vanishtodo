@@ -3,6 +3,7 @@ import { createContext, useContext, useState } from "react";
 import { type ApiErrorInfo, apiVoidSchema, type Container, type OnError, type Task, type TaskContent, type TaskCreate, tasksSchema } from "../../type/types";
 import { generateItem, LocalStorage, type PersistentContentConfig, touchItem } from "./Persistent";
 import { Network } from "./Network";
+import type { SelectableTask } from "./Presentation/ContextProvider";
 
 // -----------------------------------------------------------------------------
 // イベント型
@@ -15,6 +16,9 @@ export type EvTopicPacketMap = {
     "read-task-list": Record<string, never>;
     "edit-task": { task: Task };
     "complete-task": { task: Task };
+    "uncomplete-task": { task: Task };
+    "delete-task": { task: Task };
+    "undelete-task": { task: Task };
     "update-task-list": { tasks: Task[] };
     "create-task-to-db": { task: Task };
     "update-task-to-db": { task: Task };
@@ -100,13 +104,14 @@ export class Persistent<T> {
 
 export type ContextType = {
     broker: EventBroker;
-    tasks: Task[];
+    tasks: SelectableTask[];
+    updateIsSelected: (task: SelectableTask, isSelected: boolean) => void;
 };
 
 export const BrokerContext = createContext<ContextType | null>(null);
 
 export function BrokerContextProvider({ children }: { children: ReactNode }): ReactNode {
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const broker = new EventBroker();
     const config = {
         name: "tasks",
@@ -137,31 +142,44 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         broker.publish("update-task-list", { tasks: p.items });
     });
 
-    broker.subscribe("edit-task", (broker, packet) => {
-        const item = touchItem(packet.task);
-        p.update(item, (e) => {
-            if (e.status !== "success") {
-                broker.publish("notify-error", { error_info: e.error_info });
-            }
-        });
-        broker.publish("update-task-list", { tasks: p.items });
-        broker.publish("update-task-to-db", { task: item });
-    });
+    function editTask(updateFn: (item: Task) => Task): (broker: EventBroker, packet: { task: Task }) => void {
+        return (broker, packet) => {
+            const item = touchItem(packet.task);
+            const updated = updateFn(item);
+            p.update(updated, (e) => {
+                if (e.status !== "success") {
+                    broker.publish("notify-error", { error_info: e.error_info });
+                }
+            });
+            broker.publish("update-task-list", { tasks: p.items });
+            broker.publish("update-task-to-db", { task: updated });
+        }
+    }  
 
-    broker.subscribe("complete-task", (broker, packet) => {
-        const item = touchItem(packet.task);
+    broker.subscribe("edit-task", editTask((item) => item));
+
+    broker.subscribe("complete-task", editTask((item) => {
         item.data.completedAt = item.meta.updatedAt;
-        p.update(item, (e) => {
-            if (e.status !== "success") {
-                broker.publish("notify-error", { error_info: e.error_info });
-            }
-        });
-        broker.publish("update-task-list", { tasks: p.items });
-        broker.publish("update-task-to-db", { task: item });
-    });
+        return item;
+    }));
+
+    broker.subscribe("uncomplete-task", editTask((item) => {
+        item.data.completedAt = undefined;
+        return item;
+    }));
+
+    broker.subscribe("delete-task", editTask((item) => {
+        item.data.isDeleted = true;
+        return item;
+    }));
+
+    broker.subscribe("undelete-task", editTask((item) => {
+        item.data.isDeleted = false;
+        return item;
+    }));
 
     broker.subscribe("update-task-list", (_broker, packet) => {
-        setTasks(packet.tasks);
+        setTasks(packet.tasks.map((t) => ({ task: t, isSelected: false })));
     });
 
     broker.subscribe("create-task-to-db", async (broker, packet) => {
@@ -192,7 +210,13 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         console.error(packet.error_info);
     });
 
-    return <BrokerContext.Provider value={{ broker, tasks }}>{children}</BrokerContext.Provider>;
+    function updateIsSelected(task: SelectableTask, isSelected: boolean): void {
+        setTasks((prevTasks) =>
+            prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t))
+        );
+    }
+
+    return <BrokerContext.Provider value={{ broker, tasks, updateIsSelected }}>{children}</BrokerContext.Provider>;
 }
 
 export function useBroker(): ContextType {
