@@ -2,12 +2,10 @@ import { Alert, Box, Button, TextField, Toolbar, Typography } from "@mui/materia
 import type { JSX } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { useBiz } from "./layer/Presentation/ContextProvider";
+import { useBroker } from "./layer/Broker";
 
 export function Login(): JSX.Element {
-    const {
-        auth: { login },
-    } = useBiz();
+    const { broker } = useBroker();
     const [email, setEmail] = useState<string>("");
     const [error, setError] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -19,7 +17,7 @@ export function Login(): JSX.Element {
         setIsSubmitting(true);
 
         try {
-            login(email);
+            broker.publish("request-login", { email });
 
             // レスポンスの成功・失敗に関わらず送信完了ページに遷移
             navigate("/login/sent");

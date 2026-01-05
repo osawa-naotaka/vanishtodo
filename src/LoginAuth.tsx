@@ -1,29 +1,31 @@
 import { Box, Toolbar } from "@mui/material";
-import type { JSX } from "react";
+import { useEffect, type JSX } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { useBiz } from "./layer/Presentation/ContextProvider";
+import { useBroker } from "./layer/Broker";
 
 export function LoginAuth(): JSX.Element {
+    const { broker } = useBroker();
     const navigate = useNavigate();
-    const {
-        auth: { auth },
-    } = useBiz();
     const [queryParams] = useSearchParams();
     const token = queryParams.get("token");
 
-    async function verifyToken() {
-        if (token) {
-            await auth(token);
-            navigate("/");
-        }
-        navigate("/login");
-    }
+    broker.subscribe("auth-success", () => {
+        navigate("/");
+    });
 
-    if (token) {
-        verifyToken();
-    } else {
-        navigate("/login");
-    }
+    broker.subscribe("notify-error", (_broker, packet) => {
+        if (packet.error_info.code === "TOKEN_NOT_FOUND" || packet.error_info.code === "EXPIRED_TOKEN") {
+            navigate("/login");
+        }
+    });
+
+    useEffect(() => {
+        if (token) {
+            broker.publish("auth-token", { token });
+        } else {
+            navigate("/login");
+        }
+    }, []);
 
     return (
         <Box component="main" sx={{ flexGrow: 1, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
-import type { ApiErrorInfo, Container, OnError, Task, TaskContent, TaskCreate, UserSetting, UserSettingContent } from "../../type/types";
-import { apiVoidSchema, tasksSchema, userSettingsSchema } from "../../type/types";
+import type { ApiErrorInfo, ApiVoid, Container, Result, Task, TaskContent, TaskCreate, UserSetting, UserSettingContent } from "../../type/types";
+import { apiAuthSuccessSchema, apiVoidSchema, tasksSchema, userSettingsSchema } from "../../type/types";
 import { Network } from "./Network";
 import type { PersistentContentConfig } from "./Persistent";
 import { generateItem, LocalStorage, touchItem } from "./Persistent";
@@ -30,6 +30,9 @@ export type EvTopicPacketMap = {
     "notify-error": { error_info: ApiErrorInfo };
     "sync-tasks-from-db": EvNoArgPacket;
     "update-user-settings-state": { settings: UserSetting[] };
+    "request-login": { email: string; }
+    "auth-token": { token: string };
+    "auth-success": EvNoArgPacket;
 };
 
 // -----------------------------------------------------------------------------
@@ -49,6 +52,7 @@ export class EventBroker {
     }
 
     publish<T extends EvTopicLabel>(topic: T, packet: EvTopicPacketMap[T]): void {
+        console.log(`EventBroker: publish topic="${topic}" packet=`, packet);
         const topic_listeners = this.listeners[topic];
         if (topic_listeners) {
             for (const listener of topic_listeners) {
@@ -77,33 +81,26 @@ export class Persistent<T> {
     }
 
     create(item: Container<T>): void {
-        this.createDBItem(this.m_storage, item);
-    }
-
-    update(item: Container<T>, onError: OnError): void {
-        this.updateDBItemArray(this.m_storage, item, onError);
-    }
-
-    private createDBItem<T>(local_storage: LocalStorage<Container<T>[]>, item: Container<T>): void {
-        const arr = local_storage.item;
+        const arr = this.m_storage.item;
         arr.push(item);
-        local_storage.item = arr;
+        this.m_storage.item = arr;
     }
 
-    private updateDBItemArray<T>(local_storage: LocalStorage<Container<T>[]>, item: Container<T>, onError: OnError): void {
-        const arr = local_storage.item;
+    update(item: Container<T>): Result<ApiVoid> {
+        const arr = this.m_storage.item;
         const idx = arr.findIndex((x) => x.meta.id === item.meta.id);
         if (idx < 0) {
-            onError({
+            return {
                 status: "fatal",
                 error_info: {
                     code: "INTERNAL_ERROR",
                     message: `更新時にIDが見つかりません`,
                 },
-            });
+            };
         }
         arr[idx] = item;
-        local_storage.item = arr;
+        this.m_storage.item = arr;
+        return { status: "success", data: { type: "void" } };
     }
 }
 
@@ -148,6 +145,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     const [userSetting, setUserSetting] = useState<UserSetting>(userSettingsInitialValue);
     const broker = new EventBroker();
     const network = new Network("/api/v1");
+    let is_login = false;
 
     const task_config = {
         name: "tasks",
@@ -191,25 +189,25 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
 
     broker.subscribe("edit-user-setting", (broker, packet) => {
         const updated = touchItem(packet.userSetting);
-        per_settings.update(updated, (e) => {
-            if (e.status !== "success") {
-                broker.publish("notify-error", { error_info: e.error_info });
-            }
-        });
-        broker.publish("update-user-settings-state", { settings: per_settings.items });
+        const r = per_settings.update(updated);
+        if (r.status !== "success") {
+            broker.publish("notify-error", { error_info: r.error_info });
+        } else {
+            broker.publish("update-user-settings-state", { settings: per_settings.items });
+        }
     });
 
     function editTask(updateFn: (item: Task) => Task): (broker: EventBroker, packet: { task: Task }) => void {
         return (broker, packet) => {
             const item = touchItem(packet.task);
             const updated = updateFn(item);
-            per_tasks.update(updated, (e) => {
-                if (e.status !== "success") {
-                    broker.publish("notify-error", { error_info: e.error_info });
-                }
-            });
-            broker.publish("update-tasks-state", { tasks: per_tasks.items });
-            broker.publish("update-task-on-db", { task: updated });
+            const r = per_tasks.update(updated);
+            if (r.status !== "success") {
+                broker.publish("notify-error", { error_info: r.error_info });
+            } else {
+                broker.publish("update-tasks-state", { tasks: per_tasks.items });
+                broker.publish("update-task-on-db", { task: updated });
+            }
         };
     }
 
@@ -269,6 +267,9 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("create-task-on-db", async (broker, packet) => {
+        if (!is_login) {
+            return;
+        }
         const result = await network.postJson(task_config.api_base, packet.task, apiVoidSchema);
         if (result.status !== "success") {
             broker.publish("notify-error", { error_info: result.error_info });
@@ -276,6 +277,9 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("update-task-on-db", async (broker, packet) => {
+        if (!is_login) {
+            return;
+        }
         const result = await network.putJson(`${task_config.api_base}/${packet.task.meta.id}`, packet.task);
         if (result.status !== "success") {
             broker.publish("notify-error", { error_info: result.error_info });
@@ -283,6 +287,9 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("sync-tasks-from-db", async (broker) => {
+        if (!is_login) {
+            return;
+        }
         const result = await network.getJson(task_config.api_base, tasksSchema);
         if (result.status === "success") {
             per_tasks.items = result.data;
@@ -294,6 +301,48 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
 
     broker.subscribe("notify-error", (_broker, packet) => {
         console.error(packet.error_info);
+    });
+
+    broker.subscribe("request-login", async (broker, packet) => {
+        if (is_login) {
+            broker.publish("notify-error", {
+                error_info: {
+                    code: "INTERNAL_ERROR",
+                    message: `すでにログインしています。`,
+                },
+            });
+            return;
+        }
+
+        const result = await network.postJson("/login", { email: packet.email }, apiVoidSchema);
+        if (result.status !== "success") {
+            broker.publish("notify-error", { error_info: result.error_info });
+        }
+    });
+
+    broker.subscribe("auth-token", async (broker, packet) => {
+        if (is_login) {
+            broker.publish("notify-error", {
+                error_info: {
+                    code: "INTERNAL_ERROR",
+                    message: `すでにログインしています。`,
+                },
+            });
+            return;
+        }
+
+        const result = await network.postJson("/auth", { token: packet.token }, apiAuthSuccessSchema);
+        if (result.status === "success") {
+            is_login = true;
+            broker.publish("auth-success", {});
+        } else {
+            is_login = false;
+            broker.publish("notify-error", { error_info: result.error_info });
+        }
+    });
+
+    broker.subscribe("auth-success", (broker) => {
+        broker.publish("sync-tasks-from-db", {});
     });
 
     function updateIsSelected(task: SelectableTask, isSelected: boolean): void {
