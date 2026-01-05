@@ -80,7 +80,7 @@ export const taskWeightList = ["light", "medium", "heavy"] as const;
 export const taskWeightSchema = v.picklist(taskWeightList);
 
 export const taskContentSchema = v.object({
-    userId: v.optional(idSchema),
+    userId: idSchema,
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema),
@@ -117,7 +117,6 @@ export type TaskDeleteContent = v.InferOutput<typeof taskDeleteContentSchema>;
 
 // LLM解析結果の個別タスク入力
 export const taskCreateSchema = v.object({
-    userId: v.optional(idSchema),
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema)
@@ -228,7 +227,7 @@ export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
 
 
 // API呼び出し成功時のレスポンスボディ型
-export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSettings | ApiAuthSuccess;
+export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSetting | ApiAuthSuccess;
 
 // タスク一覧取得のレスポンスボディ
 export const apiTasksSchema = tasksSchema;
@@ -258,8 +257,8 @@ export interface ApiAnalyze {
 }
 
 // ユーザー設定のレスポンスボディ
-export const apiUserSettingsSchema = userSettingsSchema;
-export type ApiUserSettings = v.InferOutput<typeof apiUserSettingsSchema>;
+export const apiUserSettingSchema = userSettingSchema;
+export type ApiUserSetting = v.InferOutput<typeof apiUserSettingSchema>;
 
 // 認証成功のレスポンスボディ
 export const apiAuthSuccessSchema = v.object({

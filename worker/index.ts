@@ -235,13 +235,20 @@ app.post("/api/v1/tasks", async (c) => {
 // ========================================
 // API-007: ユーザー設定取得
 // ========================================
-app.get("/api/v1/setting", async (c) => {
+app.get("/api/v1/setting/:id", async (c) => {
     try {
+        const settingId = c.req.param("id");
         const db = drizzle(c.env.DB);
-        const result = await db.select().from(users);
+        const result = await db.select().from(users).where(eq(users.id, settingId));
 
-        const response = result.map(dbUserToUser);
+        if (result.length !== 1) {
+            return errorResponse(400, {
+                code: "NOT_FOUND",
+                message: "ユーザー設定が見つからないか、複数見つかりました",
+            });
+        }
 
+        const response = dbUserToUser(result[0]);
         return successResponse(response);
     } catch (error: unknown) {
         let details = "";

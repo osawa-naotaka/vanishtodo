@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ApiErrorInfo, ApiVoid, Container, Result, Task, TaskContent, TaskCreate, UserSetting, UserSettingContent } from "../../type/types";
-import { apiAuthSuccessSchema, apiVoidSchema, tasksSchema, userSettingsSchema } from "../../type/types";
+import { apiAuthSuccessSchema, apiVoidSchema, tasksSchema, userSettingSchema } from "../../type/types";
 import { Network } from "./Network";
 import type { PersistentContentConfig } from "./Persistent";
 import { generateItem, LocalStorage, touchItem } from "./Persistent";
@@ -27,12 +27,14 @@ export type EvTopicPacketMap = {
     "update-tasks-state": { tasks: Task[] };
     "create-task-on-db": { task: Task };
     "update-task-on-db": { task: Task };
+    "update-user-settings-on-db": { setting: UserSetting };
     "notify-error": { error_info: ApiErrorInfo };
     "sync-tasks-from-db": EvNoArgPacket;
-    "update-user-settings-state": { settings: UserSetting[] };
+    "sync-settings-from-db": { user_id: string };
+    "update-user-settings-state": { setting: UserSetting };
     "request-login": { email: string; }
     "auth-token": { token: string };
-    "auth-success": EvNoArgPacket;
+    "auth-success": { user_id: string };
 };
 
 // -----------------------------------------------------------------------------
@@ -122,12 +124,12 @@ export type SelectableTask = {
 
 export const BrokerContext = createContext<ContextType | null>(null);
 
-const userSettingsInitialValue: UserSetting = {
+const userSettingInitialValue: UserSetting = {
     meta: {
         id: "a6e2b2b4-2314-448d-8af3-0b37d845770e",
         version: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: "1980-01-01T00:00:00.000Z",
+        updatedAt: "1980-01-01T00:00:00.000Z",
     },
     data: {
         email: "anonymous@lulliecat.com",
@@ -142,7 +144,7 @@ const userSettingsInitialValue: UserSetting = {
 
 export function BrokerContextProvider({ children }: { children: ReactNode }): ReactNode {
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
-    const [userSetting, setUserSetting] = useState<UserSetting>(userSettingsInitialValue);
+    const [userSetting, setUserSetting] = useState<UserSetting>(userSettingInitialValue);
     const broker = new EventBroker();
     const network = new Network("/api/v1");
     let is_login = false;
@@ -156,21 +158,21 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     };
     const per_tasks = new Persistent<TaskContent>(task_config);
 
-    const setting_config: PersistentContentConfig<Container<UserSettingContent>[]> = {
+    const setting_config: PersistentContentConfig<Container<UserSettingContent>> = {
         name: "user_settings",
         storage_key: "vanish-todo-user-settings",
         api_base: "/setting",
-        schema: userSettingsSchema,
-        initial_value: [userSettingsInitialValue],
+        schema: userSettingSchema,
+        initial_value: userSettingInitialValue,
     };
-    const per_settings = new Persistent<UserSettingContent>(setting_config);
+    const ls_settings = new LocalStorage<UserSetting>(setting_config);
 
     broker.subscribe("create-task", (broker, packet) => {
         const c: TaskContent = {
             ...packet.task,
             completedAt: undefined,
             isDeleted: false,
-            userId: "b549d9cf-562d-4a32-b46e-3b0cf79ce13f",
+            userId: userSetting.meta.id,
         };
         const item = generateItem(c);
         per_tasks.create(item);
@@ -184,17 +186,14 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("read-user-settings-from-local-storage", (broker) => {
-        broker.publish("update-user-settings-state", { settings: per_settings.items });
+        broker.publish("update-user-settings-state", { setting: ls_settings.item });
     });
 
     broker.subscribe("edit-user-setting", (broker, packet) => {
         const updated = touchItem(packet.userSetting);
-        const r = per_settings.update(updated);
-        if (r.status !== "success") {
-            broker.publish("notify-error", { error_info: r.error_info });
-        } else {
-            broker.publish("update-user-settings-state", { settings: per_settings.items });
-        }
+        ls_settings.item = updated;
+        broker.publish("update-user-settings-state", { setting: updated });
+        broker.publish("update-user-settings-on-db", { setting: updated });
     });
 
     function editTask(updateFn: (item: Task) => Task): (broker: EventBroker, packet: { task: Task }) => void {
@@ -253,17 +252,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("update-user-settings-state", (_broker, packet) => {
-        if (packet.settings.length === 1) {
-            setUserSetting(packet.settings[0]);
-        } else {
-            broker.publish("notify-error", {
-                error_info: {
-                    code: "INTERNAL_ERROR",
-                    message: `ユーザー設定が存在しないか、複数存在します。標準値を使います。`,
-                },
-            });
-            setUserSetting(userSettingsInitialValue);
-        }
+        setUserSetting(packet.setting);
     });
 
     broker.subscribe("create-task-on-db", async (broker, packet) => {
@@ -299,6 +288,29 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         }
     });
 
+    broker.subscribe("update-user-settings-on-db", async (broker, packet) => {
+        if (!is_login) {
+            return;
+        }
+        const result = await network.putJson(`${setting_config.api_base}/${packet.setting.meta.id}`, packet.setting);
+        if (result.status !== "success") {
+            broker.publish("notify-error", { error_info: result.error_info });
+        }
+    });
+
+    broker.subscribe("sync-settings-from-db", async (broker, packet) => {
+        if (!is_login) {
+            return;
+        }
+        const result = await network.getJson(`${setting_config.api_base}/${packet.user_id}`, userSettingSchema);
+        if (result.status === "success") {
+            ls_settings.item = result.data;
+            broker.publish("update-user-settings-state", { setting: result.data });
+        } else {
+            broker.publish("notify-error", { error_info: result.error_info });
+        }
+    });
+
     broker.subscribe("notify-error", (_broker, packet) => {
         console.error(packet.error_info);
     });
@@ -321,27 +333,18 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("auth-token", async (broker, packet) => {
-        if (is_login) {
-            broker.publish("notify-error", {
-                error_info: {
-                    code: "INTERNAL_ERROR",
-                    message: `すでにログインしています。`,
-                },
-            });
-            return;
-        }
-
         const result = await network.postJson("/auth", { token: packet.token }, apiAuthSuccessSchema);
         if (result.status === "success") {
             is_login = true;
-            broker.publish("auth-success", {});
+            broker.publish("auth-success", { user_id: result.data.userId });
         } else {
             is_login = false;
             broker.publish("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("auth-success", (broker) => {
+    broker.subscribe("auth-success", (broker, packet) => {
+        broker.publish("sync-settings-from-db", { user_id: packet.user_id });
         broker.publish("sync-tasks-from-db", {});
     });
 
@@ -352,7 +355,6 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     useEffect(() => {
         broker.publish("read-user-settings-from-local-storage", {});
         broker.publish("read-tasks-from-local-storage", {});
-        broker.publish("sync-tasks-from-db", {});
     }, []);
 
     return <BrokerContext.Provider value={{ broker, tasks, userSetting, updateIsSelected }}>{children}</BrokerContext.Provider>;
