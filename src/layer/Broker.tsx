@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ApiErrorInfo, ApiVoid, Container, Result, Task, TaskContent, TaskCreate, UserSetting, UserSettingContent } from "../../type/types";
 import { apiAuthSuccessSchema, apiVoidSchema, tasksSchema, userSettingSchema } from "../../type/types";
 import { Network } from "./Network";
@@ -143,11 +143,12 @@ const userSettingInitialValue: UserSetting = {
 };
 
 export function BrokerContextProvider({ children }: { children: ReactNode }): ReactNode {
+    console.log("BrokerContextProvider: render");
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [userSetting, setUserSetting] = useState<UserSetting>(userSettingInitialValue);
     const broker = new EventBroker();
     const network = new Network("/api/v1");
-    let is_login = false;
+    const is_login = useRef(false);
 
     const task_config = {
         name: "tasks",
@@ -256,7 +257,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("create-task-on-db", async (broker, packet) => {
-        if (!is_login) {
+        if (!is_login.current) {
             return;
         }
         const result = await network.postJson(task_config.api_base, packet.task, apiVoidSchema);
@@ -266,7 +267,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("update-task-on-db", async (broker, packet) => {
-        if (!is_login) {
+        if (!is_login.current) {
             return;
         }
         const result = await network.putJson(`${task_config.api_base}/${packet.task.meta.id}`, packet.task);
@@ -276,7 +277,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("sync-tasks-from-db", async (broker) => {
-        if (!is_login) {
+        if (!is_login.current) {
             return;
         }
         const result = await network.getJson(task_config.api_base, tasksSchema);
@@ -289,7 +290,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("update-user-settings-on-db", async (broker, packet) => {
-        if (!is_login) {
+        if (!is_login.current) {
             return;
         }
         const result = await network.putJson(`${setting_config.api_base}/${packet.setting.meta.id}`, packet.setting);
@@ -299,7 +300,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("sync-settings-from-db", async (broker, packet) => {
-        if (!is_login) {
+        if (!is_login.current) {
             return;
         }
         const result = await network.getJson(`${setting_config.api_base}/${packet.user_id}`, userSettingSchema);
@@ -316,7 +317,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     });
 
     broker.subscribe("request-login", async (broker, packet) => {
-        if (is_login) {
+        if (is_login.current) {
             broker.publish("notify-error", {
                 error_info: {
                     code: "INTERNAL_ERROR",
@@ -335,10 +336,10 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     broker.subscribe("auth-token", async (broker, packet) => {
         const result = await network.postJson("/auth", { token: packet.token }, apiAuthSuccessSchema);
         if (result.status === "success") {
-            is_login = true;
+            is_login.current = true;
             broker.publish("auth-success", { user_id: result.data.userId });
         } else {
-            is_login = false;
+            is_login.current = false;
             broker.publish("notify-error", { error_info: result.error_info });
         }
     });
