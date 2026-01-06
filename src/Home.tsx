@@ -1,20 +1,25 @@
 import { Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TaskCreate } from "../type/types";
-import type { SelectableTask } from "./layer/Broker";
-import { useBroker } from "./layer/Broker";
 import { generateLimitter } from "./layer/Business";
 import { EditableTaskList } from "./layer/Presentation/EditableTaskList";
 import type { FilterType } from "./layer/Presentation/TaskFilter";
 import { TaskFilter } from "./layer/Presentation/TaskFilter";
 import { TaskInput } from "./layer/Presentation/TaskInput";
+import type { SelectableTask } from "./store/useTaskStore";
+import { useTaskStore } from "./store/useTaskStore";
 
 export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
     const [filter, setFilter] = useState<FilterType>("all");
 
-    const { broker, userSetting, tasks } = useBroker();
+    const { tasks, userSetting, createTask, editTask, completeTask, loadFromLocalStorage } = useTaskStore();
+
+    // アプリ起動時にLocalStorageから読み込み
+    useEffect(() => {
+        loadFromLocalStorage();
+    }, [loadFromLocalStorage]);
 
     const { tasksToday } = generateLimitter<SelectableTask>((t) => t.task);
     const filtered_tasks = tasksToday(
@@ -26,13 +31,13 @@ export function Home(): JSX.Element {
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>
             <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-            <TaskInput handleAddTask={(task: TaskCreate) => broker.publish("create-task", { task })} userId={undefined} />
+            <TaskInput handleAddTask={(task: TaskCreate) => createTask(task)} userId={undefined} />
             <TaskFilter filter={filter} setFilter={setFilter} />
             <EditableTaskList
                 tasks={filtered_tasks}
                 current_date={current_date}
-                onEditTask={(task: SelectableTask) => broker.publish("edit-task", { task: task.task })}
-                onCompleteTask={(task: SelectableTask) => broker.publish("complete-task", { task: task.task })}
+                onEditTask={(task: SelectableTask) => editTask(task.task)}
+                onCompleteTask={(task: SelectableTask) => completeTask(task.task)}
             />
         </Box>
     );

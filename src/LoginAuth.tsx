@@ -1,31 +1,32 @@
 import { Box, Toolbar } from "@mui/material";
 import { useEffect, type JSX } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { useBroker } from "./layer/Broker";
+import { useTaskStore } from "./store/useTaskStore";
 
 export function LoginAuth(): JSX.Element {
-    const { broker } = useBroker();
     const navigate = useNavigate();
     const [queryParams] = useSearchParams();
     const token = queryParams.get("token");
-
-    broker.subscribe("auth-success", () => {
-        navigate("/");
-    });
-
-    broker.subscribe("notify-error", (_broker, packet) => {
-        if (packet.error_info.code === "TOKEN_NOT_FOUND" || packet.error_info.code === "EXPIRED_TOKEN") {
-            navigate("/login");
-        }
-    });
+    const authToken = useTaskStore((state) => state.authToken);
 
     useEffect(() => {
-        if (token) {
-            broker.publish("auth-token", { token });
-        } else {
-            navigate("/login");
-        }
-    }, []);
+        const authenticate = async () => {
+            if (token) {
+                const userId = await authToken(token);
+                if (userId) {
+                    // 認証成功 - DBとの同期はauthToken内で実行済み
+                    navigate("/");
+                } else {
+                    // 認証失敗
+                    navigate("/login");
+                }
+            } else {
+                navigate("/login");
+            }
+        };
+
+        authenticate();
+    }, [token, authToken, navigate]);
 
     return (
         <Box component="main" sx={{ flexGrow: 1, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
