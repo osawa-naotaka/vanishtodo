@@ -3,7 +3,6 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import type React from "react";
 import { Outlet } from "react-router";
-import { BrokerContextProvider } from "../Broker";
 
 const theme = createTheme({
     // palette: {
@@ -30,9 +29,7 @@ export function BaseLayout(): React.ReactElement {
         <ThemeProvider theme={theme}>
             <CssBaseline />
             <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <BrokerContextProvider>
-                    <Outlet />
-                </BrokerContextProvider>
+                <Outlet />
             </LocalizationProvider>
         </ThemeProvider>
     );

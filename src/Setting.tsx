@@ -1,12 +1,29 @@
 import { Box, Divider, Paper, Slider, Toolbar, Typography } from "@mui/material";
-import type { JSX } from "react";
-import { useBroker } from "./layer/Broker";
+import { useAtom, useAtomValue } from "jotai";
+import { type JSX, useRef } from "react";
+import type { UserSetting, UserSettingContent } from "../type/types";
+import { setting_config } from "./Home";
+import { isLoginAtom, networkAtom, userSettingAtom } from "./layer/Jotai";
+import { LocalStorage, touchItem } from "./layer/Persistent";
 
 export function Setting(): JSX.Element {
-    const {
-        broker: [pub],
-        userSetting,
-    } = useBroker();
+    const isLogin = useAtomValue(isLoginAtom);
+    const network = useAtomValue(networkAtom);
+    const [userSetting, setUserSetting] = useAtom(userSettingAtom);
+    const ls_settings = useRef<LocalStorage<UserSetting>>(new LocalStorage<UserSetting>(setting_config));
+
+    async function onEdit(setting: UserSettingContent): Promise<void> {
+        const touched = touchItem(userSetting);
+        touched.data = setting;
+        setUserSetting(touched);
+        ls_settings.current.item = touched;
+        if (isLogin) {
+            const result = await network.putJson(`/setting/${touched.meta.id}`, touched);
+            if (result.status !== "success") {
+                console.error("Setting: Failed to sync user setting to server", result.error_info);
+            }
+        }
+    }
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>
@@ -25,18 +42,13 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        pub("edit-user-setting", {
-                            userSetting: {
-                                meta: userSetting.meta,
-                                data: {
-                                    email: userSetting.data.email,
-                                    timezone: userSetting.data.timezone,
-                                    dailyGoals: {
-                                        light: value as number,
-                                        medium: userSetting.data.dailyGoals.medium,
-                                        heavy: userSetting.data.dailyGoals.heavy,
-                                    },
-                                },
+                        onEdit({
+                            email: userSetting.data.email,
+                            timezone: userSetting.data.timezone,
+                            dailyGoals: {
+                                light: value as number,
+                                medium: userSetting.data.dailyGoals.medium,
+                                heavy: userSetting.data.dailyGoals.heavy,
                             },
                         })
                     }
@@ -51,18 +63,13 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        pub("edit-user-setting", {
-                            userSetting: {
-                                meta: userSetting.meta,
-                                data: {
-                                    email: userSetting.data.email,
-                                    timezone: userSetting.data.timezone,
-                                    dailyGoals: {
-                                        light: userSetting.data.dailyGoals.light,
-                                        medium: value as number,
-                                        heavy: userSetting.data.dailyGoals.heavy,
-                                    },
-                                },
+                        onEdit({
+                            email: userSetting.data.email,
+                            timezone: userSetting.data.timezone,
+                            dailyGoals: {
+                                light: userSetting.data.dailyGoals.light,
+                                medium: value as number,
+                                heavy: userSetting.data.dailyGoals.heavy,
                             },
                         })
                     }
@@ -77,18 +84,13 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        pub("edit-user-setting", {
-                            userSetting: {
-                                meta: userSetting.meta,
-                                data: {
-                                    email: userSetting.data.email,
-                                    timezone: userSetting.data.timezone,
-                                    dailyGoals: {
-                                        light: userSetting.data.dailyGoals.light,
-                                        medium: userSetting.data.dailyGoals.medium,
-                                        heavy: value as number,
-                                    },
-                                },
+                        onEdit({
+                            email: userSetting.data.email,
+                            timezone: userSetting.data.timezone,
+                            dailyGoals: {
+                                light: userSetting.data.dailyGoals.light,
+                                medium: userSetting.data.dailyGoals.medium,
+                                heavy: value as number,
                             },
                         })
                     }
