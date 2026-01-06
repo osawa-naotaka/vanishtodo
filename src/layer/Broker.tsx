@@ -41,19 +41,17 @@ export type EvTopicPacketMap = {
 // イベントブローカー
 // -----------------------------------------------------------------------------
 
-// export type OnEventListener<E, T extends keyof E> = (packet: E[T]) => void | Promise<void>;
+export type OnEventListener<E, T extends keyof E> = (packet: E[T]) => void | Promise<void>;
 
 export type EventBroker<E> = [
     <T extends keyof E>(topic: T, packet: E[T]) => void,
-    <T extends keyof E>(topic: T, listener: (packet: E[T]) => void | Promise<void>) => () => void,
+    <T extends keyof E>(topic: T, listener: OnEventListener<E, T>) => () => void,
 ];
 
 export function createEventBroker<E>(): EventBroker<E> {
-    type OnEventListener<T extends keyof E> = (packet: E[T]) => void | Promise<void>;
+    const listeners: { [key in keyof E]?: Set<OnEventListener<E, key>> } = {};
 
-    const listeners: { [key in keyof E]?: Set<OnEventListener<key>> } = {};
-
-    function subscribe<T extends keyof E>(topic: T, listener: OnEventListener<T>) {
+    function subscribe<T extends keyof E>(topic: T, listener: OnEventListener<E, T>) {
         if (!listeners[topic]) {
             listeners[topic] = new Set();
         }
