@@ -1,19 +1,21 @@
 import { Box, Toolbar } from "@mui/material";
-import { useEffect, type JSX } from "react";
+import { type JSX, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useBroker } from "./layer/Broker";
 
 export function LoginAuth(): JSX.Element {
-    const { broker } = useBroker();
+    const {
+        broker: [pub, sub],
+    } = useBroker();
     const navigate = useNavigate();
     const [queryParams] = useSearchParams();
     const token = queryParams.get("token");
 
-    broker.subscribe("auth-success", () => {
+    sub("auth-success", () => {
         navigate("/");
     });
 
-    broker.subscribe("notify-error", (_broker, packet) => {
+    sub("notify-error", (packet) => {
         if (packet.error_info.code === "TOKEN_NOT_FOUND" || packet.error_info.code === "EXPIRED_TOKEN") {
             navigate("/login");
         }
@@ -21,7 +23,7 @@ export function LoginAuth(): JSX.Element {
 
     useEffect(() => {
         if (token) {
-            broker.publish("auth-token", { token });
+            pub("auth-token", { token });
         } else {
             navigate("/login");
         }

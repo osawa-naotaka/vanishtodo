@@ -32,7 +32,7 @@ export type EvTopicPacketMap = {
     "sync-tasks-from-db": EvNoArgPacket;
     "sync-settings-from-db": { user_id: string };
     "update-user-settings-state": { setting: UserSetting };
-    "request-login": { email: string; }
+    "request-login": { email: string };
     "auth-token": { token: string };
     "auth-success": { user_id: string };
 };
@@ -41,29 +41,40 @@ export type EvTopicPacketMap = {
 // イベントブローカー
 // -----------------------------------------------------------------------------
 
-export type OnEventListener<E, T> = (broker: EventBroker<E>, packet: T) => void | Promise<void>;
+// export type OnEventListener<E, T extends keyof E> = (packet: E[T]) => void | Promise<void>;
 
-export class EventBroker<T> {
-    private listeners: { [key in keyof T]?: Set<OnEventListener<T, T[key]>> } = {};
+export type EventBroker<E> = [
+    <T extends keyof E>(topic: T, packet: E[T]) => void,
+    <T extends keyof E>(topic: T, listener: (packet: E[T]) => void | Promise<void>) => () => void,
+];
 
-    subscribe<S extends keyof T>(topic: S, listener: OnEventListener<T, T[S]>) {
-        if (!this.listeners[topic]) {
-            this.listeners[topic] = new Set();
+export function createEventBroker<E>(): EventBroker<E> {
+    type OnEventListener<T extends keyof E> = (packet: E[T]) => void | Promise<void>;
+
+    const listeners: { [key in keyof E]?: Set<OnEventListener<key>> } = {};
+
+    function subscribe<T extends keyof E>(topic: T, listener: OnEventListener<T>) {
+        if (!listeners[topic]) {
+            listeners[topic] = new Set();
         }
-        this.listeners[topic].add(listener);
+        listeners[topic].add(listener);
 
-        return () => this.listeners[topic]?.delete(listener);
+        return () => {
+            listeners[topic]?.delete(listener);
+        };
     }
 
-    publish<S extends keyof T>(topic: S, packet: T[S]): void {
+    function publish<T extends keyof E>(topic: T, packet: E[T]): void {
         console.log(`EventBroker: publish topic="${topic.toString()}" packet=`, packet);
-        const topic_listeners = this.listeners[topic];
+        const topic_listeners = listeners[topic];
         if (topic_listeners) {
             for (const listener of topic_listeners) {
-                listener(this, packet);
+                listener(packet);
             }
         }
     }
+
+    return [publish, subscribe] as const;
 }
 
 // -----------------------------------------------------------------------------
@@ -148,7 +159,8 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     console.log("BrokerContextProvider: render");
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [userSetting, setUserSetting] = useState<UserSetting>(userSettingInitialValue);
-    const broker = new EventBroker<EvTopicPacketMap>();
+    const broker = createEventBroker<EvTopicPacketMap>();
+    const [pub, sub] = broker;
     const network = new Network("/api/v1");
     const is_login = useRef(false);
 
@@ -170,7 +182,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     };
     const ls_settings = new LocalStorage<UserSetting>(setting_config);
 
-    broker.subscribe("create-task", (broker, packet) => {
+    sub("create-task", (packet) => {
         const c: TaskContent = {
             ...packet.task,
             completedAt: undefined,
@@ -180,45 +192,45 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         const item = generateItem(c);
         per_tasks.create(item);
 
-        broker.publish("update-tasks-state", { tasks: per_tasks.items });
-        broker.publish("create-task-on-db", { task: item });
+        pub("update-tasks-state", { tasks: per_tasks.items });
+        pub("create-task-on-db", { task: item });
     });
 
-    broker.subscribe("read-tasks-from-local-storage", (broker) => {
-        broker.publish("update-tasks-state", { tasks: per_tasks.items });
+    sub("read-tasks-from-local-storage", () => {
+        pub("update-tasks-state", { tasks: per_tasks.items });
     });
 
-    broker.subscribe("read-user-settings-from-local-storage", (broker) => {
-        broker.publish("update-user-settings-state", { setting: ls_settings.item });
+    sub("read-user-settings-from-local-storage", () => {
+        pub("update-user-settings-state", { setting: ls_settings.item });
     });
 
-    broker.subscribe("edit-user-setting", (broker, packet) => {
+    sub("edit-user-setting", (packet) => {
         const updated = touchItem(packet.userSetting);
         ls_settings.item = updated;
-        broker.publish("update-user-settings-state", { setting: updated });
-        broker.publish("update-user-settings-on-db", { setting: updated });
+        pub("update-user-settings-state", { setting: updated });
+        pub("update-user-settings-on-db", { setting: updated });
     });
 
-    function editTask(updateFn: (item: Task) => Task): (broker: EventBroker<EvTopicPacketMap>, packet: { task: Task }) => void {
-        return (broker, packet) => {
+    function editTask(updateFn: (item: Task) => Task): (packet: { task: Task }) => void {
+        return (packet) => {
             const item = touchItem(packet.task);
             const updated = updateFn(item);
             const r = per_tasks.update(updated);
             if (r.status !== "success") {
-                broker.publish("notify-error", { error_info: r.error_info });
+                pub("notify-error", { error_info: r.error_info });
             } else {
-                broker.publish("update-tasks-state", { tasks: per_tasks.items });
-                broker.publish("update-task-on-db", { task: updated });
+                pub("update-tasks-state", { tasks: per_tasks.items });
+                pub("update-task-on-db", { task: updated });
             }
         };
     }
 
-    broker.subscribe(
+    sub(
         "edit-task",
         editTask((item) => item),
     );
 
-    broker.subscribe(
+    sub(
         "complete-task",
         editTask((item) => {
             item.data.completedAt = item.meta.updatedAt;
@@ -226,7 +238,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         }),
     );
 
-    broker.subscribe(
+    sub(
         "uncomplete-task",
         editTask((item) => {
             item.data.completedAt = undefined;
@@ -234,7 +246,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         }),
     );
 
-    broker.subscribe(
+    sub(
         "delete-task",
         editTask((item) => {
             item.data.isDeleted = true;
@@ -242,7 +254,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         }),
     );
 
-    broker.subscribe(
+    sub(
         "undelete-task",
         editTask((item) => {
             item.data.isDeleted = false;
@@ -250,77 +262,77 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         }),
     );
 
-    broker.subscribe("update-tasks-state", (_broker, packet) => {
+    sub("update-tasks-state", (packet) => {
         setTasks(packet.tasks.map((t) => ({ task: t, isSelected: false })));
     });
 
-    broker.subscribe("update-user-settings-state", (_broker, packet) => {
+    sub("update-user-settings-state", (packet) => {
         setUserSetting(packet.setting);
     });
 
-    broker.subscribe("create-task-on-db", async (broker, packet) => {
+    sub("create-task-on-db", async (packet) => {
         if (!is_login.current) {
             return;
         }
         const result = await network.postJson(task_config.api_base, packet.task, apiVoidSchema);
         if (result.status !== "success") {
-            broker.publish("notify-error", { error_info: result.error_info });
+            pub("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("update-task-on-db", async (broker, packet) => {
+    sub("update-task-on-db", async (packet) => {
         if (!is_login.current) {
             return;
         }
         const result = await network.putJson(`${task_config.api_base}/${packet.task.meta.id}`, packet.task);
         if (result.status !== "success") {
-            broker.publish("notify-error", { error_info: result.error_info });
+            pub("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("sync-tasks-from-db", async (broker) => {
+    sub("sync-tasks-from-db", async () => {
         if (!is_login.current) {
             return;
         }
         const result = await network.getJson(task_config.api_base, tasksSchema);
         if (result.status === "success") {
             per_tasks.items = result.data;
-            broker.publish("update-tasks-state", { tasks: result.data });
+            pub("update-tasks-state", { tasks: result.data });
         } else {
-            broker.publish("notify-error", { error_info: result.error_info });
+            pub("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("update-user-settings-on-db", async (broker, packet) => {
+    sub("update-user-settings-on-db", async (packet) => {
         if (!is_login.current) {
             return;
         }
         const result = await network.putJson(`${setting_config.api_base}/${packet.setting.meta.id}`, packet.setting);
         if (result.status !== "success") {
-            broker.publish("notify-error", { error_info: result.error_info });
+            pub("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("sync-settings-from-db", async (broker, packet) => {
+    sub("sync-settings-from-db", async (packet) => {
         if (!is_login.current) {
             return;
         }
         const result = await network.getJson(`${setting_config.api_base}/${packet.user_id}`, userSettingSchema);
         if (result.status === "success") {
             ls_settings.item = result.data;
-            broker.publish("update-user-settings-state", { setting: result.data });
+            pub("update-user-settings-state", { setting: result.data });
         } else {
-            broker.publish("notify-error", { error_info: result.error_info });
+            pub("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("notify-error", (_broker, packet) => {
+    sub("notify-error", (packet) => {
         console.error(packet.error_info);
     });
 
-    broker.subscribe("request-login", async (broker, packet) => {
+    sub("request-login", async (packet) => {
         if (is_login.current) {
-            broker.publish("notify-error", {
+            pub("notify-error", {
                 error_info: {
                     code: "INTERNAL_ERROR",
                     message: `すでにログインしています。`,
@@ -331,24 +343,24 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
 
         const result = await network.postJson("/login", { email: packet.email }, apiVoidSchema);
         if (result.status !== "success") {
-            broker.publish("notify-error", { error_info: result.error_info });
+            pub("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("auth-token", async (broker, packet) => {
+    sub("auth-token", async (packet) => {
         const result = await network.postJson("/auth", { token: packet.token }, apiAuthSuccessSchema);
         if (result.status === "success") {
             is_login.current = true;
-            broker.publish("auth-success", { user_id: result.data.userId });
+            pub("auth-success", { user_id: result.data.userId });
         } else {
             is_login.current = false;
-            broker.publish("notify-error", { error_info: result.error_info });
+            pub("notify-error", { error_info: result.error_info });
         }
     });
 
-    broker.subscribe("auth-success", (broker, packet) => {
-        broker.publish("sync-settings-from-db", { user_id: packet.user_id });
-        broker.publish("sync-tasks-from-db", {});
+    sub("auth-success", (packet) => {
+        pub("sync-settings-from-db", { user_id: packet.user_id });
+        pub("sync-tasks-from-db", {});
     });
 
     function updateIsSelected(task: SelectableTask, isSelected: boolean): void {
@@ -356,8 +368,8 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     }
 
     useEffect(() => {
-        broker.publish("read-user-settings-from-local-storage", {});
-        broker.publish("read-tasks-from-local-storage", {});
+        pub("read-user-settings-from-local-storage", {});
+        pub("read-tasks-from-local-storage", {});
     }, []);
 
     return <BrokerContext.Provider value={{ broker, tasks, userSetting, updateIsSelected }}>{children}</BrokerContext.Provider>;

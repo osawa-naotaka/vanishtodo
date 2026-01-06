@@ -5,7 +5,9 @@ import { useNavigate } from "react-router";
 import { useBroker } from "./layer/Broker";
 
 export function Login(): JSX.Element {
-    const { broker } = useBroker();
+    const {
+        broker: [pub],
+    } = useBroker();
     const [email, setEmail] = useState<string>("");
     const [error, setError] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -17,7 +19,7 @@ export function Login(): JSX.Element {
         setIsSubmitting(true);
 
         try {
-            broker.publish("request-login", { email });
+            pub("request-login", { email });
 
             // レスポンスの成功・失敗に関わらず送信完了ページに遷移
             navigate("/login/sent");

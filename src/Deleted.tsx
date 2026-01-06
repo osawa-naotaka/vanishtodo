@@ -8,7 +8,11 @@ import { TaskList } from "./layer/Presentation/TaskList";
 
 export function Deleted(): JSX.Element {
     const current_date = new Date().toISOString();
-    const { broker, tasks, updateIsSelected } = useBroker();
+    const {
+        broker: [pub],
+        tasks,
+        updateIsSelected,
+    } = useBroker();
 
     const { isDeleted } = generateLimitter<SelectableTask>((t) => t.task);
     const filtered_tasks = tasks.filter((t) => isDeleted(t));
@@ -17,7 +21,7 @@ export function Deleted(): JSX.Element {
         if (value === "undelete") {
             for (const item of tasks) {
                 if (item.isSelected) {
-                    broker.publish("undelete-task", { task: item.task });
+                    pub("undelete-task", { task: item.task });
                 }
             }
         }

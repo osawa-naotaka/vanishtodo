@@ -3,7 +3,10 @@ import type { JSX } from "react";
 import { useBroker } from "./layer/Broker";
 
 export function Setting(): JSX.Element {
-    const { broker, userSetting } = useBroker();
+    const {
+        broker: [pub],
+        userSetting,
+    } = useBroker();
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>
@@ -22,7 +25,7 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        broker.publish("edit-user-setting", {
+                        pub("edit-user-setting", {
                             userSetting: {
                                 meta: userSetting.meta,
                                 data: {
@@ -48,7 +51,7 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        broker.publish("edit-user-setting", {
+                        pub("edit-user-setting", {
                             userSetting: {
                                 meta: userSetting.meta,
                                 data: {
@@ -74,7 +77,7 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        broker.publish("edit-user-setting", {
+                        pub("edit-user-setting", {
                             userSetting: {
                                 meta: userSetting.meta,
                                 data: {

@@ -8,7 +8,11 @@ import { TaskList } from "./layer/Presentation/TaskList";
 
 export function Completed(): JSX.Element {
     const current_date = new Date().toISOString();
-    const { broker, tasks, updateIsSelected } = useBroker();
+    const {
+        broker: [pub],
+        tasks,
+        updateIsSelected,
+    } = useBroker();
 
     const { isCompleted } = generateLimitter<SelectableTask>((t) => t.task);
     const filtered_tasks = tasks.filter((t) => isCompleted(t));
@@ -17,13 +21,13 @@ export function Completed(): JSX.Element {
         if (value === "restore") {
             for (const item of tasks) {
                 if (item.isSelected) {
-                    broker.publish("uncomplete-task", { task: item.task });
+                    pub("uncomplete-task", { task: item.task });
                 }
             }
         } else if (value === "delete") {
             for (const item of tasks) {
                 if (item.isSelected) {
-                    broker.publish("delete-task", { task: item.task });
+                    pub("delete-task", { task: item.task });
                 }
             }
         }
