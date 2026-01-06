@@ -1,6 +1,6 @@
 import { Box, Toolbar } from "@mui/material";
 import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { TaskCreate } from "../type/types";
 import { generateLimitter } from "./layer/Business";
 import { EditableTaskList } from "./layer/Presentation/EditableTaskList";
@@ -14,12 +14,7 @@ export function Home(): JSX.Element {
     const current_date = new Date().toISOString();
     const [filter, setFilter] = useState<FilterType>("all");
 
-    const { tasks, userSetting, createTask, editTask, completeTask, loadFromLocalStorage } = useTaskStore();
-
-    // アプリ起動時にLocalStorageから読み込み
-    useEffect(() => {
-        loadFromLocalStorage();
-    }, [loadFromLocalStorage]);
+    const { tasks, userSetting, createTask, editTask, completeTask } = useTaskStore();
 
     const { tasksToday } = generateLimitter<SelectableTask>((t) => t.task);
     const filtered_tasks = tasksToday(

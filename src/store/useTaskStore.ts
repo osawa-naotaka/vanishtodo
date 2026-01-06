@@ -6,6 +6,34 @@ import type { PersistentContentConfig } from "../layer/Persistent";
 import { Network } from "../layer/Network";
 
 // -----------------------------------------------------------------------------
+// 非同期キュー（DB操作の順序保証）
+// -----------------------------------------------------------------------------
+
+class AsyncQueue {
+    private readonly queue: (() => Promise<void>)[] = [];
+    private isProcessing = false;
+
+    enqueue(fn: () => Promise<void>): void {
+        this.queue.push(fn);
+        this.processQueue();
+    }
+
+    private async processQueue(): Promise<void> {
+        if (this.isProcessing) {
+            return;
+        }
+        this.isProcessing = true;
+        while (this.queue.length > 0) {
+            const fn = this.queue.shift();
+            if (fn) {
+                await fn();
+            }
+        }
+        this.isProcessing = false;
+    }
+}
+
+// -----------------------------------------------------------------------------
 // Zustand Store型定義
 // -----------------------------------------------------------------------------
 
@@ -24,9 +52,10 @@ type TaskStore = {
     network: Network;
     taskStorage: LocalStorage<Container<TaskContent>[]>;
     settingStorage: LocalStorage<UserSetting>;
+    dbQueue: AsyncQueue;
 
     // Actions - タスク操作
-    createTask: (task: TaskCreate) => void;
+    createTask: (task: TaskCreate) => Promise<void>;
     editTask: (task: Task) => void;
     completeTask: (task: Task) => void;
     uncompleteTask: (task: Task) => void;
@@ -104,6 +133,7 @@ export const useTaskStore = create<TaskStore>((set, get) => {
     const network = new Network("/api/v1");
     const taskStorage = new LocalStorage<Container<TaskContent>[]>(task_config);
     const settingStorage = new LocalStorage<UserSetting>(setting_config);
+    const dbQueue = new AsyncQueue();
 
     return {
         // State
@@ -113,11 +143,17 @@ export const useTaskStore = create<TaskStore>((set, get) => {
         network,
         taskStorage,
         settingStorage,
+        dbQueue,
 
         // LocalStorageからの読み込み
         loadFromLocalStorage: () => {
             const tasks = get().taskStorage.item;
             const userSetting = get().settingStorage.item;
+            console.log("[useTaskStore] loadFromLocalStorage called", {
+                taskCount: tasks.length,
+                taskIds: tasks.map((t) => t.meta.id),
+                userEmail: userSetting.data.email,
+            });
             set({
                 tasks: tasks.map((t) => ({ task: t, isSelected: false })),
                 userSetting,
@@ -125,8 +161,8 @@ export const useTaskStore = create<TaskStore>((set, get) => {
         },
 
         // タスク作成
-        createTask: (taskCreate: TaskCreate) => {
-            const { userSetting, taskStorage, network, isLogin } = get();
+        createTask: async (taskCreate: TaskCreate) => {
+            const { userSetting, taskStorage, dbQueue, network, isLogin } = get();
             const c: TaskContent = {
                 ...taskCreate,
                 completedAt: undefined,
@@ -135,34 +171,48 @@ export const useTaskStore = create<TaskStore>((set, get) => {
             };
             const item = generateItem(c);
 
+            console.log("[useTaskStore] createTask called", { isLogin, taskId: item.meta.id });
+
             // LocalStorageに保存
             const arr = taskStorage.item;
             arr.push(item);
             taskStorage.item = arr;
+            console.log("[useTaskStore] createTask: Saved to LocalStorage", {
+                taskCount: arr.length,
+                taskIds: arr.map((t) => t.meta.id),
+            });
 
             // State更新
             set({
                 tasks: taskStorage.item.map((t) => ({ task: t, isSelected: false })),
             });
 
-            // DBに同期(非同期)
+            // DBに同期(キュー経由で順序保証)
             if (isLogin) {
-                network.postJson(task_config.api_base, item, apiVoidSchema).then((result) => {
+                dbQueue.enqueue(async () => {
+                    console.log("[useTaskStore] Creating task in DB:", task_config.api_base);
+                    const result = await network.postJson(task_config.api_base, item, apiVoidSchema);
                     if (result.status !== "success") {
+                        console.error("[useTaskStore] Task creation failed:", result.error_info);
                         get().notifyError(result.error_info);
+                    } else {
+                        console.log("[useTaskStore] Task creation success");
                     }
                 });
+            } else {
+                console.warn("[useTaskStore] Not logged in - skipping DB sync for task creation");
             }
         },
 
-        // タスク編集
+        // タスク編集（内部用 - すでにtouchItem済みのタスクを受け取る想定）
         editTask: (task: Task) => {
-            const { taskStorage, network, isLogin } = get();
-            const updated = touchItem(task);
+            const { taskStorage, dbQueue, network, isLogin } = get();
+
+            console.log("[useTaskStore] editTask called", { isLogin, taskId: task.meta.id, version: task.meta.version, completedAt: task.data.completedAt });
 
             // LocalStorageに保存
             const arr = taskStorage.item;
-            const idx = arr.findIndex((x) => x.meta.id === updated.meta.id);
+            const idx = arr.findIndex((x) => x.meta.id === task.meta.id);
             if (idx < 0) {
                 get().notifyError({
                     code: "INTERNAL_ERROR",
@@ -170,7 +220,7 @@ export const useTaskStore = create<TaskStore>((set, get) => {
                 });
                 return;
             }
-            arr[idx] = updated;
+            arr[idx] = task;
             taskStorage.item = arr;
 
             // State更新
@@ -178,13 +228,20 @@ export const useTaskStore = create<TaskStore>((set, get) => {
                 tasks: taskStorage.item.map((t) => ({ task: t, isSelected: false })),
             });
 
-            // DBに同期(非同期)
+            // DBに同期(キュー経由で順序保証)
             if (isLogin) {
-                network.putJson(`${task_config.api_base}/${updated.meta.id}`, updated).then((result) => {
+                dbQueue.enqueue(async () => {
+                    console.log("[useTaskStore] Syncing to DB:", `${task_config.api_base}/${task.meta.id}`, "version:", task.meta.version);
+                    const result = await network.putJson(`${task_config.api_base}/${task.meta.id}`, task);
                     if (result.status !== "success") {
+                        console.error("[useTaskStore] DB sync failed:", result.error_info);
                         get().notifyError(result.error_info);
+                    } else {
+                        console.log("[useTaskStore] DB sync success");
                     }
                 });
+            } else {
+                console.warn("[useTaskStore] Not logged in - skipping DB sync");
             }
         },
 
@@ -218,7 +275,7 @@ export const useTaskStore = create<TaskStore>((set, get) => {
 
         // ユーザー設定編集
         editUserSetting: (userSetting: UserSetting) => {
-            const { settingStorage, network, isLogin } = get();
+            const { settingStorage, dbQueue, network, isLogin } = get();
             const updated = touchItem(userSetting);
 
             // LocalStorageに保存
@@ -227,9 +284,10 @@ export const useTaskStore = create<TaskStore>((set, get) => {
             // State更新
             set({ userSetting: updated });
 
-            // DBに同期(非同期)
+            // DBに同期(キュー経由で順序保証)
             if (isLogin) {
-                network.putJson(`${setting_config.api_base}/${updated.meta.id}`, updated).then((result) => {
+                dbQueue.enqueue(async () => {
+                    const result = await network.putJson(`${setting_config.api_base}/${updated.meta.id}`, updated);
                     if (result.status !== "success") {
                         get().notifyError(result.error_info);
                     }
@@ -304,6 +362,7 @@ export const useTaskStore = create<TaskStore>((set, get) => {
 
                 // ログイン状態を設定
                 set({ isLogin: true });
+                console.log("[useTaskStore] Login successful, isLogin set to true, userId:", userId);
 
                 // DB同期を実行（isLoginチェックをバイパスするため直接実装）
                 const settingsResult = await network.getJson(`${setting_config.api_base}/${userId}`, userSettingSchema);
@@ -316,6 +375,10 @@ export const useTaskStore = create<TaskStore>((set, get) => {
 
                 const tasksResult = await network.getJson(task_config.api_base, tasksSchema);
                 if (tasksResult.status === "success") {
+                    console.log("[useTaskStore] authToken: Saving DB tasks to LocalStorage", {
+                        taskCount: tasksResult.data.length,
+                        taskIds: tasksResult.data.map((t) => t.meta.id),
+                    });
                     taskStorage.item = tasksResult.data;
                     set({
                         tasks: tasksResult.data.map((t) => ({ task: t, isSelected: false })),

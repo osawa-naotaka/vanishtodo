@@ -1,9 +1,9 @@
 import { Box, Divider, Paper, Slider, Toolbar, Typography } from "@mui/material";
 import type { JSX } from "react";
-import { useBroker } from "./layer/Broker";
+import { useTaskStore } from "./store/useTaskStore";
 
 export function Setting(): JSX.Element {
-    const { broker, userSetting } = useBroker();
+    const { userSetting, editUserSetting } = useTaskStore();
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>
@@ -22,17 +22,15 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        broker.publish("edit-user-setting", {
-                            userSetting: {
-                                meta: userSetting.meta,
-                                data: {
-                                    email: userSetting.data.email,
-                                    timezone: userSetting.data.timezone,
-                                    dailyGoals: {
-                                        light: value as number,
-                                        medium: userSetting.data.dailyGoals.medium,
-                                        heavy: userSetting.data.dailyGoals.heavy,
-                                    },
+                        editUserSetting({
+                            meta: userSetting.meta,
+                            data: {
+                                email: userSetting.data.email,
+                                timezone: userSetting.data.timezone,
+                                dailyGoals: {
+                                    light: value as number,
+                                    medium: userSetting.data.dailyGoals.medium,
+                                    heavy: userSetting.data.dailyGoals.heavy,
                                 },
                             },
                         })
@@ -48,17 +46,15 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        broker.publish("edit-user-setting", {
-                            userSetting: {
-                                meta: userSetting.meta,
-                                data: {
-                                    email: userSetting.data.email,
-                                    timezone: userSetting.data.timezone,
-                                    dailyGoals: {
-                                        light: userSetting.data.dailyGoals.light,
-                                        medium: value as number,
-                                        heavy: userSetting.data.dailyGoals.heavy,
-                                    },
+                        editUserSetting({
+                            meta: userSetting.meta,
+                            data: {
+                                email: userSetting.data.email,
+                                timezone: userSetting.data.timezone,
+                                dailyGoals: {
+                                    light: userSetting.data.dailyGoals.light,
+                                    medium: value as number,
+                                    heavy: userSetting.data.dailyGoals.heavy,
                                 },
                             },
                         })
@@ -74,17 +70,15 @@ export function Setting(): JSX.Element {
                     step={1}
                     marks
                     onChange={(_e, value) =>
-                        broker.publish("edit-user-setting", {
-                            userSetting: {
-                                meta: userSetting.meta,
-                                data: {
-                                    email: userSetting.data.email,
-                                    timezone: userSetting.data.timezone,
-                                    dailyGoals: {
-                                        light: userSetting.data.dailyGoals.light,
-                                        medium: userSetting.data.dailyGoals.medium,
-                                        heavy: value as number,
-                                    },
+                        editUserSetting({
+                            meta: userSetting.meta,
+                            data: {
+                                email: userSetting.data.email,
+                                timezone: userSetting.data.timezone,
+                                dailyGoals: {
+                                    light: userSetting.data.dailyGoals.light,
+                                    medium: userSetting.data.dailyGoals.medium,
+                                    heavy: value as number,
                                 },
                             },
                         })
