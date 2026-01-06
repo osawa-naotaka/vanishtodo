@@ -41,20 +41,22 @@ export type EvTopicPacketMap = {
 // イベントブローカー
 // -----------------------------------------------------------------------------
 
-export type OnEventListener<T> = (broker: EventBroker, packet: T) => void | Promise<void>;
+export type OnEventListener<E, T> = (broker: EventBroker<E>, packet: T) => void | Promise<void>;
 
-export class EventBroker {
-    private listeners: { [key in EvTopicLabel]?: OnEventListener<EvTopicPacketMap[key]>[] } = {};
+export class EventBroker<T> {
+    private listeners: { [key in keyof T]?: Set<OnEventListener<T, T[key]>> } = {};
 
-    subscribe<T extends EvTopicLabel>(topic: T, listener: OnEventListener<EvTopicPacketMap[T]>): void {
+    subscribe<S extends keyof T>(topic: S, listener: OnEventListener<T, T[S]>) {
         if (!this.listeners[topic]) {
-            this.listeners[topic] = [];
+            this.listeners[topic] = new Set();
         }
-        this.listeners[topic]?.push(listener);
+        this.listeners[topic].add(listener);
+
+        return () => this.listeners[topic]?.delete(listener);
     }
 
-    publish<T extends EvTopicLabel>(topic: T, packet: EvTopicPacketMap[T]): void {
-        console.log(`EventBroker: publish topic="${topic}" packet=`, packet);
+    publish<S extends keyof T>(topic: S, packet: T[S]): void {
+        console.log(`EventBroker: publish topic="${topic.toString()}" packet=`, packet);
         const topic_listeners = this.listeners[topic];
         if (topic_listeners) {
             for (const listener of topic_listeners) {
@@ -111,7 +113,7 @@ export class Persistent<T> {
 // -----------------------------------------------------------------------------
 
 export type ContextType = {
-    broker: EventBroker;
+    broker: EventBroker<EvTopicPacketMap>;
     tasks: SelectableTask[];
     userSetting: UserSetting;
     updateIsSelected: (task: SelectableTask, isSelected: boolean) => void;
@@ -146,7 +148,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     console.log("BrokerContextProvider: render");
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [userSetting, setUserSetting] = useState<UserSetting>(userSettingInitialValue);
-    const broker = new EventBroker();
+    const broker = new EventBroker<EvTopicPacketMap>();
     const network = new Network("/api/v1");
     const is_login = useRef(false);
 
@@ -197,7 +199,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         broker.publish("update-user-settings-on-db", { setting: updated });
     });
 
-    function editTask(updateFn: (item: Task) => Task): (broker: EventBroker, packet: { task: Task }) => void {
+    function editTask(updateFn: (item: Task) => Task): (broker: EventBroker<EvTopicPacketMap>, packet: { task: Task }) => void {
         return (broker, packet) => {
             const item = touchItem(packet.task);
             const updated = updateFn(item);
