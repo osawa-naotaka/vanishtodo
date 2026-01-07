@@ -6,6 +6,7 @@ import { useBroker } from "./layer/Broker";
 export function LoginAuth(): JSX.Element {
     const {
         broker: [pub, sub],
+        isInitialized,
     } = useBroker();
     const navigate = useNavigate();
     const [queryParams] = useSearchParams();
@@ -21,13 +22,17 @@ export function LoginAuth(): JSX.Element {
                 navigate("/login");
             }
         });
+    }, []);
+
+    useEffect(() => {
+        if (!isInitialized) return;
 
         if (token) {
             pub("auth-token", { token });
         } else {
             navigate("/login");
         }
-    }, []);
+    }, [isInitialized, token, pub, navigate]);
 
     return (
         <Box component="main" sx={{ flexGrow: 1, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ApiErrorInfo, ApiVoid, Container, Result, Task, TaskContent, TaskCreate, UserSetting } from "../../type/types";
-import { apiAuthSuccessSchema, tasksSchema, userSettingSchema } from "../../type/types";
+import { apiAuthSuccessSchema } from "../../type/types";
 import { buildBusinessEvents, buildBusinessEventsDuringLogin, setting_config, task_config, userSettingInitialValue } from "./Business";
 import { Network } from "./Network";
 import type { PersistentContentConfig } from "./Persistent";
@@ -62,7 +62,6 @@ export function createEventBroker<E>(): EventBroker<E> {
     function publish<T extends keyof E>(topic: T, packet: E[T]): void {
         console.log(`EventBroker: publish topic="${topic.toString()}" packet=`, packet);
         const topic_listeners = listeners[topic];
-        console.log("  listeners:", topic_listeners);
         if (topic_listeners) {
             for (const listener of topic_listeners) {
                 listener(packet);
@@ -124,6 +123,7 @@ export type ContextType = {
     tasks: SelectableTask[];
     userSetting: UserSetting;
     updateIsSelected: (task: SelectableTask, isSelected: boolean) => void;
+    isInitialized: boolean;
 };
 
 export type SelectableTask = {
@@ -137,6 +137,7 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     console.log("BrokerContextProvider: render");
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [userSetting, setUserSetting] = useState<UserSetting>(userSettingInitialValue);
+    const [isInitialized, setIsInitialized] = useState(false);
     const broker = useRef(createEventBroker<EvTopicPacketMap>());
     const is_login = useRef(false);
 
@@ -173,7 +174,6 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
 
         // LoginAuth.tsx
         sub("auth-token", async (packet) => {
-            console.log("auth-token received");
             const result = await network.postJson("/auth", { token: packet.token }, apiAuthSuccessSchema);
             if (result.status === "success") {
                 is_login.current = true;
@@ -188,26 +188,6 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
                 pub("notify-error", { error_info: result.error_info });
             }
         });
-
-        // sub("auth-success", async (packet) => {
-        //     // sync setting from db
-        //     const res_setting = await network.getJson(`${setting_config.api_base}/${packet.user_id}`, userSettingSchema);
-        //     if (res_setting.status === "success") {
-        //         ls_settings.item = res_setting.data;
-        //         pub("update-user-settings-state", { setting: res_setting.data });
-        //     } else {
-        //         pub("notify-error", { error_info: res_setting.error_info });
-        //     }
-
-        //     // sync tasks from db
-        //     const res_tasks = await network.getJson(task_config.api_base, tasksSchema);
-        //     if (res_tasks.status === "success") {
-        //         per_tasks.items = res_tasks.data;
-        //         pub("update-tasks-state", { tasks: res_tasks.data });
-        //     } else {
-        //         pub("notify-error", { error_info: res_tasks.error_info });
-        //     }
-        // });
 
         // update React State
         sub("update-tasks-state", (packet) => {
@@ -227,9 +207,12 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
         // initialize
         pub("update-user-settings-state", { setting: ls_settings.item });
         pub("update-tasks-state", { tasks: per_tasks.items });
+
+        // 初期化完了を通知
+        setIsInitialized(true);
     }, []);
 
-    return <BrokerContext.Provider value={{ broker: broker.current, tasks, userSetting, updateIsSelected }}>{children}</BrokerContext.Provider>;
+    return <BrokerContext.Provider value={{ broker: broker.current, tasks, userSetting, updateIsSelected, isInitialized }}>{children}</BrokerContext.Provider>;
 }
 
 export function useBroker(): ContextType {
