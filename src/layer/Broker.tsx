@@ -157,220 +157,226 @@ export function BrokerContextProvider({ children }: { children: ReactNode }): Re
     console.log("BrokerContextProvider: render");
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [userSetting, setUserSetting] = useState<UserSetting>(userSettingInitialValue);
-    const broker = createEventBroker<EvTopicPacketMap>();
-    const [pub, sub] = broker;
-    const network = new Network("/api/v1");
+    const broker = useRef(createEventBroker<EvTopicPacketMap>());
     const is_login = useRef(false);
 
-    const task_config = {
-        name: "tasks",
-        storage_key: "vanish-todo-tasks",
-        api_base: "/tasks",
-        schema: tasksSchema,
-        initial_value: [],
-    };
-    const per_tasks = new Persistent<TaskContent>(task_config);
-
-    const setting_config: PersistentContentConfig<Container<UserSettingContent>> = {
-        name: "user_settings",
-        storage_key: "vanish-todo-user-settings",
-        api_base: "/setting",
-        schema: userSettingSchema,
-        initial_value: userSettingInitialValue,
-    };
-    const ls_settings = new LocalStorage<UserSetting>(setting_config);
-
-    sub("create-task", (packet) => {
-        const c: TaskContent = {
-            ...packet.task,
-            completedAt: undefined,
-            isDeleted: false,
-            userId: userSetting.meta.id,
-        };
-        const item = generateItem(c);
-        per_tasks.create(item);
-
-        pub("update-tasks-state", { tasks: per_tasks.items });
-        pub("create-task-on-db", { task: item });
-    });
-
-    sub("read-tasks-from-local-storage", () => {
-        pub("update-tasks-state", { tasks: per_tasks.items });
-    });
-
-    sub("read-user-settings-from-local-storage", () => {
-        pub("update-user-settings-state", { setting: ls_settings.item });
-    });
-
-    sub("edit-user-setting", (packet) => {
-        const updated = touchItem(packet.userSetting);
-        ls_settings.item = updated;
-        pub("update-user-settings-state", { setting: updated });
-        pub("update-user-settings-on-db", { setting: updated });
-    });
-
-    function editTask(updateFn: (item: Task) => Task): (packet: { task: Task }) => void {
-        return (packet) => {
-            const item = touchItem(packet.task);
-            const updated = updateFn(item);
-            const r = per_tasks.update(updated);
-            if (r.status !== "success") {
-                pub("notify-error", { error_info: r.error_info });
-            } else {
-                pub("update-tasks-state", { tasks: per_tasks.items });
-                pub("update-task-on-db", { task: updated });
-            }
-        };
-    }
-
-    sub(
-        "edit-task",
-        editTask((item) => item),
-    );
-
-    sub(
-        "complete-task",
-        editTask((item) => {
-            item.data.completedAt = item.meta.updatedAt;
-            return item;
-        }),
-    );
-
-    sub(
-        "uncomplete-task",
-        editTask((item) => {
-            item.data.completedAt = undefined;
-            return item;
-        }),
-    );
-
-    sub(
-        "delete-task",
-        editTask((item) => {
-            item.data.isDeleted = true;
-            return item;
-        }),
-    );
-
-    sub(
-        "undelete-task",
-        editTask((item) => {
-            item.data.isDeleted = false;
-            return item;
-        }),
-    );
-
-    sub("update-tasks-state", (packet) => {
-        setTasks(packet.tasks.map((t) => ({ task: t, isSelected: false })));
-    });
-
-    sub("update-user-settings-state", (packet) => {
-        setUserSetting(packet.setting);
-    });
-
-    sub("create-task-on-db", async (packet) => {
-        if (!is_login.current) {
-            return;
-        }
-        const result = await network.postJson(task_config.api_base, packet.task, apiVoidSchema);
-        if (result.status !== "success") {
-            pub("notify-error", { error_info: result.error_info });
-        }
-    });
-
-    sub("update-task-on-db", async (packet) => {
-        if (!is_login.current) {
-            return;
-        }
-        const result = await network.putJson(`${task_config.api_base}/${packet.task.meta.id}`, packet.task);
-        if (result.status !== "success") {
-            pub("notify-error", { error_info: result.error_info });
-        }
-    });
-
-    sub("sync-tasks-from-db", async () => {
-        if (!is_login.current) {
-            return;
-        }
-        const result = await network.getJson(task_config.api_base, tasksSchema);
-        if (result.status === "success") {
-            per_tasks.items = result.data;
-            pub("update-tasks-state", { tasks: result.data });
-        } else {
-            pub("notify-error", { error_info: result.error_info });
-        }
-    });
-
-    sub("update-user-settings-on-db", async (packet) => {
-        if (!is_login.current) {
-            return;
-        }
-        const result = await network.putJson(`${setting_config.api_base}/${packet.setting.meta.id}`, packet.setting);
-        if (result.status !== "success") {
-            pub("notify-error", { error_info: result.error_info });
-        }
-    });
-
-    sub("sync-settings-from-db", async (packet) => {
-        if (!is_login.current) {
-            return;
-        }
-        const result = await network.getJson(`${setting_config.api_base}/${packet.user_id}`, userSettingSchema);
-        if (result.status === "success") {
-            ls_settings.item = result.data;
-            pub("update-user-settings-state", { setting: result.data });
-        } else {
-            pub("notify-error", { error_info: result.error_info });
-        }
-    });
-
-    sub("notify-error", (packet) => {
-        console.error(packet.error_info);
-    });
-
-    sub("request-login", async (packet) => {
-        if (is_login.current) {
-            pub("notify-error", {
-                error_info: {
-                    code: "INTERNAL_ERROR",
-                    message: `すでにログインしています。`,
-                },
-            });
-            return;
-        }
-
-        const result = await network.postJson("/login", { email: packet.email }, apiVoidSchema);
-        if (result.status !== "success") {
-            pub("notify-error", { error_info: result.error_info });
-        }
-    });
-
-    sub("auth-token", async (packet) => {
-        const result = await network.postJson("/auth", { token: packet.token }, apiAuthSuccessSchema);
-        if (result.status === "success") {
-            is_login.current = true;
-            pub("auth-success", { user_id: result.data.userId });
-        } else {
-            is_login.current = false;
-            pub("notify-error", { error_info: result.error_info });
-        }
-    });
-
-    sub("auth-success", (packet) => {
-        pub("sync-settings-from-db", { user_id: packet.user_id });
-        pub("sync-tasks-from-db", {});
-    });
-
+ 
     function updateIsSelected(task: SelectableTask, isSelected: boolean): void {
         setTasks((prevTasks) => prevTasks.map((t) => (t.task.meta.id === task.task.meta.id ? { ...t, isSelected } : t)));
     }
 
     useEffect(() => {
+        console.log("BrokerContextProvider: useEffect initial load");
+        const [pub, sub] = broker.current;
+        const network = new Network("/api/v1");
+ 
+        const task_config = {
+            name: "tasks",
+            storage_key: "vanish-todo-tasks",
+            api_base: "/tasks",
+            schema: tasksSchema,
+            initial_value: [],
+        };
+        const per_tasks = new Persistent<TaskContent>(task_config);
+
+        const setting_config: PersistentContentConfig<Container<UserSettingContent>> = {
+            name: "user_settings",
+            storage_key: "vanish-todo-user-settings",
+            api_base: "/setting",
+            schema: userSettingSchema,
+            initial_value: userSettingInitialValue,
+        };
+        const ls_settings = new LocalStorage<UserSetting>(setting_config);
+
+        sub("create-task", (packet) => {
+            const c: TaskContent = {
+                ...packet.task,
+                completedAt: undefined,
+                isDeleted: false,
+                userId: userSetting.meta.id,
+            };
+            const item = generateItem(c);
+            per_tasks.create(item);
+
+            pub("update-tasks-state", { tasks: per_tasks.items });
+            pub("create-task-on-db", { task: item });
+        });
+
+        sub("read-tasks-from-local-storage", () => {
+            pub("update-tasks-state", { tasks: per_tasks.items });
+        });
+
+        sub("read-user-settings-from-local-storage", () => {
+            pub("update-user-settings-state", { setting: ls_settings.item });
+        });
+
+        sub("edit-user-setting", (packet) => {
+            const updated = touchItem(packet.userSetting);
+            ls_settings.item = updated;
+            pub("update-user-settings-state", { setting: updated });
+            pub("update-user-settings-on-db", { setting: updated });
+        });
+
+        function editTask(updateFn: (item: Task) => Task): (packet: { task: Task }) => void {
+            return (packet) => {
+                const item = touchItem(packet.task);
+                const updated = updateFn(item);
+                const r = per_tasks.update(updated);
+                if (r.status !== "success") {
+                    pub("notify-error", { error_info: r.error_info });
+                } else {
+                    pub("update-tasks-state", { tasks: per_tasks.items });
+                    pub("update-task-on-db", { task: updated });
+                }
+            };
+        }
+
+        sub(
+            "edit-task",
+            editTask((item) => item),
+        );
+
+        sub(
+            "complete-task",
+            editTask((item) => {
+                item.data.completedAt = item.meta.updatedAt;
+                return item;
+            }),
+        );
+
+        sub(
+            "uncomplete-task",
+            editTask((item) => {
+                item.data.completedAt = undefined;
+                return item;
+            }),
+        );
+
+        sub(
+            "delete-task",
+            editTask((item) => {
+                item.data.isDeleted = true;
+                return item;
+            }),
+        );
+
+        sub(
+            "undelete-task",
+            editTask((item) => {
+                item.data.isDeleted = false;
+                return item;
+            }),
+        );
+
+        sub("update-tasks-state", (packet) => {
+            setTasks(packet.tasks.map((t) => ({ task: t, isSelected: false })));
+        });
+
+        sub("update-user-settings-state", (packet) => {
+            setUserSetting(packet.setting);
+        });
+
+        sub("create-task-on-db", async (packet) => {
+            if (!is_login.current) {
+                return;
+            }
+            const result = await network.postJson(task_config.api_base, packet.task, apiVoidSchema);
+            if (result.status !== "success") {
+                pub("notify-error", { error_info: result.error_info });
+            }
+        });
+
+        sub("update-task-on-db", async (packet) => {
+            if (!is_login.current) {
+                return;
+            }
+            const result = await network.putJson(`${task_config.api_base}/${packet.task.meta.id}`, packet.task);
+            if (result.status !== "success") {
+                pub("notify-error", { error_info: result.error_info });
+            }
+        });
+
+        sub("sync-tasks-from-db", async () => {
+            if (!is_login.current) {
+                return;
+            }
+            const result = await network.getJson(task_config.api_base, tasksSchema);
+            if (result.status === "success") {
+                per_tasks.items = result.data;
+                pub("update-tasks-state", { tasks: result.data });
+            } else {
+                pub("notify-error", { error_info: result.error_info });
+            }
+        });
+
+        sub("update-user-settings-on-db", async (packet) => {
+            if (!is_login.current) {
+                return;
+            }
+            const result = await network.putJson(`${setting_config.api_base}/${packet.setting.meta.id}`, packet.setting);
+            if (result.status !== "success") {
+                pub("notify-error", { error_info: result.error_info });
+            }
+        });
+
+        sub("sync-settings-from-db", async (packet) => {
+            if (!is_login.current) {
+                return;
+            }
+            const result = await network.getJson(`${setting_config.api_base}/${packet.user_id}`, userSettingSchema);
+            if (result.status === "success") {
+                ls_settings.item = result.data;
+                pub("update-user-settings-state", { setting: result.data });
+            } else {
+                pub("notify-error", { error_info: result.error_info });
+            }
+        });
+
+        sub("notify-error", (packet) => {
+            console.error(packet.error_info);
+        });
+
+        sub("request-login", async (packet) => {
+            if (is_login.current) {
+                pub("notify-error", {
+                    error_info: {
+                        code: "INTERNAL_ERROR",
+                        message: `すでにログインしています。`,
+                    },
+                });
+                return;
+            }
+
+            const result = await network.postJson("/login", { email: packet.email }, apiVoidSchema);
+            if (result.status !== "success") {
+                pub("notify-error", { error_info: result.error_info });
+            }
+        });
+
+        sub("auth-token", async (packet) => {
+            const result = await network.postJson("/auth", { token: packet.token }, apiAuthSuccessSchema);
+            if (result.status === "success") {
+                is_login.current = true;
+                pub("auth-success", { user_id: result.data.userId });
+            } else {
+                is_login.current = false;
+                pub("notify-error", { error_info: result.error_info });
+            }
+        });
+
+        sub("auth-success", (packet) => {
+            pub("sync-settings-from-db", { user_id: packet.user_id });
+            pub("sync-tasks-from-db", {});
+        });
+
+ 
+ 
+ 
         pub("read-user-settings-from-local-storage", {});
         pub("read-tasks-from-local-storage", {});
     }, []);
 
-    return <BrokerContext.Provider value={{ broker, tasks, userSetting, updateIsSelected }}>{children}</BrokerContext.Provider>;
+    return <BrokerContext.Provider value={{ broker: broker.current, tasks, userSetting, updateIsSelected }}>{children}</BrokerContext.Provider>;
 }
 
 export function useBroker(): ContextType {
