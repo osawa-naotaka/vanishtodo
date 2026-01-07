@@ -11,17 +11,17 @@ export function LoginAuth(): JSX.Element {
     const [queryParams] = useSearchParams();
     const token = queryParams.get("token");
 
-    sub("auth-success", () => {
-        navigate("/");
-    });
-
-    sub("notify-error", (packet) => {
-        if (packet.error_info.code === "TOKEN_NOT_FOUND" || packet.error_info.code === "EXPIRED_TOKEN") {
-            navigate("/login");
-        }
-    });
-
     useEffect(() => {
+        sub("auth-success", () => {
+            navigate("/");
+        });
+
+        sub("notify-error", (packet) => {
+            if (packet.error_info.code === "TOKEN_NOT_FOUND" || packet.error_info.code === "EXPIRED_TOKEN") {
+                navigate("/login");
+            }
+        });
+
         if (token) {
             pub("auth-token", { token });
         } else {
