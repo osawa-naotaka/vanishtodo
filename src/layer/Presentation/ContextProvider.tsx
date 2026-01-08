@@ -36,21 +36,19 @@ export type UseUserSettingHooks = {
 export type UseAuthHooks = {
     userId?: string;
     login: (email: string) => void;
-    auth: (token: string) => Promise<string>;
+    auth: (token: string, onSuccess: () => void) => void;
 };
 
 export const Context = createContext<ContextType | null>(null);
 
 export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
-    const persistentLoginInfo = useRef<LocalStorage<LoginInfoContent>>(
-        new LocalStorage<LoginInfoContent>({
-            name: "login_info",
-            api_base: "",
-            storage_key: "vanish-todo-login-info",
-            schema: loginInfoContentSchema,
-            initial_value: {},
-        }),
-    );
+    const lp = new LocalStorage<LoginInfoContent>({
+        name: "login_info",
+        api_base: "/auth",
+        storage_key: "vanish-todo-login-info",
+        schema: loginInfoContentSchema,
+        initial_value: { isLogin: false },
+    });
 
     const n = new Network("/api/v1");
 
@@ -73,7 +71,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
 
     const tp = new Persistent(n, tasks_config);
 
-    const biz = useRef<Business>(new Business(tp, up, n));
+    const biz = useRef<Business>(new Business(tp, up, lp, n));
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [raw_setting, setRawSetting] = useState<UserSetting[]>([]);
     const [userId, setUserId] = useState<string | undefined>(undefined);
@@ -82,30 +80,10 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         setRawSetting(biz.current.userSettings);
 
-        if (persistentLoginInfo.current.item.userId) {
-            setUserId(persistentLoginInfo.current.item.userId);
+        if (biz.current.loginInfo.userId) {
+            setUserId(biz.current.loginInfo.userId);
         }
     }, []);
-
-    useEffect(() => {
-        if (userId) {
-            biz.current.syncUserSetting((e) => {
-                if (e.status === "success") {
-                    setRawSetting(e.data);
-                } else {
-                    console.error(e);
-                }
-            });
-
-            biz.current.syncTask((e) => {
-                if (e.status === "success") {
-                    setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
-                } else {
-                    console.error(e);
-                }
-            });
-        }
-    }, [userId]);
 
     const setting: UserSettingContent =
         raw_setting.length > 0
@@ -196,18 +174,25 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         biz.current.requestLogin(email);
     }
 
-    async function auth(token: string): Promise<string> {
-        const result = await biz.current.authenticate(token);
-        if (result.status === "success") {
-            setUserId(result.data.userId);
-            if (persistentLoginInfo.current) {
-                persistentLoginInfo.current.item = { userId: result.data.userId };
-            }
-            return result.data.userId;
-        } else {
-            console.error(result);
-            throw new Error("Authentication failed");
-        }
+    function auth(token: string, onSuccess: () => void): void {
+        biz.current.authenticate(
+            token,
+            (tasks) => {
+                if (tasks.status === "success") {
+                    setTasks(tasks.data.map((t) => ({ task: t, isSelected: false })));
+                    onSuccess(); // ad-hock. fix it.
+                } else {
+                    console.error(tasks);
+                }
+            },
+            (settings) => {
+                if (settings.status === "success") {
+                    setRawSetting(settings.data);
+                } else {
+                    console.error(settings);
+                }
+            },
+        );
     }
 
     return (

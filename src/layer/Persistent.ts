@@ -84,7 +84,7 @@ export class Persistent<T> extends IPersistent<T> {
         this.m_queue = new AsyncQueue();
     }
 
-    sync(onComplete: OnComplete<Container<T>[]>): void {
+    connect(onComplete: OnComplete<Container<T>[]>): void {
         this.m_login = true;
         this.syncDBandLocalStorage(this.m_storage, this.m_config, onComplete);
     }

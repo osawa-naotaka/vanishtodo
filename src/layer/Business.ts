@@ -1,7 +1,7 @@
 import type {
-    ApiAuthSuccess,
     ApiVoid,
     IPersistent,
+    LoginInfoContent,
     OnComplete,
     OnError,
     Result,
@@ -14,7 +14,7 @@ import type {
 import { apiAuthSuccessSchema, apiVoidSchema } from "../../type/types";
 import { dayDifference } from "../lib/date";
 import type { Network } from "./Network";
-import { generateItem, touchItem } from "./Persistent";
+import { generateItem, type LocalStorage, touchItem } from "./Persistent";
 
 /**
  * ビジネス層インターフェースクラス
@@ -22,16 +22,18 @@ import { generateItem, touchItem } from "./Persistent";
 export class Business {
     private m_per_task: IPersistent<TaskContent>;
     private m_per_setting: IPersistent<UserSettingContent>;
+    private m_per_login: LocalStorage<LoginInfoContent>;
     private m_network: Network;
 
     /**
      * 永続化層をDIしてビジネス層を初期化します
      *
-     * @param {IPersistent} persistent - 永続化層インターフェース(DI)
+     * @param {IPersistent} per_task - 永続化層インターフェース(DI)
      */
-    constructor(persistent: IPersistent<TaskContent>, persistent_setting: IPersistent<UserSettingContent>, network: Network) {
-        this.m_per_task = persistent;
-        this.m_per_setting = persistent_setting;
+    constructor(per_task: IPersistent<TaskContent>, per_setting: IPersistent<UserSettingContent>, per_login: LocalStorage<LoginInfoContent>, network: Network) {
+        this.m_per_task = per_task;
+        this.m_per_setting = per_setting;
+        this.m_per_login = per_login;
         this.m_network = network;
     }
 
@@ -39,12 +41,23 @@ export class Business {
         return this.m_network.postJson("/login", { email }, apiVoidSchema);
     }
 
-    authenticate(token: string): Promise<Result<ApiAuthSuccess>> {
-        return this.m_network.postJson("/auth", { token }, apiAuthSuccessSchema);
-    }
-
-    syncTask(onCompleteTasks: OnComplete<Task[]>): void {
-        this.m_per_task.sync(onCompleteTasks);
+    authenticate(token: string, onCompleteTasks: OnComplete<Task[]>, onCompleteUserSettings: OnComplete<UserSetting[]>): void {
+        this.m_network
+            .postJson("/auth", { token }, apiAuthSuccessSchema)
+            .then((result) => {
+                if (result.status === "success") {
+                    this.m_per_login.item = { isLogin: true, userId: result.data.userId };
+                    this.m_per_setting.connect(onCompleteUserSettings);
+                    this.m_per_task.connect(onCompleteTasks);
+                }
+            })
+            .catch(() => {
+                this.m_per_login.item = { isLogin: false, userId: this.m_per_login.item.userId };
+                this.m_per_task.disconnect();
+                this.m_per_setting.disconnect();
+                onCompleteTasks({ status: "fatal", error_info: { code: "500", message: "Unhandled error" }, data: [] });
+                onCompleteUserSettings({ status: "fatal", error_info: { code: "500", message: "Unhandled error" }, data: [] });
+            });
     }
 
     /**
@@ -58,6 +71,7 @@ export class Business {
             ...data,
             completedAt: undefined,
             isDeleted: false,
+            userId: this.m_per_login.item.userId || undefined,
         };
         const item = generateItem(c);
         this.m_per_task.create(item, (e) => {
@@ -145,8 +159,8 @@ export class Business {
         return this.m_per_setting.items;
     }
 
-    syncUserSetting(onCompleteUserSettings: OnComplete<UserSetting[]>): void {
-        this.m_per_setting.sync(onCompleteUserSettings);
+    get loginInfo(): LoginInfoContent {
+        return this.m_per_login.item;
     }
 
     set(setting: UserSettingContent, onError: OnError): UserSetting[] {

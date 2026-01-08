@@ -166,6 +166,7 @@ export const loginAuthSchema = v.object({
 export type LoginAuth = v.InferOutput<typeof loginAuthSchema>;
 
 export const loginInfoContentSchema = v.object({
+    isLogin: v.boolean(),
     userId: v.optional(idSchema),
 });
 
@@ -270,7 +271,8 @@ export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
 export abstract class IPersistent<T> {
     abstract get items(): Container<T>[];
-    abstract sync(onComplete: OnComplete<Container<T>[]>): void;
+    abstract connect(onComplete: OnComplete<Container<T>[]>): void;
+    abstract disconnect(): void;
     abstract create(item: Container<T>, onError: OnError): void;
     abstract update(item: Container<T>, onError: OnError): void;
 }
