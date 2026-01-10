@@ -1,5 +1,6 @@
 import type {
     ApiVoid,
+    ConnectResult,
     IPersistent,
     LoginInfoContent,
     OnComplete,
@@ -20,8 +21,7 @@ import { generateItem, type LocalStorage, touchItem } from "./Persistent";
  * ビジネス層インターフェースクラス
  */
 export class Business {
-    private m_per_task: IPersistent<TaskContent>;
-    private m_per_setting: IPersistent<UserSettingContent>;
+    private m_persistent: IPersistent<TaskContent, UserSettingContent>;
     private m_per_login: LocalStorage<LoginInfoContent>;
     private m_network: Network;
 
@@ -30,9 +30,8 @@ export class Business {
      *
      * @param {IPersistent} per_task - 永続化層インターフェース(DI)
      */
-    constructor(per_task: IPersistent<TaskContent>, per_setting: IPersistent<UserSettingContent>, per_login: LocalStorage<LoginInfoContent>, network: Network) {
-        this.m_per_task = per_task;
-        this.m_per_setting = per_setting;
+    constructor(persistent: IPersistent<TaskContent, UserSettingContent>, per_login: LocalStorage<LoginInfoContent>, network: Network) {
+        this.m_persistent = persistent;
         this.m_per_login = per_login;
         this.m_network = network;
     }
@@ -41,23 +40,36 @@ export class Business {
         return this.m_network.postJson("/login", { email }, apiVoidSchema);
     }
 
-    authenticate(token: string, onCompleteTasks: OnComplete<Task[]>, onCompleteUserSettings: OnComplete<UserSetting[]>): void {
-        this.m_network
-            .postJson("/auth", { token }, apiAuthSuccessSchema)
-            .then((result) => {
-                if (result.status === "success") {
-                    this.m_per_login.item = { isLogin: true, userId: result.data.userId };
-                    this.m_per_setting.connect(onCompleteUserSettings);
-                    this.m_per_task.connect(onCompleteTasks);
-                }
-            })
-            .catch(() => {
+    async authenticate(token: string, onComplete: OnComplete<ConnectResult<TaskContent, UserSettingContent>>): Promise<void> {
+        try {
+            const result = await this.m_network.postJson("/auth", { token }, apiAuthSuccessSchema);
+            if (result.status === "success") {
+                this.m_per_login.item = { isLogin: true, userId: result.data.userId };
+                this.m_persistent.connect(result.data.userId, onComplete);
+            } else {
                 this.m_per_login.item = { isLogin: false, userId: this.m_per_login.item.userId };
-                this.m_per_task.disconnect();
-                this.m_per_setting.disconnect();
-                onCompleteTasks({ status: "fatal", error_info: { code: "500", message: "Unhandled error" }, data: [] });
-                onCompleteUserSettings({ status: "fatal", error_info: { code: "500", message: "Unhandled error" }, data: [] });
+                this.m_persistent.disconnect();
+                onComplete({
+                    status: result.status,
+                    error_info: result.error_info,
+                    data: {
+                        tasks: this.m_persistent.tasks,
+                        setting: this.m_persistent.setting,
+                    },
+                });
+            }
+        } catch (e) {
+            this.m_per_login.item = { isLogin: false, userId: this.m_per_login.item.userId };
+            this.m_persistent.disconnect();
+            onComplete({
+                status: "fatal",
+                error_info: { code: "500", message: "Unhandled error" },
+                data: {
+                    tasks: this.m_persistent.tasks,
+                    setting: this.m_persistent.setting,
+                },
             });
+        }
     }
 
     /**
@@ -74,12 +86,12 @@ export class Business {
             userId: this.m_per_login.item.userId || undefined,
         };
         const item = generateItem(c);
-        this.m_per_task.create(item, (e) => {
+        this.m_persistent.create(item, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_per_task.items;
+        return this.m_persistent.tasks;
     }
 
     /**
@@ -92,12 +104,12 @@ export class Business {
     complete(item: Task, onError: OnError): Task[] {
         const c = touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
-        this.m_per_task.update(c, (e) => {
+        this.m_persistent.update(c, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_per_task.items;
+        return this.m_persistent.tasks;
     }
 
     /**
@@ -110,73 +122,69 @@ export class Business {
     edit(item: Task, onError: OnError): Task[] {
         const updated = touchItem<TaskContent>(item);
         updated.data = item.data;
-        this.m_per_task.update(updated, (e) => {
+        this.m_persistent.update(updated, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_per_task.items;
+        return this.m_persistent.tasks;
     }
 
     del(item: Task, onError: OnError): Task[] {
         const deleted = touchItem<TaskContent>(item);
         deleted.data.isDeleted = true;
-        this.m_per_task.update(deleted, (e) => {
+        this.m_persistent.update(deleted, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_per_task.items;
+        return this.m_persistent.tasks;
     }
 
     restore(item: Task, onError: OnError): Task[] {
         const restored = touchItem<TaskContent>(item);
         restored.data.completedAt = undefined;
-        this.m_per_task.update(restored, (e) => {
+        this.m_persistent.update(restored, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_per_task.items;
+        return this.m_persistent.tasks;
     }
 
     undelete(item: Task, onError: OnError): Task[] {
         const undeleted = touchItem<TaskContent>(item);
         undeleted.data.isDeleted = false;
-        this.m_per_task.update(undeleted, (e) => {
+        this.m_persistent.update(undeleted, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_per_task.items;
+        return this.m_persistent.tasks;
     }
 
     get tasks(): Task[] {
-        return this.m_per_task.items;
+        return this.m_persistent.tasks;
     }
 
-    get userSettings(): UserSetting[] {
-        return this.m_per_setting.items;
+    get setting(): UserSetting {
+        return this.m_persistent.setting;
     }
 
     get loginInfo(): LoginInfoContent {
         return this.m_per_login.item;
     }
 
-    set(setting: UserSettingContent, onError: OnError): UserSetting[] {
-        if (this.m_per_setting.items.length !== 1) {
-            return [];
-        }
-
-        const existing = this.m_per_setting.items[0];
+    set(setting: UserSettingContent, onError: OnError): UserSetting {
+        const existing = this.m_persistent.setting;
         const updated = touchItem<UserSettingContent>(existing);
         updated.data = setting;
-        this.m_per_setting.update(updated, (e) => {
+        this.m_persistent.updateSetting(updated, (e) => {
             if (e.status !== "success") {
                 onError(e);
             }
         });
-        return this.m_per_setting.items;
+        return this.m_persistent.setting;
     }
 }
 

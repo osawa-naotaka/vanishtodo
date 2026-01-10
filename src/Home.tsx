@@ -20,7 +20,7 @@ export function Home(): JSX.Element {
 
     const filtered_tasks = tasksToday(
         current_date,
-        setting.dailyGoals,
+        setting.data.dailyGoals,
         tasks.map((task) => task.task),
     ).map((task) => ({ task, isSelected: false }));
 

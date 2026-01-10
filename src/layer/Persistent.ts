@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { Container, OnComplete, OnError, Schema } from "../../type/types";
+import type { ConnectResult, Container, OnComplete, OnError, Schema } from "../../type/types";
 import { apiVoidSchema, IPersistent } from "../../type/types";
 import type { Network } from "./Network";
 
@@ -65,43 +65,73 @@ export class LocalStorage<T> {
     }
 }
 
-export class Persistent<T> extends IPersistent<T> {
-    private readonly m_config: PersistentContentConfig<Container<T>[]>;
+export class Persistent<T, S> extends IPersistent<T, S> {
+    private readonly m_tasks_config: PersistentContentConfig<Container<T>[]>;
+    private readonly m_setting_config: PersistentContentConfig<Container<S>>;
     private readonly m_network: Network;
     private readonly m_queue: AsyncQueue;
-    private readonly m_storage: LocalStorage<Container<T>[]>;
+    private readonly m_tasks_storage: LocalStorage<Container<T>[]>;
+    private readonly m_setting_storage: LocalStorage<Container<S>>;
     private m_login = false;
 
-    get items(): Container<T>[] {
-        return this.m_storage.item;
+    get tasks(): Container<T>[] {
+        return this.m_tasks_storage.item;
     }
 
-    constructor(network: Network, config: PersistentContentConfig<Container<T>[]>) {
+    get setting(): Container<S> {
+        return this.m_setting_storage.item;
+    }
+
+    constructor(network: Network, tasks_config: PersistentContentConfig<Container<T>[]>, setting_config: PersistentContentConfig<Container<S>>) {
         super();
         this.m_network = network;
-        this.m_config = config;
-        this.m_storage = new LocalStorage<Container<T>[]>(this.m_config);
+        this.m_tasks_config = tasks_config;
+        this.m_setting_config = setting_config;
+        this.m_tasks_storage = new LocalStorage<Container<T>[]>(this.m_tasks_config);
+        this.m_setting_storage = new LocalStorage<Container<S>>(this.m_setting_config);
         this.m_queue = new AsyncQueue();
     }
 
-    connect(onComplete: OnComplete<Container<T>[]>): void {
+    connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void {
         this.m_login = true;
 
         this.m_queue.enqueue(async () => {
-            const result = await this.m_network.getJson(this.m_config.api_base, this.m_config.schema);
-            if (result.status === "success") {
-                this.m_storage.item = result.data;
-                onComplete({
-                    status: "success",
-                    data: result.data,
-                });
-            } else {
+            const setting_result = await this.m_network.getJson(`${this.m_setting_config.api_base}/${user_id}`, this.m_setting_config.schema);
+            if (setting_result.status !== "success") {
                 onComplete({
                     status: "fatal",
-                    error_info: result.error_info,
-                    data: this.m_storage.item,
+                    error_info: setting_result.error_info,
+                    data: {
+                        tasks: this.m_tasks_storage.item,
+                        setting: this.m_setting_storage.item,
+                    },
                 });
+                return;
             }
+
+            const tasks_result = await this.m_network.getJson(this.m_tasks_config.api_base, this.m_tasks_config.schema);
+            if (tasks_result.status !== "success") {
+                onComplete({
+                    status: "fatal",
+                    error_info: tasks_result.error_info,
+                    data: {
+                        tasks: this.m_tasks_storage.item,
+                        setting: setting_result.data,
+                    },
+                });
+                return;
+            }
+
+            this.m_setting_storage.item = setting_result.data;
+            this.m_tasks_storage.item = tasks_result.data;
+
+            onComplete({
+                status: "success",
+                data: {
+                    tasks: tasks_result.data,
+                    setting: setting_result.data,
+                },
+            });
         });
     }
 
@@ -110,12 +140,12 @@ export class Persistent<T> extends IPersistent<T> {
     }
 
     create(item: Container<T>, onError: OnError): void {
-        const arr = this.m_storage.item;
+        const arr = this.m_tasks_storage.item;
         arr.push(item);
-        this.m_storage.item = arr;
+        this.m_tasks_storage.item = arr;
         if (this.m_login) {
             this.m_queue.enqueue(async () => {
-                const result = await this.m_network.postJson(this.m_config.api_base, item, apiVoidSchema);
+                const result = await this.m_network.postJson(this.m_tasks_config.api_base, item, apiVoidSchema);
                 if (result.status !== "success") {
                     onError(result);
                 }
@@ -124,7 +154,7 @@ export class Persistent<T> extends IPersistent<T> {
     }
 
     update(item: Container<T>, onError: OnError): void {
-        const arr = this.m_storage.item;
+        const arr = this.m_tasks_storage.item;
         const idx = arr.findIndex((x) => x.meta.id === item.meta.id);
         if (idx < 0) {
             onError({
@@ -136,10 +166,22 @@ export class Persistent<T> extends IPersistent<T> {
             });
         }
         arr[idx] = item;
-        this.m_storage.item = arr;
+        this.m_tasks_storage.item = arr;
         if (this.m_login) {
             this.m_queue.enqueue(async () => {
-                const result = await this.m_network.putJson(`${this.m_config.api_base}/${item.meta.id}`, item);
+                const result = await this.m_network.putJson(`${this.m_tasks_config.api_base}/${item.meta.id}`, item);
+                if (result.status !== "success") {
+                    onError(result);
+                }
+            });
+        }
+    }
+
+    updateSetting(value: Container<S>, onError: OnError) {
+        this.m_setting_storage.item = value;
+        if (this.m_login) {
+            this.m_queue.enqueue(async () => {
+                const result = await this.m_network.putJson(`${this.m_setting_config.api_base}/${value.meta.id}`, value);
                 if (result.status !== "success") {
                     onError(result);
                 }

@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { LoginInfoContent, Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
-import { loginInfoContentSchema, tasksSchema, userSettingsSchema } from "../../../type/types";
+import { loginInfoContentSchema, tasksSchema, userSettingSchema } from "../../../type/types";
 import { Business } from "../Business";
 import { Network } from "../Network";
-import { LocalStorage, Persistent } from "../Persistent";
+import { LocalStorage, Persistent, type PersistentContentConfig } from "../Persistent";
 
 export type ContextType = {
     setting: UseUserSettingHooks;
@@ -29,7 +29,7 @@ export type UseTasksHooks = {
 };
 
 export type UseUserSettingHooks = {
-    setting: UserSettingContent;
+    setting: UserSetting;
     set: (setting: UserSettingContent) => void;
 };
 
@@ -40,6 +40,24 @@ export type UseAuthHooks = {
 };
 
 export const Context = createContext<ContextType | null>(null);
+
+const default_use_setting: UserSetting = {
+    meta: {
+        id: "unknown",
+        version: 1,
+        createdAt: "1970-01-01T00:00:00.000Z",
+        updatedAt: "1970-01-01T00:00:00.000Z",
+    },
+    data: {
+        timezone: 9,
+        email: "vanishtodo@lulliecat.com",
+        dailyGoals: {
+            heavy: 1,
+            medium: 2,
+            light: 3,
+        },
+    },
+};
 
 export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
     const lp = new LocalStorage<LoginInfoContent>({
@@ -52,16 +70,15 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
 
     const n = new Network("/api/v1");
 
-    const user_settings_config = {
-        name: "user_settings",
+    const user_setting_config: PersistentContentConfig<UserSetting> = {
+        name: "user_setting",
         api_base: "/setting",
         storage_key: "vanish-todo-user-settings",
-        schema: userSettingsSchema,
-        initial_value: [],
+        schema: userSettingSchema,
+        initial_value: default_use_setting,
     };
-    const up = new Persistent(n, user_settings_config);
 
-    const tasks_config = {
+    const tasks_config: PersistentContentConfig<Task[]> = {
         name: "tasks",
         api_base: "/tasks",
         storage_key: "vanish-todo-tasks",
@@ -69,34 +86,21 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         initial_value: [],
     };
 
-    const tp = new Persistent(n, tasks_config);
+    const p = new Persistent(n, tasks_config, user_setting_config);
 
-    const biz = useRef<Business>(new Business(tp, up, lp, n));
+    const biz = useRef<Business>(new Business(p, lp, n));
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
-    const [raw_setting, setRawSetting] = useState<UserSetting[]>([]);
+    const [setting, setSetting] = useState<UserSetting>(default_use_setting);
     const [userId, setUserId] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
-        setRawSetting(biz.current.userSettings);
+        setSetting(biz.current.setting);
 
         if (biz.current.loginInfo.userId) {
             setUserId(biz.current.loginInfo.userId);
         }
     }, []);
-
-    const setting: UserSettingContent =
-        raw_setting.length > 0
-            ? raw_setting[0].data
-            : {
-                  timezone: 9,
-                  email: "default@example.com",
-                  dailyGoals: {
-                      heavy: 1,
-                      medium: 2,
-                      light: 3,
-                  },
-              };
 
     function edit(task: SelectableTask): void {
         const tasks = biz.current.edit(task.task, (e) => {
@@ -163,11 +167,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         biz.current.set(setting, (e) => {
             console.error(e);
         });
-        if (raw_setting.length === 0) {
-            return;
-        }
-        raw_setting[0].data = setting;
-        setRawSetting([raw_setting[0]]);
+        setSetting(biz.current.setting);
     }
 
     function login(email: string): void {
@@ -175,24 +175,18 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function auth(token: string, onSuccess: () => void): void {
-        biz.current.authenticate(
-            token,
-            (tasks) => {
-                if (tasks.status === "success") {
-                    setTasks(tasks.data.map((t) => ({ task: t, isSelected: false })));
-                    onSuccess(); // ad-hock. fix it.
-                } else {
-                    console.error(tasks);
+        biz.current.authenticate(token, (result) => {
+            if (result.status === "success") {
+                setTasks(result.data.tasks.map((t) => ({ task: t, isSelected: false })));
+                setSetting(result.data.setting);
+                if (biz.current.loginInfo.userId) {
+                    setUserId(biz.current.loginInfo.userId);
                 }
-            },
-            (settings) => {
-                if (settings.status === "success") {
-                    setRawSetting(settings.data);
-                } else {
-                    console.error(settings);
-                }
-            },
-        );
+                onSuccess();
+            } else {
+                console.error(result);
+            }
+        });
     }
 
     return (

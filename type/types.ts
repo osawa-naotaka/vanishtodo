@@ -269,12 +269,20 @@ export type ApiAuthSuccess = v.InferOutput<typeof apiAuthSuccessSchema>;
 
 export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
-export abstract class IPersistent<T> {
-    abstract get items(): Container<T>[];
-    abstract connect(onComplete: OnComplete<Container<T>[]>): void;
+export type ConnectResult<T, S> = {
+    tasks: Container<T>[];
+    setting: Container<S>;
+};
+
+
+export abstract class IPersistent<T, S> {
+    abstract get tasks(): Container<T>[];
+    abstract get setting(): Container<S>;
+    abstract connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void;
     abstract disconnect(): void;
     abstract create(item: Container<T>, onError: OnError): void;
     abstract update(item: Container<T>, onError: OnError): void;
+    abstract updateSetting(value: Container<S>, onError: OnError): void;
 }
 
 // -----------------------------------------------------------------------------
@@ -320,60 +328,3 @@ export const auth_tokens = sqliteTable("auth_tokens", {
     email: text("email").notNull(),
     created_at: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
-
-// -----------------------------------------------------------------------------
-// Durable Object用の型（バックエンド専用）
-// -----------------------------------------------------------------------------
-
-// ログ種別
-type LogType = "TASK_OPERATION" | "LLM_PROCESS";
-
-// タスク操作種別
-type TaskOperationType = "CREATE" | "UPDATE" | "DELETE";
-
-// LLM処理種別
-type LLMProcessType = "ANALYZE" | "COMPLEMENT" | "WEIGHT_ESTIMATION";
-
-// 基底ログエントリ
-interface BaseLogEntry {
-    id: string; // ログID（UUID）
-    timestamp: Date; // 記録日時
-    type: LogType; // ログ種別
-}
-
-// タスク操作ログ
-interface TaskOperationLog extends BaseLogEntry {
-    type: "TASK_OPERATION";
-    taskId: string; // 対象タスクID
-    operation: TaskOperationType; // 操作種別
-    beforeValue?: Partial<Task>; // 変更前の値（UPDATE時）
-    afterValue?: Partial<Task>; // 変更後の値（CREATE/UPDATE時）
-}
-
-// LLM処理ログ
-interface LLMProcessLog extends BaseLogEntry {
-    type: "LLM_PROCESS";
-    processType: LLMProcessType; // 処理種別
-    taskId?: string; // 関連タスクID（オプション）
-    inputText: string; // 入力テキスト
-    outputResult: any; // 出力結果
-    modelName: string; // 使用モデル名
-    tokenCount?: number; // 使用トークン数（オプション）
-    processTimeMs?: number; // 処理時間（ミリ秒、オプション）
-    success: boolean; // 成功フラグ
-    errorMessage?: string; // エラーメッセージ（失敗時）
-}
-
-// 統合ログエントリ型
-type LogEntry = TaskOperationLog | LLMProcessLog;
-
-// ログストレージ
-interface LogStorage {
-    date: string; // YYYY-MM-DD形式の日付
-    logs: LogEntry[]; // ログエントリ配列
-}
-
-// Durable Object全体の状態
-export interface DurableObjectState {
-    logStorage: LogStorage; // ログストレージ
-}
