@@ -222,7 +222,7 @@ export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
 
 
 // API呼び出し成功時のレスポンスボディ型
-export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSettings | ApiAuthSuccess;
+export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSetting | ApiAuthSuccess;
 
 // タスク一覧取得のレスポンスボディ
 export const apiTasksSchema = tasksSchema;
@@ -252,8 +252,8 @@ export interface ApiAnalyze {
 }
 
 // ユーザー設定のレスポンスボディ
-export const apiUserSettingsSchema = userSettingsSchema;
-export type ApiUserSettings = v.InferOutput<typeof apiUserSettingsSchema>;
+export const apiUserSettingSchema = userSettingSchema;
+export type ApiUserSetting = v.InferOutput<typeof apiUserSettingSchema>;
 
 // 認証成功のレスポンスボディ
 export const apiAuthSuccessSchema = v.object({
