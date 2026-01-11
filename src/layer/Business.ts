@@ -82,7 +82,7 @@ export class Business {
      * @param {TaskCreateContent} data 作成するタスクデータ
      * @returns {Task[]} 全タスクリスト
      */
-    create(data: TaskCreate, onError: OnError): Task[] {
+    create(data: TaskCreate): Task[] {
         const c: TaskContent = {
             ...data,
             completedAt: undefined,
@@ -90,11 +90,7 @@ export class Business {
             userId: this.m_per_login.item.userId || undefined,
         };
         const item = generateItem(c);
-        this.m_persistent.create(item, (e) => {
-            if (e.status !== "success") {
-                onError(e);
-            }
-        });
+        this.m_persistent.create(item);
         return this.m_persistent.tasks;
     }
 
@@ -105,14 +101,10 @@ export class Business {
      * @param {Task} item
      * @returns {Task[]} 全タスクリスト
      */
-    complete(item: Task, onError: OnError): Task[] {
+    complete(item: Task): Task[] {
         const c = touchItem<TaskContent>(item);
         c.data.completedAt = c.meta.updatedAt;
-        this.m_persistent.update(c, (e) => {
-            if (e.status !== "success") {
-                onError(e);
-            }
-        });
+        this.m_persistent.update(c);
         return this.m_persistent.tasks;
     }
 
@@ -123,47 +115,31 @@ export class Business {
      * @param {Task} item 編集後のタスク
      * @returns {Task[]} 全タスクリスト
      */
-    edit(item: Task, onError: OnError): Task[] {
+    edit(item: Task): Task[] {
         const updated = touchItem<TaskContent>(item);
         updated.data = item.data;
-        this.m_persistent.update(updated, (e) => {
-            if (e.status !== "success") {
-                onError(e);
-            }
-        });
+        this.m_persistent.update(updated);
         return this.m_persistent.tasks;
     }
 
-    del(item: Task, onError: OnError): Task[] {
+    del(item: Task): Task[] {
         const deleted = touchItem<TaskContent>(item);
         deleted.data.isDeleted = true;
-        this.m_persistent.update(deleted, (e) => {
-            if (e.status !== "success") {
-                onError(e);
-            }
-        });
+        this.m_persistent.update(deleted);
         return this.m_persistent.tasks;
     }
 
-    restore(item: Task, onError: OnError): Task[] {
+    restore(item: Task): Task[] {
         const restored = touchItem<TaskContent>(item);
         restored.data.completedAt = undefined;
-        this.m_persistent.update(restored, (e) => {
-            if (e.status !== "success") {
-                onError(e);
-            }
-        });
+        this.m_persistent.update(restored);
         return this.m_persistent.tasks;
     }
 
-    undelete(item: Task, onError: OnError): Task[] {
+    undelete(item: Task): Task[] {
         const undeleted = touchItem<TaskContent>(item);
         undeleted.data.isDeleted = false;
-        this.m_persistent.update(undeleted, (e) => {
-            if (e.status !== "success") {
-                onError(e);
-            }
-        });
+        this.m_persistent.update(undeleted);
         return this.m_persistent.tasks;
     }
 
@@ -179,15 +155,11 @@ export class Business {
         return this.m_per_login.item;
     }
 
-    set(setting: UserSettingContent, onError: OnError): UserSetting {
+    set(setting: UserSettingContent): UserSetting {
         const existing = this.m_persistent.setting;
         const updated = touchItem<UserSettingContent>(existing);
         updated.data = setting;
-        this.m_persistent.updateSetting(updated, (e) => {
-            if (e.status !== "success") {
-                onError(e);
-            }
-        });
+        this.m_persistent.updateSetting(updated);
         return this.m_persistent.setting;
     }
 }

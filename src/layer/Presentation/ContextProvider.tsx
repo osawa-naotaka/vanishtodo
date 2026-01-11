@@ -104,35 +104,25 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }, []);
 
     function edit(task: SelectableTask): void {
-        const tasks = biz.current.edit(task.task, (e) => {
-            console.error(e);
-        });
+        const tasks = biz.current.edit(task.task);
 
         setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function add(data: TaskCreate): void {
-        const tasks = biz.current.create(data, (e) => {
-            console.error(e);
-        });
-
+        const tasks = biz.current.create(data);
         setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function complete(task: SelectableTask): void {
-        const tasks = biz.current.complete(task.task, (e) => {
-            console.error(e);
-        });
-
+        const tasks = biz.current.complete(task.task);
         setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function restore(tasks: SelectableTask[]): void {
         for (const task of tasks) {
             if (task.isSelected) {
-                biz.current.restore(task.task, (e) => {
-                    console.error(e);
-                });
+                biz.current.restore(task.task);
             }
         }
         setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
@@ -141,9 +131,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     function del(tasks: SelectableTask[]): void {
         for (const task of tasks) {
             if (task.isSelected) {
-                biz.current.del(task.task, (e) => {
-                    console.error(e);
-                });
+                biz.current.del(task.task);
             }
         }
         setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
@@ -152,9 +140,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     function undelete(tasks: SelectableTask[]): void {
         for (const task of tasks) {
             if (task.isSelected) {
-                biz.current.undelete(task.task, (e) => {
-                    console.error(e);
-                });
+                biz.current.undelete(task.task);
             }
         }
         setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
@@ -165,9 +151,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function set(setting: UserSettingContent): void {
-        biz.current.set(setting, (e) => {
-            console.error(e);
-        });
+        biz.current.set(setting);
         setSetting(biz.current.setting);
     }
 

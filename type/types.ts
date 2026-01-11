@@ -30,9 +30,10 @@ export type ResultFail<T> = {
     data?: T;
 }
 
-export type OnComplete<T> = (r: Result<T>) => void;
-export type OnError = OnComplete<ApiVoid>;
+export type Void = Record<never, never>;
 
+export type OnComplete<T> = (r: Result<T>) => void;
+export type OnError = OnComplete<Void>;
 
 // -----------------------------------------------------------------------------
 // DB層関連型
@@ -281,9 +282,9 @@ export abstract class IPersistent<T, S> {
     abstract registerOnError(onError: OnError): void;
     abstract connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void;
     abstract disconnect(): void;
-    abstract create(item: Container<T>, onError: OnError): void;
-    abstract update(item: Container<T>, onError: OnError): void;
-    abstract updateSetting(value: Container<S>, onError: OnError): void;
+    abstract create(item: Container<T>): void;
+    abstract update(item: Container<T>): void;
+    abstract updateSetting(value: Container<S>): void;
 }
 
 // -----------------------------------------------------------------------------

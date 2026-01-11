@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { ApiVoid, ConnectResult, Container, OnComplete, OnError, Result, Schema } from "../../type/types";
+import type { ConnectResult, Container, OnComplete, OnError, Result, Schema, Void } from "../../type/types";
 import { apiVoidSchema, IPersistent } from "../../type/types";
 import type { Network } from "./Network";
 
@@ -12,7 +12,7 @@ export type PersistentContentConfig<T> = {
 };
 
 class AsyncQueue {
-    private readonly m_queue: (() => Promise<Result<ApiVoid>>)[] = [];
+    private readonly m_queue: (() => Promise<Result<Void>>)[] = [];
     private m_is_processing_queue = false;
     private m_onError: OnError;
 
@@ -26,7 +26,7 @@ class AsyncQueue {
         this.m_onError = onError;
     }
 
-    enqueue(fn: () => Promise<Result<ApiVoid>>): void {
+    enqueue(fn: () => Promise<Result<Void>>): void {
         this.m_queue.push(fn);
         this.processQueue();
     }
@@ -113,27 +113,15 @@ export class Persistent<T, S> extends IPersistent<T, S> {
     connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void {
         this.m_login = true;
 
-        const item: () => Promise<Result<ApiVoid>> = async () => {
+        const item: () => Promise<Result<Void>> = async () => {
             const setting_result = await this.m_network.getJson(`${this.m_setting_config.api_base}/${user_id}`, this.m_setting_config.schema);
             if (setting_result.status !== "success") {
-                return {
-                    status: "fatal",
-                    error_info: setting_result.error_info,
-                    data: {
-                        type: "void",
-                    },
-                };
+                return setting_result;
             }
 
             const tasks_result = await this.m_network.getJson(this.m_tasks_config.api_base, this.m_tasks_config.schema);
             if (tasks_result.status !== "success") {
-                return {
-                    status: "fatal",
-                    error_info: tasks_result.error_info,
-                    data: {
-                        type: "void",
-                    },
-                };
+                return tasks_result;
             }
 
             this.m_setting_storage.item = setting_result.data;
@@ -167,7 +155,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
                 if (result.status !== "success") {
                     return result;
                 }
-                return { status: "success", data: { type: "void" } };
+                return { status: "success", data: {} };
             });
         }
     }
@@ -187,7 +175,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
                 if (result.status !== "success") {
                     return result;
                 }
-                return { status: "success", data: { type: "void" } };
+                return { status: "success", data: { } };
             });
         }
     }
@@ -200,7 +188,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
                 if (result.status !== "success") {
                     return result;
                 }
-                return { status: "success", data: { type: "void" } };
+                return { status: "success", data: { } };
             });
         }
     }
