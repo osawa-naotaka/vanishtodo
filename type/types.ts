@@ -278,6 +278,7 @@ export type ConnectResult<T, S> = {
 export abstract class IPersistent<T, S> {
     abstract get tasks(): Container<T>[];
     abstract get setting(): Container<S>;
+    abstract registerOnError(onError: OnError): void;
     abstract connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void;
     abstract disconnect(): void;
     abstract create(item: Container<T>, onError: OnError): void;

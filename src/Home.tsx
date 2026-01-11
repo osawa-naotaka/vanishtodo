@@ -16,6 +16,7 @@ export function Home(): JSX.Element {
         setting: { setting },
         tasks: { tasks, add, edit, complete },
         auth: { userId },
+        registerOnError,
     } = useBiz();
 
     const filtered_tasks = tasksToday(
@@ -23,6 +24,8 @@ export function Home(): JSX.Element {
         setting.data.dailyGoals,
         tasks.map((task) => task.task),
     ).map((task) => ({ task, isSelected: false }));
+
+    registerOnError((e) => { console.error(e); });
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>

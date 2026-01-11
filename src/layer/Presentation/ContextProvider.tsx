@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import type { LoginInfoContent, Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
+import type { LoginInfoContent, OnError, Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
 import { loginInfoContentSchema, tasksSchema, userSettingSchema } from "../../../type/types";
 import { Business } from "../Business";
 import { Network } from "../Network";
@@ -10,6 +10,7 @@ export type ContextType = {
     setting: UseUserSettingHooks;
     tasks: UseTasksHooks;
     auth: UseAuthHooks;
+    registerOnError: (onError: OnError) => void;
 };
 
 export type SelectableTask = {
@@ -86,9 +87,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         initial_value: [],
     };
 
-    const p = new Persistent(n, tasks_config, user_setting_config, (e) => {
-        console.error(e);
-    });
+    const p = new Persistent(n, tasks_config, user_setting_config);
 
     const biz = useRef<Business>(new Business(p, lp, n));
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
@@ -191,9 +190,18 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         });
     }
 
+    function registerOnError(onError: OnError): void {
+        biz.current.registerOnError(onError);
+    }
+
     return (
         <Context.Provider
-            value={{ setting: { setting, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select }, auth: { login, auth, userId } }}
+            value={{
+                setting: { setting, set },
+                tasks: { tasks, edit, add, complete, restore, del, undelete, select },
+                auth: { login, auth, userId },
+                registerOnError,
+            }}
         >
             {children}
         </Context.Provider>

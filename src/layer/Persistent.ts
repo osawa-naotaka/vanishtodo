@@ -14,9 +14,15 @@ export type PersistentContentConfig<T> = {
 class AsyncQueue {
     private readonly m_queue: (() => Promise<Result<ApiVoid>>)[] = [];
     private m_is_processing_queue = false;
-    private readonly m_onError: OnError;
+    private m_onError: OnError;
 
-    constructor(onError: OnError) {
+    constructor() {
+        this.m_onError = (e) => {
+            console.error(e);
+        };
+    }
+
+    registerOnError(onError: OnError): void {
         this.m_onError = onError;
     }
 
@@ -90,19 +96,18 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         return this.m_setting_storage.item;
     }
 
-    constructor(
-        network: Network,
-        tasks_config: PersistentContentConfig<Container<T>[]>,
-        setting_config: PersistentContentConfig<Container<S>>,
-        onError: OnError,
-    ) {
+    constructor(network: Network, tasks_config: PersistentContentConfig<Container<T>[]>, setting_config: PersistentContentConfig<Container<S>>) {
         super();
         this.m_network = network;
         this.m_tasks_config = tasks_config;
         this.m_setting_config = setting_config;
         this.m_tasks_storage = new LocalStorage<Container<T>[]>(this.m_tasks_config);
         this.m_setting_storage = new LocalStorage<Container<S>>(this.m_setting_config);
-        this.m_queue = new AsyncQueue(onError);
+        this.m_queue = new AsyncQueue();
+    }
+
+    registerOnError(onError: OnError): void {
+        this.m_queue.registerOnError(onError);
     }
 
     connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void {

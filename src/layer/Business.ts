@@ -72,6 +72,10 @@ export class Business {
         }
     }
 
+    registerOnError(onError: OnError): void {
+        this.m_persistent.registerOnError(onError);
+    }
+
     /**
      * タスクを作成します
      *
