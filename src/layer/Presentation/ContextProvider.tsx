@@ -86,7 +86,9 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         initial_value: [],
     };
 
-    const p = new Persistent(n, tasks_config, user_setting_config);
+    const p = new Persistent(n, tasks_config, user_setting_config, (e) => {
+        console.error(e);
+    });
 
     const biz = useRef<Business>(new Business(p, lp, n));
     const [tasks, setTasks] = useState<SelectableTask[]>([]);

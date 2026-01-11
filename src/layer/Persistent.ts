@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { ConnectResult, Container, OnComplete, OnError, Schema } from "../../type/types";
+import type { ApiVoid, ConnectResult, Container, OnComplete, OnError, Result, Schema } from "../../type/types";
 import { apiVoidSchema, IPersistent } from "../../type/types";
 import type { Network } from "./Network";
 
@@ -12,10 +12,15 @@ export type PersistentContentConfig<T> = {
 };
 
 class AsyncQueue {
-    private readonly m_queue: (() => Promise<void>)[] = [];
+    private readonly m_queue: (() => Promise<Result<ApiVoid>>)[] = [];
     private m_is_processing_queue = false;
+    private readonly m_onError: OnError;
 
-    enqueue(fn: () => Promise<void>): void {
+    constructor(onError: OnError) {
+        this.m_onError = onError;
+    }
+
+    enqueue(fn: () => Promise<Result<ApiVoid>>): void {
         this.m_queue.push(fn);
         this.processQueue();
     }
@@ -27,7 +32,10 @@ class AsyncQueue {
                 while (this.m_queue.length > 0) {
                     const fn = this.m_queue.shift();
                     if (fn) {
-                        await fn();
+                        const result = await fn();
+                        if (result.status !== "success") {
+                            this.m_onError(result);
+                        }
                     }
                 }
                 this.m_is_processing_queue = false;
@@ -82,44 +90,45 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         return this.m_setting_storage.item;
     }
 
-    constructor(network: Network, tasks_config: PersistentContentConfig<Container<T>[]>, setting_config: PersistentContentConfig<Container<S>>) {
+    constructor(
+        network: Network,
+        tasks_config: PersistentContentConfig<Container<T>[]>,
+        setting_config: PersistentContentConfig<Container<S>>,
+        onError: OnError,
+    ) {
         super();
         this.m_network = network;
         this.m_tasks_config = tasks_config;
         this.m_setting_config = setting_config;
         this.m_tasks_storage = new LocalStorage<Container<T>[]>(this.m_tasks_config);
         this.m_setting_storage = new LocalStorage<Container<S>>(this.m_setting_config);
-        this.m_queue = new AsyncQueue();
+        this.m_queue = new AsyncQueue(onError);
     }
 
     connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void {
         this.m_login = true;
 
-        this.m_queue.enqueue(async () => {
+        const item: () => Promise<Result<ApiVoid>> = async () => {
             const setting_result = await this.m_network.getJson(`${this.m_setting_config.api_base}/${user_id}`, this.m_setting_config.schema);
             if (setting_result.status !== "success") {
-                onComplete({
+                return {
                     status: "fatal",
                     error_info: setting_result.error_info,
                     data: {
-                        tasks: this.m_tasks_storage.item,
-                        setting: this.m_setting_storage.item,
+                        type: "void",
                     },
-                });
-                return;
+                };
             }
 
             const tasks_result = await this.m_network.getJson(this.m_tasks_config.api_base, this.m_tasks_config.schema);
             if (tasks_result.status !== "success") {
-                onComplete({
+                return {
                     status: "fatal",
                     error_info: tasks_result.error_info,
                     data: {
-                        tasks: this.m_tasks_storage.item,
-                        setting: setting_result.data,
+                        type: "void",
                     },
-                });
-                return;
+                };
             }
 
             this.m_setting_storage.item = setting_result.data;
@@ -132,14 +141,18 @@ export class Persistent<T, S> extends IPersistent<T, S> {
                     setting: setting_result.data,
                 },
             });
-        });
+
+            return { status: "success", data: { type: "void" } };
+        };
+
+        this.m_queue.enqueue(item);
     }
 
     disconnect(): void {
         this.m_login = false;
     }
 
-    create(item: Container<T>, onError: OnError): void {
+    create(item: Container<T>): void {
         const arr = this.m_tasks_storage.item;
         arr.push(item);
         this.m_tasks_storage.item = arr;
@@ -147,23 +160,19 @@ export class Persistent<T, S> extends IPersistent<T, S> {
             this.m_queue.enqueue(async () => {
                 const result = await this.m_network.postJson(this.m_tasks_config.api_base, item, apiVoidSchema);
                 if (result.status !== "success") {
-                    onError(result);
+                    return result;
                 }
+                return { status: "success", data: { type: "void" } };
             });
         }
     }
 
-    update(item: Container<T>, onError: OnError): void {
+    update(item: Container<T>): void {
         const arr = this.m_tasks_storage.item;
         const idx = arr.findIndex((x) => x.meta.id === item.meta.id);
         if (idx < 0) {
-            onError({
-                status: "fatal",
-                error_info: {
-                    code: "INTERNAL_ERROR",
-                    message: `更新時にIDが見つかりません`,
-                },
-            });
+            console.error(`Persistent: failed to update item. id ${item.meta.id} not found.`);
+            return;
         }
         arr[idx] = item;
         this.m_tasks_storage.item = arr;
@@ -171,20 +180,22 @@ export class Persistent<T, S> extends IPersistent<T, S> {
             this.m_queue.enqueue(async () => {
                 const result = await this.m_network.putJson(`${this.m_tasks_config.api_base}/${item.meta.id}`, item);
                 if (result.status !== "success") {
-                    onError(result);
+                    return result;
                 }
+                return { status: "success", data: { type: "void" } };
             });
         }
     }
 
-    updateSetting(value: Container<S>, onError: OnError) {
+    updateSetting(value: Container<S>) {
         this.m_setting_storage.item = value;
         if (this.m_login) {
             this.m_queue.enqueue(async () => {
                 const result = await this.m_network.putJson(`${this.m_setting_config.api_base}/${value.meta.id}`, value);
                 if (result.status !== "success") {
-                    onError(result);
+                    return result;
                 }
+                return { status: "success", data: { type: "void" } };
             });
         }
     }

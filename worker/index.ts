@@ -238,7 +238,10 @@ app.post("/api/v1/tasks", async (c) => {
 app.get("/api/v1/setting/:id", async (c) => {
     try {
         const db = drizzle(c.env.DB);
-        const result = await db.select().from(users).where(eq(users.id, c.req.param("id")));
+        const result = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, c.req.param("id")));
 
         if (result.length === 0) {
             return errorResponse(400, {
