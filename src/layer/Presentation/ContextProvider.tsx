@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import type { LoginInfoContent, OnError, Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
-import { loginInfoContentSchema, tasksSchema, userSettingSchema } from "../../../type/types";
+import type { OnError, Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
+import { tasksSchema, userSettingSchema } from "../../../type/types";
 import { Business } from "../Business";
 import { Network } from "../Network";
-import { LocalStorage, Persistent, type PersistentContentConfig } from "../Persistent";
+import { Persistent, type PersistentContentConfig } from "../Persistent";
 
 export type ContextType = {
     setting: UseUserSettingHooks;
@@ -35,7 +35,6 @@ export type UseUserSettingHooks = {
 };
 
 export type UseAuthHooks = {
-    userId?: string;
     login: (email: string) => void;
     auth: (token: string, onSuccess: () => void) => void;
 };
@@ -61,14 +60,6 @@ const default_use_setting: UserSetting = {
 };
 
 export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
-    const lp = new LocalStorage<LoginInfoContent>({
-        name: "login_info",
-        api_base: "/auth",
-        storage_key: "vanish-todo-login-info",
-        schema: loginInfoContentSchema,
-        initial_value: { isLogin: false },
-    });
-
     const n = new Network("/api/v1");
 
     const user_setting_config: PersistentContentConfig<UserSetting> = {
@@ -89,18 +80,13 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
 
     const p = new Persistent(n, tasks_config, user_setting_config);
 
-    const biz = useRef<Business>(new Business(p, lp, n));
+    const biz = useRef<Business>(new Business(p));
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
     const [setting, setSetting] = useState<UserSetting>(default_use_setting);
-    const [userId, setUserId] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
         setSetting(biz.current.setting);
-
-        if (biz.current.loginInfo.userId) {
-            setUserId(biz.current.loginInfo.userId);
-        }
     }, []);
 
     function edit(task: SelectableTask): void {
@@ -164,9 +150,6 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
             if (result.status === "success") {
                 setTasks(result.data.tasks.map((t) => ({ task: t, isSelected: false })));
                 setSetting(result.data.setting);
-                if (biz.current.loginInfo.userId) {
-                    setUserId(biz.current.loginInfo.userId);
-                }
                 onSuccess();
             } else {
                 console.error(result);
@@ -183,7 +166,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
             value={{
                 setting: { setting, set },
                 tasks: { tasks, edit, add, complete, restore, del, undelete, select },
-                auth: { login, auth, userId },
+                auth: { login, auth },
                 registerOnError,
             }}
         >

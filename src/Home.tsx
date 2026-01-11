@@ -15,7 +15,6 @@ export function Home(): JSX.Element {
     const {
         setting: { setting },
         tasks: { tasks, add, edit, complete },
-        auth: { userId },
         registerOnError,
     } = useBiz();
 
@@ -25,12 +24,14 @@ export function Home(): JSX.Element {
         tasks.map((task) => task.task),
     ).map((task) => ({ task, isSelected: false }));
 
-    registerOnError((e) => { console.error(e); });
+    registerOnError((e) => {
+        console.error(e);
+    });
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>
             <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-            <TaskInput handleAddTask={add} userId={userId} />
+            <TaskInput handleAddTask={add} />
             <TaskFilter filter={filter} setFilter={setFilter} />
             <EditableTaskList tasks={filtered_tasks} current_date={current_date} onEditTask={edit} onCompleteTask={complete} />
         </Box>

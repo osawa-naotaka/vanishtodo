@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import type { ConnectResult, Container, OnComplete, OnError, Result, Schema, Void } from "../../type/types";
-import { apiVoidSchema, IPersistent } from "../../type/types";
+import { apiAuthSuccessSchema, apiVoidSchema, IPersistent } from "../../type/types";
 import type { Network } from "./Network";
 
 export type PersistentContentConfig<T> = {
@@ -11,8 +11,10 @@ export type PersistentContentConfig<T> = {
     initial_value: T;
 };
 
+type QueueEntry = () => Promise<Result<Void>>;
+
 class AsyncQueue {
-    private readonly m_queue: (() => Promise<Result<Void>>)[] = [];
+    private readonly m_queue: QueueEntry[] = [];
     private m_is_processing_queue = false;
     private m_onError: OnError;
 
@@ -26,7 +28,7 @@ class AsyncQueue {
         this.m_onError = onError;
     }
 
-    enqueue(fn: () => Promise<Result<Void>>): void {
+    enqueue(fn: QueueEntry): void {
         this.m_queue.push(fn);
         this.processQueue();
     }
@@ -87,6 +89,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
     private readonly m_tasks_storage: LocalStorage<Container<T>[]>;
     private readonly m_setting_storage: LocalStorage<Container<S>>;
     private m_login = false;
+    private m_user_id: string = "default";
 
     get tasks(): Container<T>[] {
         return this.m_tasks_storage.item;
@@ -94,6 +97,14 @@ export class Persistent<T, S> extends IPersistent<T, S> {
 
     get setting(): Container<S> {
         return this.m_setting_storage.item;
+    }
+
+    get isLogin(): boolean {
+        return this.m_login;
+    }
+
+    get userId(): string {
+        return this.m_user_id;
     }
 
     constructor(network: Network, tasks_config: PersistentContentConfig<Container<T>[]>, setting_config: PersistentContentConfig<Container<S>>) {
@@ -110,11 +121,24 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         this.m_queue.registerOnError(onError);
     }
 
-    connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void {
-        this.m_login = true;
+    requestLogin(email: string): void {
+        const item: QueueEntry = () => {
+            return this.m_network.postJson("/login", { email }, apiVoidSchema);
+        };
+        this.m_queue.enqueue(item);
+    }
 
-        const item: () => Promise<Result<Void>> = async () => {
-            const setting_result = await this.m_network.getJson(`${this.m_setting_config.api_base}/${user_id}`, this.m_setting_config.schema);
+    connect(token: string, onComplete: OnComplete<ConnectResult<T, S>>): void {
+        const item: QueueEntry = async () => {
+            const result = await this.m_network.postJson("/auth", { token }, apiAuthSuccessSchema);
+            if (result.status !== "success") {
+                this.m_login = false;
+                return result;
+            }
+            this.m_login = true;
+            this.m_user_id = result.data.userId;
+
+            const setting_result = await this.m_network.getJson(`${this.m_setting_config.api_base}/${this.m_user_id}`, this.m_setting_config.schema);
             if (setting_result.status !== "success") {
                 return setting_result;
             }
@@ -150,12 +174,8 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         arr.push(item);
         this.m_tasks_storage.item = arr;
         if (this.m_login) {
-            this.m_queue.enqueue(async () => {
-                const result = await this.m_network.postJson(this.m_tasks_config.api_base, item, apiVoidSchema);
-                if (result.status !== "success") {
-                    return result;
-                }
-                return { status: "success", data: {} };
+            this.m_queue.enqueue(() => {
+                return this.m_network.postJson(this.m_tasks_config.api_base, item, apiVoidSchema);
             });
         }
     }
@@ -170,12 +190,8 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         arr[idx] = item;
         this.m_tasks_storage.item = arr;
         if (this.m_login) {
-            this.m_queue.enqueue(async () => {
-                const result = await this.m_network.putJson(`${this.m_tasks_config.api_base}/${item.meta.id}`, item);
-                if (result.status !== "success") {
-                    return result;
-                }
-                return { status: "success", data: { } };
+            this.m_queue.enqueue(() => {
+                return this.m_network.putJson(`${this.m_tasks_config.api_base}/${item.meta.id}`, item);
             });
         }
     }
@@ -183,12 +199,8 @@ export class Persistent<T, S> extends IPersistent<T, S> {
     updateSetting(value: Container<S>) {
         this.m_setting_storage.item = value;
         if (this.m_login) {
-            this.m_queue.enqueue(async () => {
-                const result = await this.m_network.putJson(`${this.m_setting_config.api_base}/${value.meta.id}`, value);
-                if (result.status !== "success") {
-                    return result;
-                }
-                return { status: "success", data: { } };
+            this.m_queue.enqueue(() => {
+                return this.m_network.putJson(`${this.m_setting_config.api_base}/${value.meta.id}`, value);
             });
         }
     }

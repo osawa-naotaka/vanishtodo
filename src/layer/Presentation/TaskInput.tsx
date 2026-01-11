@@ -6,14 +6,13 @@ import * as v from "valibot";
 import type { TaskCreate } from "../../../type/types";
 
 export type TaskInputProps = {
-    userId: string | undefined;
     handleAddTask: (data: TaskCreate) => void;
 };
 
 export const taskWeightSchema = v.picklist(["light", "medium", "heavy", "due-date"]);
 export type TaskWeight = v.InferOutput<typeof taskWeightSchema>;
 
-export function TaskInput({ userId, handleAddTask }: TaskInputProps): React.ReactElement {
+export function TaskInput({ handleAddTask }: TaskInputProps): React.ReactElement {
     const [taskTitle, setTaskTitle] = useState("");
     const [taskWeight, setTaskWeight] = useState<TaskWeight>("light");
     const [taskDueDate, setTaskDueDate] = useState<Dayjs>(dayjs());
@@ -21,9 +20,9 @@ export function TaskInput({ userId, handleAddTask }: TaskInputProps): React.Reac
     const onAddTask = () => {
         if (taskTitle.trim()) {
             if (taskWeight === "due-date") {
-                handleAddTask({ userId, title: taskTitle, dueDate: taskDueDate.toISOString() });
+                handleAddTask({ title: taskTitle, dueDate: taskDueDate.toISOString() });
             } else {
-                handleAddTask({ userId, title: taskTitle, weight: taskWeight });
+                handleAddTask({ title: taskTitle, weight: taskWeight });
             }
             setTaskTitle("");
         }

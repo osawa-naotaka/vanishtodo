@@ -101,14 +101,6 @@ export type Tasks = v.InferOutput<typeof tasksSchema>;
 // タスク関連型
 //
 
-// タスク削除入力（クライアント → サーバー）
-export const taskDeleteContentSchema = v.object({
-    version: versionSchema, 
-});
-
-export type TaskDeleteContent = v.InferOutput<typeof taskDeleteContentSchema>;
-
-
 // LLM解析結果の個別タスク入力
 export const taskCreateSchema = v.object({
     userId: v.optional(idSchema),
@@ -165,19 +157,6 @@ export const loginAuthSchema = v.object({
 });
 
 export type LoginAuth = v.InferOutput<typeof loginAuthSchema>;
-
-export const loginInfoContentSchema = v.object({
-    isLogin: v.boolean(),
-    userId: v.optional(idSchema),
-});
-
-export const loginInfoSchema = v.object({
-    meta: ContainerMetaSchema,
-    data: loginInfoContentSchema,
-});
-
-export type LoginInfoContent = v.InferOutput<typeof loginInfoContentSchema>;
-export type LoginInfo = v.InferOutput<typeof loginInfoSchema>;
 
 // -----------------------------------------------------------------------------
 // ネットワーク層関連型
@@ -279,8 +258,11 @@ export type ConnectResult<T, S> = {
 export abstract class IPersistent<T, S> {
     abstract get tasks(): Container<T>[];
     abstract get setting(): Container<S>;
+    abstract get isLogin(): boolean;
+    abstract get userId(): string;
     abstract registerOnError(onError: OnError): void;
-    abstract connect(user_id: string, onComplete: OnComplete<ConnectResult<T, S>>): void;
+    abstract requestLogin(email: string): void;
+    abstract connect(token: string, onComplete: OnComplete<ConnectResult<T, S>>): void;
     abstract disconnect(): void;
     abstract create(item: Container<T>): void;
     abstract update(item: Container<T>): void;
