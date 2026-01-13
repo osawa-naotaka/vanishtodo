@@ -1,8 +1,9 @@
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
+import * as jose from "jose";
 // import { Resend } from "resend";
 import * as v from "valibot";
 import type { ApiAuthSuccess, ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
@@ -12,6 +13,7 @@ type Bindings = {
     DB: D1Database;
     AI: Ai;
     RESENDN_API_KEY: string;
+    SECRET_KEY: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -112,18 +114,44 @@ function userToDbUser(user: UserSetting): typeof users.$inferInsert {
     };
 }
 
+async function auth(c: Context<{ Bindings: Bindings }>): Promise<string | null> {
+    const jwt = getCookie(c, "vanishtodo_jwt");
+    if (!jwt) {
+        return null;
+    }
+
+    const secret = new TextEncoder().encode(c.env.SECRET_KEY);
+    const { payload } = await jose.jwtVerify(jwt, secret);
+    const userId = payload.userId as string;
+
+    if (!userId) {
+        return null;
+    }
+
+    return userId;
+}
+
+async function setJwtCookie(c: Context<{ Bindings: Bindings }>, userId: string): Promise<void> {
+    const secret = new TextEncoder().encode(c.env.SECRET_KEY);
+    const alg = "HS256";
+    const jwt = await new jose.SignJWT({ userId }).setProtectedHeader({ alg }).setIssuedAt().setExpirationTime("30d").sign(secret);
+
+    setCookie(c, "vanishtodo_jwt", jwt, { httpOnly: true, secure: true, sameSite: "Lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+}
+
 // ========================================
 // API-001: タスク一覧取得
 // ========================================
 app.get("/api/v1/tasks", async (c) => {
     try {
-        const userId = getCookie(c, "vanishtodo_user_id");
+        const userId = await auth(c);
         if (!userId) {
             return errorResponse(401, {
                 code: "UNAUTHORIZED",
                 message: "ユーザーが認証されていません",
             });
         }
+
         const db = drizzle(c.env.DB);
         const result = await db.select().from(tasks).where(eq(tasks.user_id, userId)).orderBy(desc(tasks.created_at));
 
@@ -148,13 +176,14 @@ app.get("/api/v1/tasks", async (c) => {
 // ========================================
 app.put("/api/v1/tasks/:id", async (c) => {
     try {
-        const userId = getCookie(c, "vanishtodo_user_id");
+        const userId = await auth(c);
         if (!userId) {
             return errorResponse(401, {
                 code: "UNAUTHORIZED",
                 message: "ユーザーが認証されていません",
             });
         }
+
         const taskId = c.req.param("id");
         const requestBody = await c.req.json();
 
@@ -240,7 +269,7 @@ app.put("/api/v1/tasks/:id", async (c) => {
 // ========================================
 app.post("/api/v1/tasks", async (c) => {
     try {
-        const userId = getCookie(c, "vanishtodo_user_id");
+        const userId = await auth(c);
         if (!userId) {
             return errorResponse(401, {
                 code: "UNAUTHORIZED",
@@ -292,7 +321,7 @@ app.post("/api/v1/tasks", async (c) => {
 // ========================================
 app.get("/api/v1/setting/:id", async (c) => {
     try {
-        const userId = getCookie(c, "vanishtodo_user_id");
+        const userId = await auth(c);
         if (!userId) {
             return errorResponse(401, {
                 code: "UNAUTHORIZED",
@@ -348,7 +377,7 @@ app.get("/api/v1/setting/:id", async (c) => {
 // ========================================
 app.put("/api/v1/setting/:id", async (c) => {
     try {
-        const userId = getCookie(c, "vanishtodo_user_id");
+        const userId = await auth(c);
         if (!userId) {
             return errorResponse(401, {
                 code: "UNAUTHORIZED",
@@ -542,7 +571,7 @@ app.post("/api/v1/auth", async (c) => {
                 userId: id,
             };
 
-            setCookie(c, "vanishtodo_user_id", id, { httpOnly: true, secure: true, sameSite: "Lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+            await setJwtCookie(c, id);
             return successResponse(response);
         } else if (user.length === 1) {
             const response: ApiAuthSuccess = {
@@ -550,7 +579,7 @@ app.post("/api/v1/auth", async (c) => {
                 userId: user[0].id,
             };
 
-            setCookie(c, "vanishtodo_user_id", user[0].id, { httpOnly: true, secure: true, sameSite: "Lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+            await setJwtCookie(c, user[0].id);
             return successResponse(response);
         }
 
