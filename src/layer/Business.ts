@@ -25,8 +25,8 @@ export class Business {
         this.m_persistent.connect(token, onComplete);
     }
 
-    logout(): void {
-        this.m_persistent.disconnect();
+    logout(onComplete: OnComplete<ConnectResult<TaskContent, UserSettingContent>>): void {
+        this.m_persistent.disconnect(onComplete);
     }
 
     registerOnError(onError: OnError): void {
@@ -132,9 +132,9 @@ type LimitOptions = {
 };
 
 export function tasksToday(today: string, opt: LimitOptions, tasks: Task[]): Task[] {
-    const pre = process(sortByUpdatedDate("asc")(tasks), or(isIncomplete, isCompleteToday(today)));
+    const pre = process(sortByCreatedDate("asc")(tasks), or(isIncomplete, isCompleteToday(today)));
     const limited = limit(opt)(pre);
-    return process(sortByUpdatedDate("asc")(limited), isIncomplete);
+    return process(sortByCreatedDate("asc")(limited), isIncomplete);
 }
 
 export function makeFilter(...f: ((task: Task) => boolean)[]): (task: Task) => boolean {
@@ -158,11 +158,11 @@ export function limit(opt: LimitOptions): (tasks: Task[]) => Task[] {
     };
 }
 
-export function sortByUpdatedDate(opt: "asc" | "desc"): (tasks: Task[]) => Task[] {
+export function sortByCreatedDate(opt: "asc" | "desc"): (tasks: Task[]) => Task[] {
     return (tasks: Task[]) => {
         return tasks.sort((a, b) => {
-            const da = new Date(a.meta.updatedAt);
-            const db = new Date(b.meta.updatedAt);
+            const da = new Date(a.meta.createdAt);
+            const db = new Date(b.meta.createdAt);
             if (opt === "asc") {
                 return db.getTime() - da.getTime();
             } else {

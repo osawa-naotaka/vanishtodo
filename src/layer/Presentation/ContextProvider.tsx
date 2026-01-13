@@ -36,7 +36,7 @@ export type UseUserSettingHooks = {
 
 export type UseAuthHooks = {
     login: (email: string) => void;
-    logout: () => void;
+    logout: (onSuccess: () => void) => void;
     isLogin: () => boolean;
     auth: (token: string, onSuccess: () => void) => void;
 };
@@ -147,8 +147,16 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         biz.current.requestLogin(email);
     }
 
-    function logout(): void {
-        biz.current.logout();
+    function logout(onSuccess: () => void): void {
+        biz.current.logout((result) => {
+            if (result.status === "success") {
+                setTasks([]);
+                setSetting(default_use_setting);
+                onSuccess();
+            } else {
+                console.error(result);
+            }
+        });
     }
 
     function isLogin(): boolean {

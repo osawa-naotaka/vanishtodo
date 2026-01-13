@@ -1,12 +1,12 @@
-import { desc, eq, and } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 // import { Resend } from "resend";
 import * as v from "valibot";
 import type { ApiAuthSuccess, ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
 import { auth_tokens, loginAuthSchema, loginRequestSchema, taskSchema, tasks, userSettingSchema, users } from "../type/types";
-import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 type Bindings = {
     DB: D1Database;
@@ -190,7 +190,10 @@ app.put("/api/v1/tasks/:id", async (c) => {
         const db = drizzle(c.env.DB);
 
         // 既存タスクの取得
-        const existingTask = await db.select().from(tasks).where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)));
+        const existingTask = await db
+            .select()
+            .from(tasks)
+            .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)));
 
         if (existingTask.length === 0) {
             return errorResponse(400, {

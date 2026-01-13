@@ -81,6 +81,11 @@ export class LocalStorage<T> {
     }
 }
 
+type LoginStatus = {
+    isLogin: boolean;
+    userId: string;
+};
+
 export class Persistent<T, S> extends IPersistent<T, S> {
     private readonly m_tasks_config: PersistentContentConfig<Container<T>[]>;
     private readonly m_setting_config: PersistentContentConfig<Container<S>>;
@@ -88,8 +93,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
     private readonly m_queue: AsyncQueue;
     private readonly m_tasks_storage: LocalStorage<Container<T>[]>;
     private readonly m_setting_storage: LocalStorage<Container<S>>;
-    private m_login = false;
-    private m_user_id: string = "default";
+    private readonly m_login_storage: LocalStorage<LoginStatus>;
 
     get tasks(): Container<T>[] {
         return this.m_tasks_storage.item;
@@ -100,11 +104,11 @@ export class Persistent<T, S> extends IPersistent<T, S> {
     }
 
     get isLogin(): boolean {
-        return this.m_login;
+        return this.m_login_storage.item.isLogin;
     }
 
     get userId(): string {
-        return this.m_user_id;
+        return this.m_login_storage.item.userId;
     }
 
     constructor(network: Network, tasks_config: PersistentContentConfig<Container<T>[]>, setting_config: PersistentContentConfig<Container<S>>) {
@@ -114,6 +118,20 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         this.m_setting_config = setting_config;
         this.m_tasks_storage = new LocalStorage<Container<T>[]>(this.m_tasks_config);
         this.m_setting_storage = new LocalStorage<Container<S>>(this.m_setting_config);
+        this.m_login_storage = new LocalStorage<LoginStatus>({
+            name: "login_status",
+            api_base: "",
+            storage_key: "vanish-todo-login-status",
+            schema: v.object({
+                isLogin: v.boolean(),
+                userId: v.string(),
+            }),
+            initial_value: {
+                isLogin: false,
+                userId: "default",
+            },
+        });
+
         this.m_queue = new AsyncQueue();
     }
 
@@ -132,13 +150,17 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         const item: QueueEntry = async () => {
             const result = await this.m_network.postJson("/auth", { token }, apiAuthSuccessSchema);
             if (result.status !== "success") {
-                this.m_login = false;
                 return result;
             }
-            this.m_login = true;
-            this.m_user_id = result.data.userId;
+            this.m_login_storage.item = {
+                isLogin: true,
+                userId: result.data.userId,
+            };
 
-            const setting_result = await this.m_network.getJson(`${this.m_setting_config.api_base}/${this.m_user_id}`, this.m_setting_config.schema);
+            const setting_result = await this.m_network.getJson(
+                `${this.m_setting_config.api_base}/${this.m_login_storage.item.userId}`,
+                this.m_setting_config.schema,
+            );
             if (setting_result.status !== "success") {
                 return setting_result;
             }
@@ -165,19 +187,31 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         this.m_queue.enqueue(item);
     }
 
-    disconnect(): void {
+    disconnect(onComplete: OnComplete<ConnectResult<T, S>>): void {
         const item: QueueEntry = async () => {
             return this.m_network.postJson("/logout", {}, apiVoidSchema);
         };
         this.m_queue.enqueue(item);
-        this.m_login = false;
+        this.m_login_storage.item = {
+            isLogin: false,
+            userId: "default",
+        };
+        this.m_tasks_storage.item = [];
+        this.m_setting_storage.item = this.m_setting_config.initial_value;
+        onComplete({
+            status: "success",
+            data: {
+                tasks: this.m_tasks_storage.item,
+                setting: this.m_setting_storage.item,
+            },
+        });
     }
 
     create(item: Container<T>): void {
         const arr = this.m_tasks_storage.item;
         arr.push(item);
         this.m_tasks_storage.item = arr;
-        if (this.m_login) {
+        if (this.m_login_storage.item.isLogin) {
             this.m_queue.enqueue(() => {
                 return this.m_network.postJson(this.m_tasks_config.api_base, item, apiVoidSchema);
             });
@@ -193,7 +227,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         }
         arr[idx] = item;
         this.m_tasks_storage.item = arr;
-        if (this.m_login) {
+        if (this.m_login_storage.item.isLogin) {
             this.m_queue.enqueue(() => {
                 return this.m_network.putJson(`${this.m_tasks_config.api_base}/${item.meta.id}`, item);
             });
@@ -202,7 +236,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
 
     updateSetting(value: Container<S>) {
         this.m_setting_storage.item = value;
-        if (this.m_login) {
+        if (this.m_login_storage.item.isLogin) {
             this.m_queue.enqueue(() => {
                 return this.m_network.putJson(`${this.m_setting_config.api_base}/${value.meta.id}`, value);
             });

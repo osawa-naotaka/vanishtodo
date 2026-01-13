@@ -263,7 +263,7 @@ export abstract class IPersistent<T, S> {
     abstract registerOnError(onError: OnError): void;
     abstract requestLogin(email: string): void;
     abstract connect(token: string, onComplete: OnComplete<ConnectResult<T, S>>): void;
-    abstract disconnect(): void;
+    abstract disconnect(onComplete: OnComplete<ConnectResult<T, S>>): void;
     abstract create(item: Container<T>): void;
     abstract update(item: Container<T>): void;
     abstract updateSetting(value: Container<S>): void;
