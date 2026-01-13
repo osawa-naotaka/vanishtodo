@@ -114,6 +114,10 @@ function userToDbUser(user: UserSetting): typeof users.$inferInsert {
     };
 }
 
+const jwtPayloadSchema = v.object({
+    userId: v.string(),
+});
+
 async function auth(c: Context<{ Bindings: Bindings }>): Promise<string | null> {
     const jwt = getCookie(c, "vanishtodo_jwt");
     if (!jwt) {
@@ -122,11 +126,11 @@ async function auth(c: Context<{ Bindings: Bindings }>): Promise<string | null> 
 
     const secret = new TextEncoder().encode(c.env.SECRET_KEY);
     const { payload } = await jose.jwtVerify(jwt, secret);
-    const userId = payload.userId as string;
-
-    if (!userId) {
+    const parseResult = v.safeParse(jwtPayloadSchema, payload);
+    if (!parseResult.success) {
         return null;
     }
+    const userId = parseResult.output.userId;
 
     return userId;
 }
@@ -137,6 +141,10 @@ async function setJwtCookie(c: Context<{ Bindings: Bindings }>, userId: string):
     const jwt = await new jose.SignJWT({ userId }).setProtectedHeader({ alg }).setIssuedAt().setExpirationTime("30d").sign(secret);
 
     setCookie(c, "vanishtodo_jwt", jwt, { httpOnly: true, secure: true, sameSite: "Lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+}
+
+function deleteJwtCookie(c: Context<{ Bindings: Bindings }>): void {
+    deleteCookie(c, "vanishtodo_jwt", { httpOnly: true, secure: true, sameSite: "Lax", path: "/" });
 }
 
 // ========================================
@@ -601,7 +609,7 @@ app.post("/api/v1/auth", async (c) => {
 // ========================================
 app.post("/api/v1/logout", async (c) => {
     try {
-        deleteCookie(c, "vanishtodo_user_id", { httpOnly: true, secure: true, sameSite: "Lax", path: "/" });
+        deleteJwtCookie(c);
 
         const response: ApiVoid = {
             type: "void",
