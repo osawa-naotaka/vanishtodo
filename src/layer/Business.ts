@@ -25,6 +25,10 @@ export class Business {
         this.m_persistent.connect(token, onComplete);
     }
 
+    logout(): void {
+        this.m_persistent.disconnect();
+    }
+
     registerOnError(onError: OnError): void {
         this.m_persistent.registerOnError(onError);
     }

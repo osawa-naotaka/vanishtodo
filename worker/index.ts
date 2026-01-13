@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -6,6 +6,7 @@ import { cors } from "hono/cors";
 import * as v from "valibot";
 import type { ApiAuthSuccess, ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
 import { auth_tokens, loginAuthSchema, loginRequestSchema, taskSchema, tasks, userSettingSchema, users } from "../type/types";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 type Bindings = {
     DB: D1Database;
@@ -116,8 +117,15 @@ function userToDbUser(user: UserSetting): typeof users.$inferInsert {
 // ========================================
 app.get("/api/v1/tasks", async (c) => {
     try {
+        const userId = getCookie(c, "vanishtodo_user_id");
+        if (!userId) {
+            return errorResponse(401, {
+                code: "UNAUTHORIZED",
+                message: "ユーザーが認証されていません",
+            });
+        }
         const db = drizzle(c.env.DB);
-        const result = await db.select().from(tasks).orderBy(desc(tasks.created_at));
+        const result = await db.select().from(tasks).where(eq(tasks.user_id, userId)).orderBy(desc(tasks.created_at));
 
         const response = result.map(dbTaskToTask);
 
@@ -140,6 +148,13 @@ app.get("/api/v1/tasks", async (c) => {
 // ========================================
 app.put("/api/v1/tasks/:id", async (c) => {
     try {
+        const userId = getCookie(c, "vanishtodo_user_id");
+        if (!userId) {
+            return errorResponse(401, {
+                code: "UNAUTHORIZED",
+                message: "ユーザーが認証されていません",
+            });
+        }
         const taskId = c.req.param("id");
         const requestBody = await c.req.json();
 
@@ -154,17 +169,40 @@ app.put("/api/v1/tasks/:id", async (c) => {
             });
         }
 
+        if (taskId !== parseResult.output.meta.id) {
+            return errorResponse(400, {
+                code: "VALIDATION_ERROR",
+                message: "URLのタスクIDとボディのタスクIDが一致しません",
+                input: `${taskId}|${parseResult.output.meta.id}`,
+            });
+        }
+
+        if (parseResult.output.data.userId !== userId) {
+            return errorResponse(400, {
+                code: "VALIDATION_ERROR",
+                message: "タスクのユーザーIDが認証済みユーザーIDと一致しません",
+                input: `${parseResult.output.data.userId}|${userId}`,
+            });
+        }
+
         const updateData = parseResult.output;
 
         const db = drizzle(c.env.DB);
 
         // 既存タスクの取得
-        const existingTask = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+        const existingTask = await db.select().from(tasks).where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)));
 
         if (existingTask.length === 0) {
             return errorResponse(400, {
                 code: "NOT_FOUND",
                 message: "タスクが見つかりません",
+            });
+        }
+
+        if (existingTask.length > 1) {
+            return errorResponse(500, {
+                code: "INTERNAL_ERROR",
+                message: "タスクの取得中にサーバー側のロジック異常が検出されました。複数の同一IDタスクが存在します。",
             });
         }
 
@@ -199,6 +237,14 @@ app.put("/api/v1/tasks/:id", async (c) => {
 // ========================================
 app.post("/api/v1/tasks", async (c) => {
     try {
+        const userId = getCookie(c, "vanishtodo_user_id");
+        if (!userId) {
+            return errorResponse(401, {
+                code: "UNAUTHORIZED",
+                message: "ユーザーが認証されていません",
+            });
+        }
+
         const requestBody = await c.req.json();
 
         // バリデーション
@@ -211,7 +257,13 @@ app.post("/api/v1/tasks", async (c) => {
                 input: JSON.stringify(requestBody),
             });
         }
-
+        if (parseResult.output.data.userId !== userId) {
+            return errorResponse(400, {
+                code: "VALIDATION_ERROR",
+                message: "タスクのユーザーIDが認証済みユーザーIDと一致しません",
+                input: `${parseResult.output.data.userId}|${userId}`,
+            });
+        }
         const createData = parseResult.output;
 
         const db = drizzle(c.env.DB);
@@ -237,6 +289,21 @@ app.post("/api/v1/tasks", async (c) => {
 // ========================================
 app.get("/api/v1/setting/:id", async (c) => {
     try {
+        const userId = getCookie(c, "vanishtodo_user_id");
+        if (!userId) {
+            return errorResponse(401, {
+                code: "UNAUTHORIZED",
+                message: "ユーザーが認証されていません",
+            });
+        }
+
+        if (userId !== c.req.param("id")) {
+            return errorResponse(403, {
+                code: "FORBIDDEN",
+                message: "他のユーザーの設定にはアクセスできません",
+            });
+        }
+
         const db = drizzle(c.env.DB);
         const result = await db
             .select()
@@ -278,6 +345,21 @@ app.get("/api/v1/setting/:id", async (c) => {
 // ========================================
 app.put("/api/v1/setting/:id", async (c) => {
     try {
+        const userId = getCookie(c, "vanishtodo_user_id");
+        if (!userId) {
+            return errorResponse(401, {
+                code: "UNAUTHORIZED",
+                message: "ユーザーが認証されていません",
+            });
+        }
+
+        if (userId !== c.req.param("id")) {
+            return errorResponse(403, {
+                code: "FORBIDDEN",
+                message: "他のユーザーの設定にはアクセスできません",
+            });
+        }
+
         const settingId = c.req.param("id");
         const requestBody = await c.req.json();
 
@@ -289,6 +371,14 @@ app.put("/api/v1/setting/:id", async (c) => {
                 message: "入力内容に誤りがあります",
                 details: parseResult.issues.map((issue) => issue.message).join("; "),
                 input: JSON.stringify(requestBody),
+            });
+        }
+
+        if (settingId !== parseResult.output.meta.id) {
+            return errorResponse(400, {
+                code: "VALIDATION_ERROR",
+                message: "URLのユーザーIDとボディのユーザーIDが一致しません",
+                input: `${settingId}|${parseResult.output.meta.id}`,
             });
         }
 
@@ -449,6 +539,7 @@ app.post("/api/v1/auth", async (c) => {
                 userId: id,
             };
 
+            setCookie(c, "vanishtodo_user_id", id, { httpOnly: true, secure: true, sameSite: "Lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
             return successResponse(response);
         } else if (user.length === 1) {
             const response: ApiAuthSuccess = {
@@ -456,6 +547,7 @@ app.post("/api/v1/auth", async (c) => {
                 userId: user[0].id,
             };
 
+            setCookie(c, "vanishtodo_user_id", user[0].id, { httpOnly: true, secure: true, sameSite: "Lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
             return successResponse(response);
         }
 
@@ -463,6 +555,27 @@ app.post("/api/v1/auth", async (c) => {
             code: "AUTH_ERROR",
             message: "認証に失敗しました",
         });
+    } catch (error) {
+        console.error("Error updating task:", error);
+        return errorResponse(500, {
+            code: "INTERNAL_ERROR",
+            message: "サーバーエラーが発生しました",
+        });
+    }
+});
+
+// ========================================
+// API-011: ログアウト
+// ========================================
+app.post("/api/v1/logout", async (c) => {
+    try {
+        deleteCookie(c, "vanishtodo_user_id", { httpOnly: true, secure: true, sameSite: "Lax", path: "/" });
+
+        const response: ApiVoid = {
+            type: "void",
+        };
+
+        return successResponse(response);
     } catch (error) {
         console.error("Error updating task:", error);
         return errorResponse(500, {

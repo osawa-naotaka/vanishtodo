@@ -1,13 +1,15 @@
-import { Menu as MenuIcon } from "@mui/icons-material";
+import { Menu as MenuIcon, Login as LoginIcon } from "@mui/icons-material";
 import { AppBar, Avatar, Box, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
 import type React from "react";
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { DrawerContent } from "./DrawerContent";
+import { useBiz } from "./ContextProvider";
 
 export function AppLayout(): React.ReactElement {
     const [open, setOpen] = useState(false);
     const navigate = useNavigate();
+    const { auth: { isLogin, logout } } = useBiz();
 
     return (
         <>
@@ -26,9 +28,15 @@ export function AppLayout(): React.ReactElement {
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         VanishToDo
                     </Typography>
-                    <IconButton size="large" edge="end" color="inherit" aria-label="account" onClick={() => navigate("/login")}>
-                        <Avatar sx={{ width: 32, height: 32 }} />
-                    </IconButton>
+                    {isLogin() ? 
+                        <IconButton size="large" edge="end" color="inherit" aria-label="account" onClick={async () => { logout(); navigate("/"); }}>
+                            <Avatar sx={{ width: 32, height: 32 }} />
+                        </IconButton>
+                        :
+                        <IconButton size="large" edge="end" color="inherit" aria-label="account" onClick={() => navigate("/login")}>
+                            <LoginIcon sx={{ width: 32, height: 32 }} />
+                        </IconButton>
+                    }
                 </Toolbar>
             </AppBar>
             <Box sx={{ display: "flex" }}>

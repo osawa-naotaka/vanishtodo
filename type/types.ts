@@ -74,7 +74,7 @@ export const taskWeightList = ["light", "medium", "heavy"] as const;
 export const taskWeightSchema = v.picklist(taskWeightList);
 
 export const taskContentSchema = v.object({
-    userId: v.optional(idSchema),
+    userId: idSchema,
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema),

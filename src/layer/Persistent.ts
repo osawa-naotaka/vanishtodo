@@ -166,6 +166,10 @@ export class Persistent<T, S> extends IPersistent<T, S> {
     }
 
     disconnect(): void {
+        const item: QueueEntry = async () => {
+            return this.m_network.postJson("/logout", {}, apiVoidSchema);
+        };
+        this.m_queue.enqueue(item);
         this.m_login = false;
     }
 

@@ -36,6 +36,8 @@ export type UseUserSettingHooks = {
 
 export type UseAuthHooks = {
     login: (email: string) => void;
+    logout: () => void;
+    isLogin: () => boolean;
     auth: (token: string, onSuccess: () => void) => void;
 };
 
@@ -145,6 +147,14 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
         biz.current.requestLogin(email);
     }
 
+    function logout(): void {
+        biz.current.logout();
+    }
+
+    function isLogin(): boolean {
+        return biz.current.isLogin;
+    }
+
     function auth(token: string, onSuccess: () => void): void {
         biz.current.authenticate(token, (result) => {
             if (result.status === "success") {
@@ -166,7 +176,7 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
             value={{
                 setting: { setting, set },
                 tasks: { tasks, edit, add, complete, restore, del, undelete, select },
-                auth: { login, auth },
+                auth: { login, logout, auth, isLogin },
                 registerOnError,
             }}
         >
