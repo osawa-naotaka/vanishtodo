@@ -157,10 +157,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
                 userId: result.data.userId,
             };
 
-            const setting_result = await this.m_network.getJson(
-                `${this.m_setting_config.api_base}/${this.m_login_storage.item.userId}`,
-                this.m_setting_config.schema,
-            );
+            const setting_result = await this.m_network.getJson(this.m_setting_config.api_base, this.m_setting_config.schema);
             if (setting_result.status !== "success") {
                 return setting_result;
             }
@@ -229,7 +226,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         this.m_tasks_storage.item = arr;
         if (this.m_login_storage.item.isLogin) {
             this.m_queue.enqueue(() => {
-                return this.m_network.putJson(`${this.m_tasks_config.api_base}/${item.meta.id}`, item);
+                return this.m_network.putJson(this.m_tasks_config.api_base, item);
             });
         }
     }
@@ -238,7 +235,7 @@ export class Persistent<T, S> extends IPersistent<T, S> {
         this.m_setting_storage.item = value;
         if (this.m_login_storage.item.isLogin) {
             this.m_queue.enqueue(() => {
-                return this.m_network.putJson(`${this.m_setting_config.api_base}/${value.meta.id}`, value);
+                return this.m_network.putJson(this.m_setting_config.api_base, value);
             });
         }
     }

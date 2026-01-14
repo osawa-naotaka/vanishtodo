@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
@@ -147,52 +147,63 @@ function deleteJwtCookie(c: Context<{ Bindings: Bindings }>): void {
     deleteCookie(c, "vanishtodo_jwt", { httpOnly: true, secure: true, sameSite: "Lax", path: "/" });
 }
 
+type Handler = (c: Context<{ Bindings: Bindings }>) => Promise<Response>;
+
+function withTryCatch(fn: Handler): Handler {
+    return async (c) => {
+        try {
+            return fn(c);
+        } catch (error: unknown) {
+            let details = "";
+            if (error instanceof Error) {
+                details = error.stack || error.message;
+            }
+            return errorResponse(500, {
+                code: "INTERNAL_ERROR",
+                message: "サーバー側のロジック異常が検出されました",
+                details,
+            });
+        }
+    };
+}
+
+function errorUnauthrized(): Response {
+    return errorResponse(401, {
+        code: "UNAUTHORIZED",
+        message: "ユーザーが認証されていません",
+    });
+}
+
 // ========================================
 // API-001: タスク一覧取得
 // ========================================
-app.get("/api/v1/tasks", async (c) => {
-    try {
+app.get(
+    "/api/v1/tasks",
+    withTryCatch(async (c) => {
         const userId = await auth(c);
         if (!userId) {
-            return errorResponse(401, {
-                code: "UNAUTHORIZED",
-                message: "ユーザーが認証されていません",
-            });
+            return errorUnauthrized();
         }
 
         const db = drizzle(c.env.DB);
-        const result = await db.select().from(tasks).where(eq(tasks.user_id, userId)).orderBy(desc(tasks.created_at));
-
+        const result = await db.select().from(tasks).where(eq(tasks.user_id, userId));
         const response = result.map(dbTaskToTask);
 
         return successResponse(response);
-    } catch (error: unknown) {
-        let details = "";
-        if (error instanceof Error) {
-            details = error.stack || error.message;
-        }
-        return errorResponse(500, {
-            code: "INTERNAL_ERROR",
-            message: "/api/v1/tasksの取得中にサーバー側のロジック異常が検出されました",
-            details,
-        });
-    }
-});
+    }),
+);
 
 // ========================================
 // API-004: タスク更新
 // ========================================
-app.put("/api/v1/tasks/:id", async (c) => {
-    try {
+app.put(
+    "/api/v1/tasks",
+    withTryCatch(async (c) => {
         const userId = await auth(c);
         if (!userId) {
-            return errorResponse(401, {
-                code: "UNAUTHORIZED",
-                message: "ユーザーが認証されていません",
-            });
+            return errorUnauthrized();
         }
 
-        const taskId = c.req.param("id");
         const requestBody = await c.req.json();
 
         // バリデーション
@@ -206,14 +217,6 @@ app.put("/api/v1/tasks/:id", async (c) => {
             });
         }
 
-        if (taskId !== parseResult.output.meta.id) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "URLのタスクIDとボディのタスクIDが一致しません",
-                input: `${taskId}|${parseResult.output.meta.id}`,
-            });
-        }
-
         if (parseResult.output.data.userId !== userId) {
             return errorResponse(400, {
                 code: "VALIDATION_ERROR",
@@ -223,6 +226,7 @@ app.put("/api/v1/tasks/:id", async (c) => {
         }
 
         const updateData = parseResult.output;
+        const taskId = updateData.meta.id;
 
         const db = drizzle(c.env.DB);
 
@@ -249,7 +253,7 @@ app.put("/api/v1/tasks/:id", async (c) => {
         // 楽観的ロックのチェック
         const force = c.req.query("force") === "true";
         if (!force && existingTask[0].version + 1 !== updateData.meta.version) {
-            return errorResponse(400, {
+            return errorResponse(409, {
                 code: "CONFLICT",
                 message: "タスクが他で更新されています。ページをリロードしてください。",
                 input: `${existingTask[0].version}|${updateData.meta.version}`,
@@ -263,26 +267,18 @@ app.put("/api/v1/tasks/:id", async (c) => {
         };
 
         return successResponse(response);
-    } catch (error) {
-        console.error("Error updating task:", error);
-        return errorResponse(500, {
-            code: "INTERNAL_ERROR",
-            message: "サーバーエラーが発生しました",
-        });
-    }
-});
+    }),
+);
 
 // ========================================
 // API-003: タスク作成
 // ========================================
-app.post("/api/v1/tasks", async (c) => {
-    try {
+app.post(
+    "/api/v1/tasks",
+    withTryCatch(async (c) => {
         const userId = await auth(c);
         if (!userId) {
-            return errorResponse(401, {
-                code: "UNAUTHORIZED",
-                message: "ユーザーが認証されていません",
-            });
+            return errorUnauthrized();
         }
 
         const requestBody = await c.req.json();
@@ -315,40 +311,25 @@ app.post("/api/v1/tasks", async (c) => {
         };
 
         return successResponse(response);
-    } catch (error) {
-        console.error("Error updating task:", error);
-        return errorResponse(500, {
-            code: "INTERNAL_ERROR",
-            message: "サーバーエラーが発生しました",
-        });
-    }
-});
+    }),
+);
 
 // ========================================
 // API-007: ユーザー設定取得
 // ========================================
-app.get("/api/v1/setting/:id", async (c) => {
-    try {
+app.get(
+    "/api/v1/setting",
+    withTryCatch(async (c) => {
         const userId = await auth(c);
         if (!userId) {
-            return errorResponse(401, {
-                code: "UNAUTHORIZED",
-                message: "ユーザーが認証されていません",
-            });
-        }
-
-        if (userId !== c.req.param("id")) {
-            return errorResponse(403, {
-                code: "FORBIDDEN",
-                message: "他のユーザーの設定にはアクセスできません",
-            });
+            return errorUnauthrized();
         }
 
         const db = drizzle(c.env.DB);
         const result = await db
             .select()
             .from(users)
-            .where(eq(users.id, c.req.param("id")));
+            .where(eq(users.id, userId));
 
         if (result.length === 0) {
             return errorResponse(400, {
@@ -367,40 +348,20 @@ app.get("/api/v1/setting/:id", async (c) => {
         const response = dbUserToUser(result[0]);
 
         return successResponse(response);
-    } catch (error: unknown) {
-        let details = "";
-        if (error instanceof Error) {
-            details = error.stack || error.message;
-        }
-        return errorResponse(500, {
-            code: "INTERNAL_ERROR",
-            message: "/api/v1/settingsの取得中にサーバー側のロジック異常が検出されました",
-            details,
-        });
-    }
-});
+    }),
+);
 
 // ========================================
 // API-008: ユーザー設定更新
 // ========================================
-app.put("/api/v1/setting/:id", async (c) => {
-    try {
+app.put(
+    "/api/v1/setting",
+    withTryCatch(async (c) => {
         const userId = await auth(c);
         if (!userId) {
-            return errorResponse(401, {
-                code: "UNAUTHORIZED",
-                message: "ユーザーが認証されていません",
-            });
+            return errorUnauthrized();
         }
 
-        if (userId !== c.req.param("id")) {
-            return errorResponse(403, {
-                code: "FORBIDDEN",
-                message: "他のユーザーの設定にはアクセスできません",
-            });
-        }
-
-        const settingId = c.req.param("id");
         const requestBody = await c.req.json();
 
         // バリデーション
@@ -414,11 +375,11 @@ app.put("/api/v1/setting/:id", async (c) => {
             });
         }
 
-        if (settingId !== parseResult.output.meta.id) {
+        if (userId !== parseResult.output.meta.id) {
             return errorResponse(400, {
                 code: "VALIDATION_ERROR",
-                message: "URLのユーザーIDとボディのユーザーIDが一致しません",
-                input: `${settingId}|${parseResult.output.meta.id}`,
+                message: "ボディのユーザーIDがログイン中のユーザーと一致しません",
+                input: `${userId}|${parseResult.output.meta.id}`,
             });
         }
 
@@ -427,7 +388,7 @@ app.put("/api/v1/setting/:id", async (c) => {
         const db = drizzle(c.env.DB);
 
         // 既存タスクの取得
-        const existingTask = await db.select().from(users).where(eq(users.id, settingId)).limit(1);
+        const existingTask = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
         if (existingTask.length === 0) {
             return errorResponse(400, {
@@ -446,27 +407,22 @@ app.put("/api/v1/setting/:id", async (c) => {
             });
         }
 
-        await db.update(users).set(userToDbUser(updateData)).where(eq(users.id, settingId));
+        await db.update(users).set(userToDbUser(updateData)).where(eq(users.id, userId));
 
         const response: ApiVoid = {
             type: "void",
         };
 
         return successResponse(response);
-    } catch (error) {
-        console.error("Error updating task:", error);
-        return errorResponse(500, {
-            code: "INTERNAL_ERROR",
-            message: "サーバーエラーが発生しました",
-        });
-    }
-});
+    }),
+);
 
 // ========================================
 // API-009: magic link送信
 // ========================================
-app.post("/api/v1/login", async (c) => {
-    try {
+app.post(
+    "/api/v1/login",
+    withTryCatch(async (c) => {
         const requestBody = await c.req.json();
 
         // バリデーション
@@ -514,20 +470,15 @@ app.post("/api/v1/login", async (c) => {
         };
 
         return successResponse(response);
-    } catch (error) {
-        console.error("Error updating task:", error);
-        return errorResponse(500, {
-            code: "INTERNAL_ERROR",
-            message: "サーバーエラーが発生しました",
-        });
-    }
-});
+    }),
+);
 
 // ========================================
 // API-010: 認証トークン検証
 // ========================================
-app.post("/api/v1/auth", async (c) => {
-    try {
+app.post(
+    "/api/v1/auth",
+    withTryCatch(async (c) => {
         const requestBody = await c.req.json();
 
         // バリデーション
@@ -595,20 +546,15 @@ app.post("/api/v1/auth", async (c) => {
             code: "AUTH_ERROR",
             message: "認証に失敗しました",
         });
-    } catch (error) {
-        console.error("Error updating task:", error);
-        return errorResponse(500, {
-            code: "INTERNAL_ERROR",
-            message: "サーバーエラーが発生しました",
-        });
-    }
-});
+    }),
+);
 
 // ========================================
 // API-011: ログアウト
 // ========================================
-app.post("/api/v1/logout", async (c) => {
-    try {
+app.post(
+    "/api/v1/logout",
+    withTryCatch(async (c) => {
         deleteJwtCookie(c);
 
         const response: ApiVoid = {
@@ -616,13 +562,7 @@ app.post("/api/v1/logout", async (c) => {
         };
 
         return successResponse(response);
-    } catch (error) {
-        console.error("Error updating task:", error);
-        return errorResponse(500, {
-            code: "INTERNAL_ERROR",
-            message: "サーバーエラーが発生しました",
-        });
-    }
-});
+    }),
+);
 
 export default app;
