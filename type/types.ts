@@ -35,7 +35,32 @@ export type Void = Record<never, never>;
 export type OnComplete<T> = (r: Result<T>) => void;
 export type OnError = OnComplete<Void>;
 
-// -----------------------------------------------------------------------------
+
+export type CodeType = keyof typeof errorInfoMap;
+export type StatusType = ResultErrorStatus;
+export type HttpStatusType = number;
+export type MessageType = string;
+
+export type ErrorInfo = [StatusType, HttpStatusType, MessageType];
+
+export const errorInfoMap = {
+    "parse-error": ["fatal", 400, "リクエストボディが正しくパースできませんでした。"],
+    "no-cookie": ["login-required", 401, "認証情報が存在しません。ログインしてください。"],
+    "invalid-token": ["login-required", 401, "認証情報が無効です。再度ログインしてください。"],
+    "auth-id-not-found": ["login-required", 401, "ログイントークンがDBに存在しません。"],
+    "auth-id-expired": ["login-required", 401, "ログイントークンの有効期限が切れています。"],
+    "version-conflict": ["conflict", 409, "versionフィールドの不一致が検出されました。"],
+    "db-binding-not-found": ["fatal", 500, "データベースバインディングが設定されていません。"],
+    "no-secret-key": ["fatal", 500, "JWT用の秘密鍵が設定されていません。"],
+    "task-duplicated": ["fatal", 500, "DB内に同一のタスクIDのレコードが複数存在します。"],
+    "task-not-found": ["fatal", 500, "DB内に指定されたタスクIDのレコードが存在しません。"],
+    "user-setting-duplicated": ["fatal", 500, "DB内に同一のユーザーIDのレコードが複数存在します。"],
+    "user-setting-not-found": ["fatal", 500, "DB内に指定されたユーザーIDのレコードが存在しません。"],
+    "malformed-jwt-payload": ["fatal", 500, "JWTのペイロードが正しくパースできませんでした。"],
+    "invalid-user-id": ["fatal", 500, "JWTペイロード内のユーザーIDが、リクエストボディのユーザーIDと一致しません。"],
+    "unknown-internal-error": ["fatal", 500, "不明な内部エラーが発生しました。"],
+} as const;
+
 // DB層関連型
 // -----------------------------------------------------------------------------
 

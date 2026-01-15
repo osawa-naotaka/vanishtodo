@@ -6,8 +6,8 @@ import { cors } from "hono/cors";
 import * as jose from "jose";
 // import { Resend } from "resend";
 import * as v from "valibot";
-import type { ApiAuthSuccess, ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, Task, UserSetting } from "../type/types";
-import { auth_tokens, loginAuthSchema, loginRequestSchema, taskSchema, tasks, userSettingSchema, users } from "../type/types";
+import type { ApiAuthSuccess, ApiErrorInfo, ApiFailResponse, ApiResponseData, ApiSuccessResponse, ApiVoid, CodeType, Task, UserSetting } from "../type/types";
+import { auth_tokens, errorInfoMap, loginAuthSchema, loginRequestSchema, taskSchema, tasks, userSettingSchema, users } from "../type/types";
 
 type Bindings = {
     DB: D1Database;
@@ -23,17 +23,6 @@ app.use("*", cors());
 // ========================================
 // ユーティリティ関数
 // ========================================
-
-function errorResponse(status: number, error_info: ApiErrorInfo): Response {
-    const response: ApiFailResponse = {
-        status: "fail",
-        error_info,
-    };
-    return new Response(JSON.stringify(response), {
-        status,
-        headers: { "Content-Type": "application/json" },
-    });
-}
 
 function successResponse(data: ApiResponseData, status = 200): Response {
     const response: ApiSuccessResponse = {
@@ -118,17 +107,17 @@ const jwtPayloadSchema = v.object({
     userId: v.string(),
 });
 
-async function auth(c: Context<{ Bindings: Bindings }>): Promise<string | null> {
+async function auth(c: Context<{ Bindings: Bindings }>): Promise<string | Response> {
     const jwt = getCookie(c, "vanishtodo_jwt");
     if (!jwt) {
-        return null;
+        return createErrorResponse("no-cookie");
     }
 
     const secret = new TextEncoder().encode(c.env.SECRET_KEY);
     const { payload } = await jose.jwtVerify(jwt, secret);
     const parseResult = v.safeParse(jwtPayloadSchema, payload);
     if (!parseResult.success) {
-        return null;
+        return createErrorResponse("malformed-jwt-payload");
     }
     const userId = parseResult.output.userId;
 
@@ -158,19 +147,32 @@ function withTryCatch(fn: Handler): Handler {
             if (error instanceof Error) {
                 details = error.stack || error.message;
             }
-            return errorResponse(500, {
-                code: "INTERNAL_ERROR",
-                message: "サーバー側のロジック異常が検出されました",
-                details,
-            });
+            return createErrorResponse("unknown-internal-error", details);
         }
     };
 }
 
-function errorUnauthrized(): Response {
-    return errorResponse(401, {
-        code: "UNAUTHORIZED",
-        message: "ユーザーが認証されていません",
+function createErrorResponse(code: CodeType, details?: string, input?: string): Response {
+    const errorInfo = errorInfoMap[code];
+    const error_info: ApiErrorInfo = {
+        code,
+        message: errorInfo[2],
+    };
+    if (details) {
+        error_info.details = details;
+    }
+    if (input) {
+        error_info.input = input;
+    }
+    const status = errorInfo[1];
+
+    const response: ApiFailResponse = {
+        status: "fail",
+        error_info,
+    };
+    return new Response(JSON.stringify(response), {
+        status,
+        headers: { "Content-Type": "application/json" },
     });
 }
 
@@ -181,8 +183,8 @@ app.get(
     "/api/v1/tasks",
     withTryCatch(async (c) => {
         const userId = await auth(c);
-        if (!userId) {
-            return errorUnauthrized();
+        if (userId instanceof Response) {
+            return userId;
         }
 
         const db = drizzle(c.env.DB);
@@ -200,8 +202,8 @@ app.put(
     "/api/v1/tasks",
     withTryCatch(async (c) => {
         const userId = await auth(c);
-        if (!userId) {
-            return errorUnauthrized();
+        if (userId instanceof Response) {
+            return userId;
         }
 
         const requestBody = await c.req.json();
@@ -209,20 +211,13 @@ app.put(
         // バリデーション
         const parseResult = v.safeParse(taskSchema, requestBody);
         if (!parseResult.success) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "入力内容に誤りがあります",
-                details: parseResult.issues.map((issue) => issue.message).join("; "),
-                input: JSON.stringify(requestBody),
-            });
+            const details = parseResult.issues.map((issue) => issue.message).join("; ");
+            const input = JSON.stringify(requestBody);
+            return createErrorResponse("parse-error", details, input);
         }
 
         if (parseResult.output.data.userId !== userId) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "タスクのユーザーIDが認証済みユーザーIDと一致しません",
-                input: `${parseResult.output.data.userId}|${userId}`,
-            });
+            return createErrorResponse("invalid-user-id", undefined, `${parseResult.output.data.userId}|${userId}`);
         }
 
         const updateData = parseResult.output;
@@ -237,27 +232,17 @@ app.put(
             .where(and(eq(tasks.id, taskId), eq(tasks.user_id, userId)));
 
         if (existingTask.length === 0) {
-            return errorResponse(400, {
-                code: "NOT_FOUND",
-                message: "タスクが見つかりません",
-            });
+            return createErrorResponse("task-not-found");
         }
 
         if (existingTask.length > 1) {
-            return errorResponse(500, {
-                code: "INTERNAL_ERROR",
-                message: "タスクの取得中にサーバー側のロジック異常が検出されました。複数の同一IDタスクが存在します。",
-            });
+            return createErrorResponse("task-duplicated");
         }
 
         // 楽観的ロックのチェック
         const force = c.req.query("force") === "true";
         if (!force && existingTask[0].version + 1 !== updateData.meta.version) {
-            return errorResponse(409, {
-                code: "CONFLICT",
-                message: "タスクが他で更新されています。ページをリロードしてください。",
-                input: `${existingTask[0].version}|${updateData.meta.version}`,
-            });
+            return createErrorResponse("version-conflict", undefined, `${existingTask[0].version}|${updateData.meta.version}`);
         }
 
         await db.update(tasks).set(taskToDbTask(updateData)).where(eq(tasks.id, taskId));
@@ -277,8 +262,8 @@ app.post(
     "/api/v1/tasks",
     withTryCatch(async (c) => {
         const userId = await auth(c);
-        if (!userId) {
-            return errorUnauthrized();
+        if (userId instanceof Response) {
+            return userId;
         }
 
         const requestBody = await c.req.json();
@@ -286,19 +271,12 @@ app.post(
         // バリデーション
         const parseResult = v.safeParse(taskSchema, requestBody);
         if (!parseResult.success) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "入力内容に誤りがあります",
-                details: parseResult.issues.map((issue) => issue.message).join("; "),
-                input: JSON.stringify(requestBody),
-            });
+            const details = parseResult.issues.map((issue) => issue.message).join("; ");
+            const input = JSON.stringify(requestBody);
+            return createErrorResponse("parse-error", details, input);
         }
         if (parseResult.output.data.userId !== userId) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "タスクのユーザーIDが認証済みユーザーIDと一致しません",
-                input: `${parseResult.output.data.userId}|${userId}`,
-            });
+            return createErrorResponse("invalid-user-id", undefined, `${parseResult.output.data.userId}|${userId}`);
         }
         const createData = parseResult.output;
 
@@ -321,28 +299,19 @@ app.get(
     "/api/v1/setting",
     withTryCatch(async (c) => {
         const userId = await auth(c);
-        if (!userId) {
-            return errorUnauthrized();
+        if (userId instanceof Response) {
+            return userId;
         }
 
         const db = drizzle(c.env.DB);
-        const result = await db
-            .select()
-            .from(users)
-            .where(eq(users.id, userId));
+        const result = await db.select().from(users).where(eq(users.id, userId));
 
         if (result.length === 0) {
-            return errorResponse(400, {
-                code: "NOT_FOUND",
-                message: "ユーザー設定が見つかりません",
-            });
+            return createErrorResponse("task-not-found");
         }
 
         if (result.length > 1) {
-            return errorResponse(500, {
-                code: "INTERNAL_ERROR",
-                message: "ユーザー設定の取得中にサーバー側のロジック異常が検出されました。複数のユーザー設定が存在します。",
-            });
+            return createErrorResponse("task-duplicated");
         }
 
         const response = dbUserToUser(result[0]);
@@ -358,8 +327,8 @@ app.put(
     "/api/v1/setting",
     withTryCatch(async (c) => {
         const userId = await auth(c);
-        if (!userId) {
-            return errorUnauthrized();
+        if (userId instanceof Response) {
+            return userId;
         }
 
         const requestBody = await c.req.json();
@@ -367,20 +336,13 @@ app.put(
         // バリデーション
         const parseResult = v.safeParse(userSettingSchema, requestBody);
         if (!parseResult.success) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "入力内容に誤りがあります",
-                details: parseResult.issues.map((issue) => issue.message).join("; "),
-                input: JSON.stringify(requestBody),
-            });
+            const details = parseResult.issues.map((issue) => issue.message).join("; ");
+            const input = JSON.stringify(requestBody);
+            return createErrorResponse("parse-error", details, input);
         }
 
-        if (userId !== parseResult.output.meta.id) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "ボディのユーザーIDがログイン中のユーザーと一致しません",
-                input: `${userId}|${parseResult.output.meta.id}`,
-            });
+        if (parseResult.output.meta.id !== userId) {
+            return createErrorResponse("invalid-user-id", undefined, `${parseResult.output.meta.id}|${userId}`);
         }
 
         const updateData = parseResult.output;
@@ -388,23 +350,20 @@ app.put(
         const db = drizzle(c.env.DB);
 
         // 既存タスクの取得
-        const existingTask = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        const existingTask = await db.select().from(users).where(eq(users.id, userId));
 
         if (existingTask.length === 0) {
-            return errorResponse(400, {
-                code: "NOT_FOUND",
-                message: "ユーザー設定が見つかりません",
-            });
+            return createErrorResponse("user-setting-not-found");
+        }
+
+        if (existingTask.length > 1) {
+            return createErrorResponse("user-setting-duplicated");
         }
 
         // 楽観的ロックのチェック
         const force = c.req.query("force") === "true";
         if (!force && existingTask[0].version + 1 !== updateData.meta.version) {
-            return errorResponse(400, {
-                code: "CONFLICT",
-                message: "ユーザー設定が他で更新されています。ページをリロードしてください。",
-                input: `${existingTask[0].version}|${updateData.meta.version}`,
-            });
+            return createErrorResponse("version-conflict", undefined, `${existingTask[0].version}|${updateData.meta.version}`);
         }
 
         await db.update(users).set(userToDbUser(updateData)).where(eq(users.id, userId));
@@ -428,12 +387,9 @@ app.post(
         // バリデーション
         const parseResult = v.safeParse(loginRequestSchema, requestBody);
         if (!parseResult.success) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "入力内容に誤りがあります",
-                details: parseResult.issues.map((issue) => issue.message).join("; "),
-                input: JSON.stringify(requestBody),
-            });
+            const details = parseResult.issues.map((issue) => issue.message).join("; ");
+            const input = JSON.stringify(requestBody);
+            return createErrorResponse("parse-error", details, input);
         }
 
         console.log("Magic link requested for email:", parseResult.output.email);
@@ -484,12 +440,9 @@ app.post(
         // バリデーション
         const parseResult = v.safeParse(loginAuthSchema, requestBody);
         if (!parseResult.success) {
-            return errorResponse(400, {
-                code: "VALIDATION_ERROR",
-                message: "入力内容に誤りがあります",
-                details: parseResult.issues.map((issue) => issue.message).join("; "),
-                input: JSON.stringify(requestBody),
-            });
+            const details = parseResult.issues.map((issue) => issue.message).join("; ");
+            const input = JSON.stringify(requestBody);
+            return createErrorResponse("parse-error", details, input);
         }
 
         const authData = parseResult.output;
@@ -498,10 +451,7 @@ app.post(
         const sent_token = await db.select().from(auth_tokens).where(eq(auth_tokens.token, authData.token));
 
         if (sent_token.length !== 1) {
-            return errorResponse(500, {
-                code: "AUTH_ERROR",
-                message: "認証に失敗しました",
-            });
+            return createErrorResponse("auth-id-not-found");
         }
 
         // トークン使用後は削除
@@ -532,20 +482,19 @@ app.post(
 
             await setJwtCookie(c, id);
             return successResponse(response);
-        } else if (user.length === 1) {
-            const response: ApiAuthSuccess = {
-                type: "auth-success",
-                userId: user[0].id,
-            };
-
-            await setJwtCookie(c, user[0].id);
-            return successResponse(response);
         }
 
-        return errorResponse(500, {
-            code: "AUTH_ERROR",
-            message: "認証に失敗しました",
-        });
+        if (user.length > 1) {
+            return createErrorResponse("user-setting-duplicated");
+        }
+
+        const response: ApiAuthSuccess = {
+            type: "auth-success",
+            userId: user[0].id,
+        };
+
+        await setJwtCookie(c, user[0].id);
+        return successResponse(response);
     }),
 );
 
