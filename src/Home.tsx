@@ -15,13 +15,18 @@ export function Home(): JSX.Element {
     const {
         setting: { setting },
         tasks: { tasks, add, edit, complete },
+        registerOnError,
     } = useBiz();
 
     const filtered_tasks = tasksToday(
         current_date,
-        setting.dailyGoals,
+        setting.data.dailyGoals,
         tasks.map((task) => task.task),
     ).map((task) => ({ task, isSelected: false }));
+
+    registerOnError((e) => {
+        console.error(e);
+    });
 
     return (
         <Box component="main" sx={{ flexGrow: 1 }}>

@@ -18,34 +18,34 @@ export function Setting(): JSX.Element {
                 <Typography variant="h5">軽いタスク</Typography>
                 <Typography>15分以内で完了するタスク</Typography>
                 <Slider
-                    value={setting.dailyGoals.light}
+                    value={setting.data.dailyGoals.light}
                     min={0}
                     max={10}
                     step={1}
                     marks
-                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, light: value as number } })}
+                    onChange={(_e, value) => set({ ...setting.data, dailyGoals: { ...setting.data.dailyGoals, light: value as number } })}
                 />
                 <Divider sx={{ marginY: 2 }} />
                 <Typography variant="h5">中タスク</Typography>
                 <Typography>15分〜60分で完了するタスク</Typography>
                 <Slider
-                    value={setting.dailyGoals.medium}
+                    value={setting.data.dailyGoals.medium}
                     min={0}
                     max={10}
                     step={1}
                     marks
-                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, medium: value as number } })}
+                    onChange={(_e, value) => set({ ...setting.data, dailyGoals: { ...setting.data.dailyGoals, medium: value as number } })}
                 />
                 <Divider sx={{ marginY: 2 }} />
                 <Typography variant="h5">重いタスク</Typography>
                 <Typography>60分以上かかるタスク</Typography>
                 <Slider
-                    value={setting.dailyGoals.heavy}
+                    value={setting.data.dailyGoals.heavy}
                     min={0}
                     max={10}
                     step={1}
                     marks
-                    onChange={(_e, value) => set({ ...setting, dailyGoals: { ...setting.dailyGoals, heavy: value as number } })}
+                    onChange={(_e, value) => set({ ...setting.data, dailyGoals: { ...setting.data.dailyGoals, heavy: value as number } })}
                 />
             </Paper>
         </Box>

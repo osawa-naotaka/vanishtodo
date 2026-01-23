@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import type { Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
-import { tasksSchema, userSettingsSchema } from "../../../type/types";
-import { BizTasks, BizUserSetting } from "../Business";
+import type { OnError, Task, TaskCreate, UserSetting, UserSettingContent } from "../../../type/types";
+import { tasksSchema, userSettingSchema } from "../../../type/types";
+import { Business } from "../Business";
 import { Network } from "../Network";
-import { Persistent } from "../Persistent";
+import { Persistent, type PersistentContentConfig } from "../Persistent";
 
 export type ContextType = {
     setting: UseUserSettingHooks;
     tasks: UseTasksHooks;
+    auth: UseAuthHooks;
+    registerOnError: (onError: OnError) => void;
 };
 
 export type SelectableTask = {
@@ -28,140 +30,108 @@ export type UseTasksHooks = {
 };
 
 export type UseUserSettingHooks = {
-    setting: UserSettingContent;
+    setting: UserSetting;
     set: (setting: UserSettingContent) => void;
+};
+
+export type UseAuthHooks = {
+    login: (email: string) => void;
+    logout: (onSuccess: () => void) => void;
+    isLogin: () => boolean;
+    auth: (token: string, onSuccess: () => void) => void;
 };
 
 export const Context = createContext<ContextType | null>(null);
 
+const default_use_setting: UserSetting = {
+    meta: {
+        id: "unknown",
+        version: 1,
+        createdAt: "1970-01-01T00:00:00.000Z",
+        updatedAt: "1970-01-01T00:00:00.000Z",
+    },
+    data: {
+        timezone: 9,
+        email: "vanishtodo@lulliecat.com",
+        dailyGoals: {
+            heavy: 1,
+            medium: 2,
+            light: 3,
+        },
+    },
+};
+
 export function ContextProvider({ children }: { children: ReactNode }): ReactNode {
-    const bizTask = useRef<BizTasks>(null);
-    const bizUserSetting = useRef<BizUserSetting>(null);
+    const n = new Network("/api/v1");
+
+    const user_setting_config: PersistentContentConfig<UserSetting> = {
+        name: "user_setting",
+        api_base: "/setting",
+        storage_key: "vanish-todo-user-settings",
+        schema: userSettingSchema,
+        initial_value: default_use_setting,
+    };
+
+    const tasks_config: PersistentContentConfig<Task[]> = {
+        name: "tasks",
+        api_base: "/tasks",
+        storage_key: "vanish-todo-tasks",
+        schema: tasksSchema,
+        initial_value: [],
+    };
+
+    const p = new Persistent(n, tasks_config, user_setting_config);
+
+    const biz = useRef<Business>(new Business(p));
     const [tasks, setTasks] = useState<SelectableTask[]>([]);
-    const [raw_setting, setRawSetting] = useState<UserSetting[]>([]);
-
-    const setting: UserSettingContent =
-        raw_setting.length > 0
-            ? raw_setting[0].data
-            : {
-                  timezone: 9,
-                  dailyGoals: {
-                      heavy: 1,
-                      medium: 2,
-                      light: 3,
-                  },
-              };
+    const [setting, setSetting] = useState<UserSetting>(default_use_setting);
 
     useEffect(() => {
-        const n = new Network("/api/v1");
-        const user_settings_config = {
-            name: "user_settings",
-            api_base: "/setting",
-            storage_key: "vanish-todo-user-settings",
-            schema: userSettingsSchema,
-            initial_value: [],
-        };
-        const p = new Persistent(n, user_settings_config);
-        bizUserSetting.current = new BizUserSetting(p);
-        setRawSetting(bizUserSetting.current.readAll());
-        bizUserSetting.current.init((e) => {
-            if (e.status === "success") {
-                setRawSetting(e.data);
-            } else {
-                console.error(e);
-            }
-        });
-    }, []);
-
-    useEffect(() => {
-        const n = new Network("/api/v1");
-        const tasks_config = {
-            name: "tasks",
-            api_base: "/tasks",
-            storage_key: "vanish-todo-tasks",
-            schema: tasksSchema,
-            initial_value: [],
-        };
-
-        const p = new Persistent(n, tasks_config);
-        bizTask.current = new BizTasks(p);
-        setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
-        bizTask.current.init((e) => {
-            if (e.status === "success") {
-                setTasks(e.data.map((t) => ({ task: t, isSelected: false })));
-            } else {
-                console.error(e);
-            }
-        });
+        setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
+        setSetting(biz.current.setting);
     }, []);
 
     function edit(task: SelectableTask): void {
-        if (bizTask.current) {
-            const tasks = bizTask.current.edit(task.task, (e) => {
-                console.error(e);
-            });
+        const tasks = biz.current.edit(task.task);
 
-            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
-        }
+        setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function add(data: TaskCreate): void {
-        if (bizTask.current) {
-            const tasks = bizTask.current.create(data, (e) => {
-                console.error(e);
-            });
-
-            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
-        }
+        const tasks = biz.current.create(data);
+        setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function complete(task: SelectableTask): void {
-        if (bizTask.current) {
-            const tasks = bizTask.current.complete(task.task, (e) => {
-                console.error(e);
-            });
-
-            setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
-        }
+        const tasks = biz.current.complete(task.task);
+        setTasks(tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function restore(tasks: SelectableTask[]): void {
-        if (bizTask.current) {
-            for (const task of tasks) {
-                if (task.isSelected) {
-                    bizTask.current.restore(task.task, (e) => {
-                        console.error(e);
-                    });
-                }
+        for (const task of tasks) {
+            if (task.isSelected) {
+                biz.current.restore(task.task);
             }
-            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
         }
+        setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function del(tasks: SelectableTask[]): void {
-        if (bizTask.current) {
-            for (const task of tasks) {
-                if (task.isSelected) {
-                    bizTask.current.del(task.task, (e) => {
-                        console.error(e);
-                    });
-                }
+        for (const task of tasks) {
+            if (task.isSelected) {
+                biz.current.del(task.task);
             }
-            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
         }
+        setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function undelete(tasks: SelectableTask[]): void {
-        if (bizTask.current) {
-            for (const task of tasks) {
-                if (task.isSelected) {
-                    bizTask.current.undelete(task.task, (e) => {
-                        console.error(e);
-                    });
-                }
+        for (const task of tasks) {
+            if (task.isSelected) {
+                biz.current.undelete(task.task);
             }
-            setTasks(bizTask.current.readAll().map((t) => ({ task: t, isSelected: false })));
         }
+        setTasks(biz.current.tasks.map((t) => ({ task: t, isSelected: false })));
     }
 
     function select(task: SelectableTask, isSelected: boolean): void {
@@ -169,21 +139,55 @@ export function ContextProvider({ children }: { children: ReactNode }): ReactNod
     }
 
     function set(setting: UserSettingContent): void {
-        console.log(setting);
-        if (bizUserSetting.current) {
-            bizUserSetting.current.set(setting, (e) => {
-                console.error(e);
-            });
-            if (raw_setting.length === 0) {
-                return;
+        biz.current.set(setting);
+        setSetting(biz.current.setting);
+    }
+
+    function login(email: string): void {
+        biz.current.requestLogin(email);
+    }
+
+    function logout(onSuccess: () => void): void {
+        biz.current.logout((result) => {
+            if (result.status === "success") {
+                setTasks([]);
+                setSetting(default_use_setting);
+                onSuccess();
+            } else {
+                console.error(result);
             }
-            raw_setting[0].data = setting;
-            setRawSetting([raw_setting[0]]);
-        }
+        });
+    }
+
+    function isLogin(): boolean {
+        return biz.current.isLogin;
+    }
+
+    function auth(token: string, onSuccess: () => void): void {
+        biz.current.authenticate(token, (result) => {
+            if (result.status === "success") {
+                setTasks(result.data.tasks.map((t) => ({ task: t, isSelected: false })));
+                setSetting(result.data.setting);
+                onSuccess();
+            } else {
+                console.error(result);
+            }
+        });
+    }
+
+    function registerOnError(onError: OnError): void {
+        biz.current.registerOnError(onError);
     }
 
     return (
-        <Context.Provider value={{ setting: { setting, set }, tasks: { tasks, edit, add, complete, restore, del, undelete, select } }}>
+        <Context.Provider
+            value={{
+                setting: { setting, set },
+                tasks: { tasks, edit, add, complete, restore, del, undelete, select },
+                auth: { login, logout, auth, isLogin },
+                registerOnError,
+            }}
+        >
             {children}
         </Context.Provider>
     );

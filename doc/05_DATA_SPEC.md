@@ -8,17 +8,16 @@
 |--------------|------|------------|
 | ユーザー | システムの利用者（現在は1名想定） | ユーザーID、日次目標設定 |
 | タスク | ユーザーが管理する作業項目 | タスクID、内容、重さ、締切、状態 |
-| ログ情報 | 操作履歴とLLM処理記録（Durable Object） | 操作種別、処理内容、タイムスタンプ |
 
 ### ER図
 
 ```mermaid
 erDiagram
     USER ||--o{ TASK : "管理する"
-    USER ||--o{ LOG_INFO : "持つ"
     
     USER {
         string user_id PK "ユーザーID"
+        string email "emailアドレス"
         json daily_goal_settings "日次目標設定"
     }
     
@@ -31,17 +30,15 @@ erDiagram
         string status "状態"
     }
         
-    LOG_INFO {
-        string user_id FK "ユーザーID"
-        string operation_type "操作種別"
-        string process_content "処理内容"
-        datetime timestamp "タイムスタンプ"
+    AUTH {
+        string auth_token PK "認証トークン"
+        string email "emailアドレス"
+        datetime created_at "トークン作成日時"
     }
 ```
 
 ### カーディナリティ
 - ユーザー : タスク = 1 : N （1人のユーザーが複数のタスクを持つ）
-- ユーザー : ログ情報 = 1 : N （1人のユーザーが複数のログ情報インスタンスを持つ）
 
 ### ビジネスルール
 
@@ -77,7 +74,8 @@ erDiagram
 
 | カラム名 | 論理名 | データ型 | NULL | デフォルト | 説明 |
 |---------|--------|----------|------|-----------|------|
-| id | ユーザーID | VARCHAR(36) | NO | - | UUID形式の一意ID |
+| user_id | ユーザーID | VARCHAR(36) | NO | - | UUID形式の一意ID |
+| email | emailアドレス | VARCHAR(256) | NO | - | 認証に用いたemailアドレス |
 | timezone | タイムゾーン | INT | 0 | タイムゾーンの+-n:00の+-n部分 |
 | daily_goal_heavy | 日次目標_重 | INT | NO | 1 | 1日の重タスク目標数 |
 | daily_goal_medium | 日次目標_中 | INT | NO | 2 | 1日の中タスク目標数 |
@@ -86,20 +84,21 @@ erDiagram
 | updated_at | 更新日時 | TIMESTAMP | NO | CURRENT_TIMESTAMP | 最終更新日時(UTC) |
 
 **制約:**
-- PRIMARY KEY: id
+- PRIMARY KEY: user_id
 - CHECK: daily_goal_heavy >= 0 AND daily_goal_heavy <= 10
 - CHECK: daily_goal_medium >= 0 AND daily_goal_medium <= 10
 - CHECK: daily_goal_light >= 0 AND daily_goal_light <= 10
 
 **インデックス:**
-- なし（シングルユーザー、データ量が少ないため不要）
+- なし（暫定）
 
 #### tasks テーブル
 **説明:** タスク情報を管理
 
 | カラム名 | 論理名 | データ型 | NULL | デフォルト | 説明 |
 |---------|--------|----------|------|-----------|------|
-| id | タスクID | VARCHAR(36) | NO | - | UUID形式の一意ID |
+| task_id | タスクID | VARCHAR(36) | NO | - | UUID形式の一意ID |
+| user_id | ユーザーID | VARCHAR(36) | NO | - | UUID形式の一意ID |
 | title | タイトル | VARCHAR(500) | NO | - | タスクの内容 |
 | weight | 重さ | VARCHAR(10) | YES | NULL | HEAVY/MEDIUM/LIGHT/NULL |
 | due_date | 締切日 | DATE | YES | NULL | 締切がある場合の日付 |
@@ -110,12 +109,29 @@ erDiagram
 | updated_at | 更新日時 | TIMESTAMP | NO | CURRENT_TIMESTAMP | 最終更新日時(UTC) |
 
 **制約:**
-- PRIMARY KEY: id
+- PRIMARY KEY: task_id
 - CHECK: (weight IS NOT NULL AND due_date IS NULL) OR (weight IS NULL AND due_date IS NOT NULL) OR (weight IS NULL AND due_date IS NULL)
 - CHECK: version >= 1
 
 **インデックス:**
-- なし（シングルユーザー、データ量が少ないため不要）
+- なし（暫定）
+
+
+#### auth_tokens テーブル
+**説明:** 認証トークンを保持
+
+| カラム名 | 論理名 | データ型 | NULL | デフォルト | 説明 |
+|---------|--------|----------|------|-----------|------|
+| auth_token | 認証トークン | VARCHAR(64) | NO | - | 暗号論的に安全な256bitの整数を16進文字列にしたもの |
+| email | email | VARCHAR(256) | NO | - | ログインに用いたemailアドレス |
+| created_at | 作成日時 | TIMESTAMP | NO | CURRENT_TIMESTAMP | レコード作成日時(UTC) |
+
+
+**制約:**
+- PRIMARY KEY: auth_token
+
+**インデックス:**
+- なし（暫定）
 
 ## 4 アプリケーションデータ型仕様
 
@@ -125,29 +141,8 @@ erDiagram
 
 ### UI用の追加型（フロントエンド専用）
 
-#### FilterType
-**説明:** タスク表示フィルタの種別
-```typescript
-type FilterType = "ALL" | "HEAVY" | "MEDIUM" | "LIGHT" | "DEADLINE";
-```
-
-#### DisplayConfig
-**説明:** 表示設定
-```typescript
-interface DisplayConfig {
-    limits: {
-        heavy: number;              // 重タスク表示上限
-        medium: number;             // 中タスク表示上限
-        light: number;              // 軽タスク表示上限
-    };
-    currentFilter: FilterType;      // 現在のフィルタ
-    showCompletedToday: boolean;    // 本日完了分表示フラグ
-}
-```
-
-### Durable Object用の型定義
-
 本セクションでの型定義は`types.ts`ファイルを参照すること。
+
 
 
 ## 5 データ制約とバリデーション

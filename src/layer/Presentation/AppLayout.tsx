@@ -1,95 +1,89 @@
-import { Menu as MenuIcon } from "@mui/icons-material";
-import { AppBar, Box, CssBaseline, createTheme, Drawer, IconButton, ThemeProvider, Toolbar, Typography } from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { Login as LoginIcon, Menu as MenuIcon } from "@mui/icons-material";
+import { AppBar, Avatar, Box, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
 import type React from "react";
 import { useState } from "react";
-import { Outlet } from "react-router";
-import { ContextProvider } from "./ContextProvider";
+import { Outlet, useNavigate } from "react-router";
+import { useBiz } from "./ContextProvider";
 import { DrawerContent } from "./DrawerContent";
-
-const theme = createTheme({
-    // palette: {
-    //     primary: {
-    //         main: "#3F51B5", // VanishToDoのメインカラー
-    //         light: "#5C6BC0",
-    //         dark: "#303F9F",
-    //     },
-    //     secondary: {
-    //         main: "#FF9800", // 中タスクの色
-    //     },
-    // },
-    // typography: {
-    //     fontFamily: 'Roboto, "Noto Sans JP", sans-serif',
-    //     h5: {
-    //         fontWeight: 500,
-    //     },
-    // },
-    // spacing: 8, // 1単位 = 8px（sx={{mt: 2}} = margin-top: 16px）
-});
 
 export function AppLayout(): React.ReactElement {
     const [open, setOpen] = useState(false);
+    const navigate = useNavigate();
+    const {
+        auth: { isLogin, logout },
+    } = useBiz();
 
     return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <ContextProvider>
-                    <AppBar position="fixed" sx={{ display: { xs: "block", md: "block" }, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-                        <Toolbar>
-                            <IconButton
-                                size="large"
-                                edge="start"
-                                color="inherit"
-                                aria-label="menu"
-                                sx={{ mr: 2, display: { xs: "block", md: "none" } }}
-                                onClick={() => setOpen(!open)}
-                            >
-                                <MenuIcon />
-                            </IconButton>
-                            <Typography variant="h6" component="div">
-                                VanishToDo
-                            </Typography>
-                        </Toolbar>
-                    </AppBar>
-                    <Box sx={{ display: "flex" }}>
-                        <Drawer
-                            variant={"permanent"} // 常に表示
-                            sx={{
-                                display: { xs: "none", md: "block" }, // モバイルでは非表示
-                                width: 280,
-                                "& .MuiDrawer-paper": {
-                                    // 内部要素のスタイル
-                                    width: 280,
-                                    boxSizing: "border-box",
-                                },
+        <>
+            <AppBar position="fixed" sx={{ display: { xs: "block", md: "block" }, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+                <Toolbar>
+                    <IconButton
+                        size="large"
+                        edge="start"
+                        color="inherit"
+                        aria-label="menu"
+                        sx={{ mr: 2, display: { xs: "block", md: "none" } }}
+                        onClick={() => setOpen(!open)}
+                    >
+                        <MenuIcon />
+                    </IconButton>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        VanishToDo
+                    </Typography>
+                    {isLogin() ? (
+                        <IconButton
+                            size="large"
+                            edge="end"
+                            color="inherit"
+                            aria-label="account"
+                            onClick={async () => {
+                                logout(() => navigate("/"));
                             }}
                         >
-                            <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                            <DrawerContent />
-                        </Drawer>
-                        <Drawer
-                            variant={"temporary"}
-                            open={open}
-                            onClose={() => setOpen(false)}
-                            sx={{
-                                display: { xs: "block", md: "none" }, // モバイルでは表示
-                                width: 280,
-                                "& .MuiDrawer-paper": {
-                                    // 内部要素のスタイル
-                                    width: 280,
-                                    boxSizing: "border-box",
-                                },
-                            }}
-                        >
-                            <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
-                            <DrawerContent />
-                        </Drawer>
-                        <Outlet />
-                    </Box>
-                </ContextProvider>
-            </LocalizationProvider>
-        </ThemeProvider>
+                            <Avatar sx={{ width: 32, height: 32 }} />
+                        </IconButton>
+                    ) : (
+                        <IconButton size="large" edge="end" color="inherit" aria-label="account" onClick={() => navigate("/login")}>
+                            <LoginIcon sx={{ width: 32, height: 32 }} />
+                        </IconButton>
+                    )}
+                </Toolbar>
+            </AppBar>
+            <Box sx={{ display: "flex" }}>
+                <Drawer
+                    variant={"permanent"} // 常に表示
+                    sx={{
+                        display: { xs: "none", md: "block" }, // モバイルでは非表示
+                        width: 280,
+                        "& .MuiDrawer-paper": {
+                            // 内部要素のスタイル
+                            width: 280,
+                            boxSizing: "border-box",
+                        },
+                    }}
+                >
+                    <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
+                    <DrawerContent />
+                </Drawer>
+                <Drawer
+                    variant={"temporary"}
+                    open={open}
+                    onClose={() => setOpen(false)}
+                    sx={{
+                        display: { xs: "block", md: "none" }, // モバイルでは表示
+                        width: 280,
+                        "& .MuiDrawer-paper": {
+                            // 内部要素のスタイル
+                            width: 280,
+                            boxSizing: "border-box",
+                        },
+                    }}
+                >
+                    <Toolbar /> {/* AppBarと同じ高さのスペーサー */}
+                    <DrawerContent />
+                </Drawer>
+                <Outlet />
+            </Box>
+        </>
     );
 }

@@ -15,7 +15,7 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 // -----------------------------------------------------------------------------
 
 export type ResultStatus = "success" | ResultErrorStatus;
-export type ResultErrorStatus = "abort" | "recoverable" | "conflict" | "fatal";
+export type ResultErrorStatus = "abort" | "recoverable" | "conflict" | "login-required" | "fatal";
 
 export type Result<T> = ResultSuccess<T> | ResultFail<T>;
 
@@ -30,11 +30,37 @@ export type ResultFail<T> = {
     data?: T;
 }
 
+export type Void = Record<never, never>;
+
 export type OnComplete<T> = (r: Result<T>) => void;
-export type OnError = OnComplete<ApiVoid>;
+export type OnError = OnComplete<Void>;
 
 
-// -----------------------------------------------------------------------------
+export type CodeType = keyof typeof errorInfoMap;
+export type StatusType = ResultErrorStatus;
+export type HttpStatusType = number;
+export type MessageType = string;
+
+export type ErrorInfo = [StatusType, HttpStatusType, MessageType];
+
+export const errorInfoMap = {
+    "parse-error": ["fatal", 400, "リクエストボディが正しくパースできませんでした。"],
+    "no-cookie": ["login-required", 401, "認証情報が存在しません。ログインしてください。"],
+    "invalid-token": ["login-required", 401, "認証情報が無効です。再度ログインしてください。"],
+    "auth-id-not-found": ["login-required", 401, "ログイントークンがDBに存在しません。"],
+    "auth-id-expired": ["login-required", 401, "ログイントークンの有効期限が切れています。"],
+    "version-conflict": ["conflict", 409, "versionフィールドの不一致が検出されました。"],
+    "db-binding-not-found": ["fatal", 500, "データベースバインディングが設定されていません。"],
+    "no-secret-key": ["fatal", 500, "JWT用の秘密鍵が設定されていません。"],
+    "task-duplicated": ["fatal", 500, "DB内に同一のタスクIDのレコードが複数存在します。"],
+    "task-not-found": ["fatal", 500, "DB内に指定されたタスクIDのレコードが存在しません。"],
+    "user-setting-duplicated": ["fatal", 500, "DB内に同一のユーザーIDのレコードが複数存在します。"],
+    "user-setting-not-found": ["fatal", 500, "DB内に指定されたユーザーIDのレコードが存在しません。"],
+    "malformed-jwt-payload": ["fatal", 500, "JWTのペイロードが正しくパースできませんでした。"],
+    "invalid-user-id": ["fatal", 500, "JWTペイロード内のユーザーIDが、リクエストボディのユーザーIDと一致しません。"],
+    "unknown-internal-error": ["fatal", 500, "不明な内部エラーが発生しました。"],
+} as const;
+
 // DB層関連型
 // -----------------------------------------------------------------------------
 
@@ -46,20 +72,20 @@ export const idSchema = v.pipe(v.string(), v.uuid()); // タスクID（UUIDv4、
 export const dateSchema = v.pipe(v.string(), v.isoTimestamp());
 export const versionSchema = v.pipe(v.number(), v.toMinValue(0)); // 楽観的ロック用バージョン番号
 
-export const DBContainerMetaSchema = v.object({
+export const ContainerMetaSchema = v.object({
     id: idSchema,
     version: versionSchema, // 楽観的ロック用バージョン番号(永続化層で生成、DB層で検証)
     createdAt: dateSchema, // 作成日時 (永続化層で生成)
     updatedAt: dateSchema, // 更新日時（永続化層で生成）
 });
 
-export const DBContainerSchema = <T>(dataSchema: Schema<T>) => v.object({
-    meta: DBContainerMetaSchema,
+export const ContainerSchema = <T>(dataSchema: Schema<T>) => v.object({
+    meta: ContainerMetaSchema,
     data: dataSchema,
 });
 
-export type DBContainer<T> = {
-    meta: v.InferOutput<typeof DBContainerMetaSchema>;
+export type Container<T> = {
+    meta: v.InferOutput<typeof ContainerMetaSchema>;
     data: T;
 };
 
@@ -73,6 +99,7 @@ export const taskWeightList = ["light", "medium", "heavy"] as const;
 export const taskWeightSchema = v.picklist(taskWeightList);
 
 export const taskContentSchema = v.object({
+    userId: idSchema,
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema),
@@ -84,7 +111,7 @@ export type TaskWeight = v.InferOutput<typeof taskWeightSchema>;
 export type TaskContent = v.InferOutput<typeof taskContentSchema>;
 
 export const taskSchema = v.object({
-    meta: DBContainerMetaSchema,
+    meta: ContainerMetaSchema,
     data: taskContentSchema,
 });
 
@@ -99,16 +126,9 @@ export type Tasks = v.InferOutput<typeof tasksSchema>;
 // タスク関連型
 //
 
-// タスク削除入力（クライアント → サーバー）
-export const taskDeleteContentSchema = v.object({
-    version: versionSchema, 
-});
-
-export type TaskDeleteContent = v.InferOutput<typeof taskDeleteContentSchema>;
-
-
 // LLM解析結果の個別タスク入力
 export const taskCreateSchema = v.object({
+    userId: v.optional(idSchema),
     title: taskTitleSchema,
     weight: v.optional(taskWeightSchema),
     dueDate: v.optional(dateSchema)
@@ -127,6 +147,7 @@ export const numDailyGoalsTypeSchema = v.pipe(v.number(), v.minValue(0), v.maxVa
 // ユーザー設定（サーバー → クライアント）
 export const userSettingContentSchema = v.object({
     timezone: v.number(),
+    email: v.pipe(v.string(), v.email()),
     dailyGoals: v.object({
         heavy: numDailyGoalsTypeSchema, // 重タスク目標数（0-10）
         medium: numDailyGoalsTypeSchema, // 中タスク目標数（0-10）
@@ -135,7 +156,7 @@ export const userSettingContentSchema = v.object({
 });
 
 export const userSettingSchema = v.object({
-    meta: DBContainerMetaSchema,
+    meta: ContainerMetaSchema,
     data: userSettingContentSchema,
 });
 
@@ -145,6 +166,22 @@ export type UserSettingContent = v.InferOutput<typeof userSettingContentSchema>;
 export const userSettingsSchema = v.array(userSettingSchema);
 
 export type UserSettings = v.InferOutput<typeof userSettingsSchema>;
+
+// -----------------------------------------------------------------------------
+// 認証関連型
+// -----------------------------------------------------------------------------
+
+export const loginRequestSchema = v.object({
+    email: v.pipe(v.string(), v.email()),
+});
+
+export type LoginRequest = v.InferOutput<typeof loginRequestSchema>;
+
+export const loginAuthSchema = v.object({
+    token: v.string(),
+});
+
+export type LoginAuth = v.InferOutput<typeof loginAuthSchema>;
 
 // -----------------------------------------------------------------------------
 // ネットワーク層関連型
@@ -190,13 +227,13 @@ export type ApiFailResponse = v.InferOutput<typeof apiFailResponseSchema>;
 
 
 // API呼び出し成功時のレスポンスボディ型
-export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSettings;
+export type ApiResponseData = ApiTasks | ApiTask | ApiVoid | ApiAnalyze | ApiUserSetting | ApiAuthSuccess;
 
 // タスク一覧取得のレスポンスボディ
 export const apiTasksSchema = tasksSchema;
 
 export function apiReadAllSchema<T>(schema: Schema<T>) {
-    return v.array(DBContainerSchema(schema));
+    return v.array(ContainerSchema(schema));
 }
 
 export type ApiTasks = v.InferOutput<typeof apiTasksSchema>;
@@ -220,8 +257,16 @@ export interface ApiAnalyze {
 }
 
 // ユーザー設定のレスポンスボディ
-export const apiUserSettingsSchema = userSettingsSchema;
-export type ApiUserSettings = v.InferOutput<typeof apiUserSettingsSchema>;
+export const apiUserSettingSchema = userSettingSchema;
+export type ApiUserSetting = v.InferOutput<typeof apiUserSettingSchema>;
+
+// 認証成功のレスポンスボディ
+export const apiAuthSuccessSchema = v.object({
+    type: v.picklist(["auth-success"]),
+    userId: idSchema,
+});
+
+export type ApiAuthSuccess = v.InferOutput<typeof apiAuthSuccessSchema>;
 
 // -----------------------------------------------------------------------------
 // 永続化層関連型
@@ -229,11 +274,24 @@ export type ApiUserSettings = v.InferOutput<typeof apiUserSettingsSchema>;
 
 export type Schema<T> = v.BaseSchema<unknown, T, v.BaseIssue<unknown>>;
 
-export abstract class IPersistent<T> {
-    abstract get items(): DBContainer<T>[];
-    abstract sync(onComplete: OnComplete<DBContainer<T>[]>): void;
-    abstract create(item: DBContainer<T>, onError: OnError): void;
-    abstract update(item: DBContainer<T>, onError: OnError): void;
+export type ConnectResult<T, S> = {
+    tasks: Container<T>[];
+    setting: Container<S>;
+};
+
+
+export abstract class IPersistent<T, S> {
+    abstract get tasks(): Container<T>[];
+    abstract get setting(): Container<S>;
+    abstract get isLogin(): boolean;
+    abstract get userId(): string;
+    abstract registerOnError(onError: OnError): void;
+    abstract requestLogin(email: string): void;
+    abstract connect(token: string, onComplete: OnComplete<ConnectResult<T, S>>): void;
+    abstract disconnect(onComplete: OnComplete<ConnectResult<T, S>>): void;
+    abstract create(item: Container<T>): void;
+    abstract update(item: Container<T>): void;
+    abstract updateSetting(value: Container<S>): void;
 }
 
 // -----------------------------------------------------------------------------
@@ -251,6 +309,7 @@ export abstract class IPersistent<T> {
 
 export const users = sqliteTable("users", {
     id: text("id").primaryKey(),
+    email: text("email").notNull(),
     timezone: integer("timezone").notNull().default(0),
     daily_goal_heavy: integer("daily_goal_heavy").notNull().default(1),
     daily_goal_medium: integer("daily_goal_medium").notNull().default(2),
@@ -262,6 +321,7 @@ export const users = sqliteTable("users", {
 
 export const tasks = sqliteTable("tasks", {
     id: text("id").primaryKey(),
+    user_id: text("user_id").notNull(),
     title: text("title", { length: 500 }).notNull(),
     weight: text("weight", { enum: ["light", "medium", "heavy"] }),
     due_date: text("due_date"),
@@ -272,59 +332,8 @@ export const tasks = sqliteTable("tasks", {
     updated_at: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
-// -----------------------------------------------------------------------------
-// Durable Object用の型（バックエンド専用）
-// -----------------------------------------------------------------------------
-
-// ログ種別
-type LogType = "TASK_OPERATION" | "LLM_PROCESS";
-
-// タスク操作種別
-type TaskOperationType = "CREATE" | "UPDATE" | "DELETE";
-
-// LLM処理種別
-type LLMProcessType = "ANALYZE" | "COMPLEMENT" | "WEIGHT_ESTIMATION";
-
-// 基底ログエントリ
-interface BaseLogEntry {
-    id: string; // ログID（UUID）
-    timestamp: Date; // 記録日時
-    type: LogType; // ログ種別
-}
-
-// タスク操作ログ
-interface TaskOperationLog extends BaseLogEntry {
-    type: "TASK_OPERATION";
-    taskId: string; // 対象タスクID
-    operation: TaskOperationType; // 操作種別
-    beforeValue?: Partial<Task>; // 変更前の値（UPDATE時）
-    afterValue?: Partial<Task>; // 変更後の値（CREATE/UPDATE時）
-}
-
-// LLM処理ログ
-interface LLMProcessLog extends BaseLogEntry {
-    type: "LLM_PROCESS";
-    processType: LLMProcessType; // 処理種別
-    taskId?: string; // 関連タスクID（オプション）
-    inputText: string; // 入力テキスト
-    outputResult: any; // 出力結果
-    modelName: string; // 使用モデル名
-    tokenCount?: number; // 使用トークン数（オプション）
-    processTimeMs?: number; // 処理時間（ミリ秒、オプション）
-    success: boolean; // 成功フラグ
-    errorMessage?: string; // エラーメッセージ（失敗時）
-}
-
-// 統合ログエントリ型
-type LogEntry = TaskOperationLog | LLMProcessLog;
-
-// ログストレージ
-interface LogStorage {
-    date: string; // YYYY-MM-DD形式の日付
-    logs: LogEntry[]; // ログエントリ配列
-}
-
-// Durable Object全体の状態
-export interface DurableObjectState {
-    logStorage: LogStorage; // ログストレージ
-}
+export const auth_tokens = sqliteTable("auth_tokens", {
+    token: text("token").primaryKey(),
+    email: text("email").notNull(),
+    created_at: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});

@@ -5,32 +5,53 @@ import { All } from "./All";
 import { Completed } from "./Completed";
 import { Deleted } from "./Deleted";
 import { Home } from "./Home";
+import { Login } from "./Login";
+import { LoginAuth } from "./LoginAuth";
+import { LoginSent } from "./LoginSent";
 import { AppLayout } from "./layer/Presentation/AppLayout";
+import { LoginLayout } from "./layer/Presentation/LoginLayout";
 import { Setting } from "./Setting";
 
 const router = createBrowserRouter([
     {
-        element: <AppLayout />,
+        element: <LoginLayout />,
         children: [
             {
-                path: "/",
-                Component: Home,
+                path: "/login",
+                Component: Login,
             },
             {
-                path: "/all",
-                Component: All,
+                path: "/login/sent",
+                Component: LoginSent,
             },
             {
-                path: "/completed",
-                Component: Completed,
+                path: "/login/auth",
+                Component: LoginAuth,
             },
             {
-                path: "/deleted",
-                Component: Deleted,
-            },
-            {
-                path: "/setting",
-                Component: Setting,
+                element: <AppLayout />,
+                children: [
+                    {
+                        path: "/",
+                        Component: Home,
+                    },
+                    {
+                        path: "/all",
+                        Component: All,
+                    },
+                    {
+                        path: "/completed",
+                        Component: Completed,
+                    },
+                    {
+                        path: "/deleted",
+                        Component: Deleted,
+                    },
+                    {
+                        path: "/setting",
+                        Component: Setting,
+                    },
+                ],
             },
         ],
     },

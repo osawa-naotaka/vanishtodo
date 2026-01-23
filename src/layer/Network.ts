@@ -35,7 +35,7 @@ export class Network {
      * @param {object} body - リクエストボディ
      * @returns {Promise<Response>} レスポンスのPromise
      */
-    postJson(path: string, body: object): Promise<Result<ApiVoid>> {
+    postJson<T>(path: string, body: object, schema: Schema<T>): Promise<Result<T>> {
         const promise = fetch(`${this.baseUrl}${path}`, {
             method: "POST",
             headers: {
@@ -43,7 +43,7 @@ export class Network {
             },
             body: JSON.stringify(body),
         });
-        return this.processResponse(promise, apiVoidSchema);
+        return this.processResponse(promise, schema);
     }
 
     /**
@@ -159,6 +159,7 @@ export class Network {
 
     private process_status: [number, ResultErrorStatus, ApiErrorInfo][] = [
         // [HTTPステータスコード, 永続化層ステータス, エラー情報]
+        [401, "login-required", { code: "UNAUTHORIZED", message: "認証が必要です" }],
         [409, "conflict", { code: "CONFLICT", message: "タスクのversionフィールドの不一致が検出されました。二か所以上での書き込みが競合したと思われます。" }],
         [429, "recoverable", { code: "TOO_MANY_REQUESTS", message: "リクエストが多すぎます" }],
         [503, "recoverable", { code: "SERVICE_UNAVAILABLE", message: "サービスが利用できません" }],
